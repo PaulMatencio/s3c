@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"strings"
 	"time"
-
 	hostpool "github.com/bitly/go-hostpool"
 )
 

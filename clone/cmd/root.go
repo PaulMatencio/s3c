@@ -146,6 +146,7 @@ func initConfig() {
 		sproxyd.TargetUrl = target
 	}
 
+
 	if conTimeout := viper.GetDuration("sproxyd.target.connectionTimeout"); conTimeout >  0 {
 		sproxyd.ConnectionTimeout= conTimeout
 	}
@@ -169,6 +170,8 @@ func initConfig() {
 	if driver := viper.GetString("sproxyd.target.driver"); len(driver) == 0 {
 		sproxyd.TargetDriver= driver
 	}
+	sproxyd.SetNewProxydHost()
+	sproxyd.SetNewTargetProxydHost()
 
 	gLog.InitLog(rootCmd.Name(),loglevel,logOutput)
 	log.Printf("Logging level: %d   Output: %s",loglevel,logOutput)

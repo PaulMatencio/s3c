@@ -19,6 +19,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/paulmatencio/s3c/gLog"
 	"github.com/paulmatencio/s3c/sproxyd/lib"
+	"io/ioutil"
+	"net/http"
 	"strconv"
 	"sync"
 	"time"
@@ -137,7 +139,6 @@ func listS3(cmd *cobra.Command, args []string) {
 			break
 		}
 	}
-
 	utils.Return(start)
 }
 
@@ -250,6 +251,7 @@ func listS3Pref(marker string, bucket string) (string, error) {
 						Bucket:  req.Bucket,
 						Key:     *v.Key,
 					}
+
 					go func(request datatype.StatObjRequest) {
 						rh := datatype.Rh{
 							Key: head.Key,
@@ -262,7 +264,7 @@ func listS3Pref(marker string, bucket string) (string, error) {
 							if numberOfpages,err  := strconv.Atoi(userm.TotalPages); err == nil {
 								keys:= []string{}
 								for k:=0; k<=numberOfpages ;k++ {
-									keys = append(keys,rh.Key + "/p"+ strconv.Itoa(k))
+									keys = append(keys, sproxyd.Env + "/" + rh.Key + "/p"+ strconv.Itoa(k))
 								}
 								getBlobs(keys)
 							} else {
@@ -282,7 +284,6 @@ func listS3Pref(marker string, bucket string) (string, error) {
 			gLog.Error.Printf("%v", err)
 			break
 		}
-
 		if N < maxLoop && *result.IsTruncated {
 			req.Marker = nextmarker
 		} else {
@@ -290,23 +291,40 @@ func listS3Pref(marker string, bucket string) (string, error) {
 			break
 		}
 	}
-
 	return nextmarker, nil
 }
 
 
 func getBlobs (keys []string) {
-	for _,key :=  range keys {
-		/*
-		bnsRequest := bns.HttpRequest{
-			Hspool: sproxyd.HP, // source sproxyd servers IP address and ports
-			Client: &http.Client{},
-			Media:  "binary",
+
+	var (
+		sproxydRequest   = sproxyd.HttpRequest{
+			Hspool:    sproxyd.HP,
+			Client: &http.Client{
+				Timeout:   sproxyd.ReadTimeout,
+				Transport: sproxyd.Transport,
+			},
 		}
-		*/
-		srcPath := sproxyd.Env + "/" + key
-		targetPath := sproxyd.TargetEnv + "/" + key
-		gLog.Info.Printf(srcPath,targetPath)
+		 wg2 sync.WaitGroup
+	)
+	for _, key := range keys {
+		wg2.Add(1)
+		url := "proxy/" + sproxyd.Driver+ "/"+ key
+		go func(url string) {
+			defer wg2.Done()
+			sproxydRequest.Path = url
+			resp, err := sproxyd.Getobject(&sproxydRequest)
+			defer resp.Body.Close()
+			var body []byte
+			if err == nil {
+				body, _ = ioutil.ReadAll(resp.Body)
+			} else {
+				resp.Body.Close()
+			}
+			gLog.Info.Printf("object %s - length %d ",key,len(body))
+
+		}(url)
 	}
+	wg2.Wait()
 }
 
