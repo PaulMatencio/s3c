@@ -1,0 +1,38 @@
+package api
+
+import (
+	"github.com/paulmatencio/s3c/gLog"
+	"io/ioutil"
+	"net/http"
+	"time"
+)
+
+func GetRaftStatus(url string) (error,string) {
+	var (
+		req = "status"
+		err error
+		rl  string
+	)
+	url  = url + "/_/" + req
+	gLog.Trace.Printf("GetRaft Leader url: %s",url)
+	for i := 1; i <= retryNumber; i++ {
+		if response, err := http.Get(url); err == nil {
+			gLog.Trace.Printf("Response: %v",response)
+			if response.StatusCode == 200 {
+				defer response.Body.Close()
+				if contents, err := ioutil.ReadAll(response.Body); err == nil {
+					// json.Unmarshal(contents,&rl)
+					rl= string(contents)
+				}
+			}else {
+				gLog.Error.Printf("Status: %d %s",response.StatusCode,response.Status)
+			}
+			break
+		} else {
+			gLog.Error.Printf("Error: %v - number of retries: %d" , err, i )
+			time.Sleep(waitTime * time.Millisecond)
+		}
+	}
+	return err,rl
+}
+
