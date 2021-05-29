@@ -17,7 +17,11 @@ package cmd
 import (
 	"encoding/json"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/golang/protobuf/proto"
+	"github.com/paulmatencio/protobuf-doc/src/document/documentpb"
+	doc "github.com/paulmatencio/protobuf-doc/lib"
 	base64 "github.com/paulmatencio/ring/user/base64j"
+	// "github.com/golang/protobuf/proto"
 	"github.com/paulmatencio/s3c/gLog"
 	"github.com/paulmatencio/s3c/sproxyd/lib"
 	"io/ioutil"
@@ -66,6 +70,8 @@ type UserMd struct {
 	SubPartFP  string `json:"subPartFP"`
 	TotalPages string `json:"totalPages"`
 }
+
+
 
 
 func initLoFlags(cmd *cobra.Command) {
@@ -308,11 +314,13 @@ func getBlobs (pn string, keys []string) {
 		}
 		 wg2 sync.WaitGroup
 	)
+	var document *documentpb.Document
 	for p, key := range keys {
 		wg2.Add(1)
 		url :=  key
 		l := len(keys)
-		go func(url string,pn string,p int,l int ) {
+
+		go func(document *documentpb.Document, url string,pn string,p int,l int ) {
 
 			sproxydRequest.Path = url
 			defer wg2.Done()
@@ -322,6 +330,7 @@ func getBlobs (pn string, keys []string) {
 				body []byte
 				usermd string
 				md []byte
+
 			)
 			if err == nil {
 				body, _ = ioutil.ReadAll(resp.Body)
@@ -335,21 +344,30 @@ func getBlobs (pn string, keys []string) {
 						}
 					}
 				}
+				if p == 0 {
+					document = doc.CreateDocument(pn,usermd,p,&body)
+				} else {
+					pg :=doc.CreatePage(pn,usermd,p,&body)
+					doc.AddPageToDucument(pg, document)
+				}
 
 			} else {
 				resp.Body.Close()
 			}
-			gLog.Info.Printf("object %s - length %d ",url,len(body),string(md))
+			gLog.Info.Printf("object %s - length %d %s",url,len(body),string(md))
 			/*  add to the protoBuf */
 
-		}(url,pn,p,l)
+		}(document,url,pn,p,l)
 	}
+	// Write the document to File
+
 	wg2.Wait()
+	if bytes, err := proto.Marshal(document); err == nil {
+		gLog.Info.Printf("Document %s  - length %d ",pn, len(bytes))
+	} else {
+		gLog.Error.Println(err)
+	}
 }
 
-func createDoc(pn string ,p int,l int)  {
-
-
-}
 
 
