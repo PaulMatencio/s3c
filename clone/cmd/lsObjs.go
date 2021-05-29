@@ -321,7 +321,7 @@ func getBlobs (keys []string) {
 			} else {
 				resp.Body.Close()
 			}
-			gLog.Info.Printf("object %s - length %d ",key,len(body))
+			gLog.Info.Printf("object %s - length %d ",url,len(body))
 
 		}(url)
 	}
