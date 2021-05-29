@@ -18,8 +18,8 @@ import (
 	"encoding/json"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/golang/protobuf/proto"
-	"github.com/paulmatencio/protobuf-doc/src/document/documentpb"
 	doc "github.com/paulmatencio/protobuf-doc/lib"
+	"github.com/paulmatencio/protobuf-doc/src/document/documentpb"
 	base64 "github.com/paulmatencio/ring/user/base64j"
 	// "github.com/golang/protobuf/proto"
 	"github.com/paulmatencio/s3c/gLog"
@@ -314,7 +314,7 @@ func getBlobs (pn string, keys []string) {
 		}
 		 wg2 sync.WaitGroup
 	)
-	var document *documentpb.Document
+	document := &documentpb.Document{}
 	for p, key := range keys {
 		wg2.Add(1)
 		url :=  key
