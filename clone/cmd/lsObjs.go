@@ -17,6 +17,7 @@ package cmd
 import (
 	"encoding/json"
 	"github.com/aws/aws-sdk-go/service/s3"
+	base64 "github.com/paulmatencio/ring/user/base64j"
 	"github.com/paulmatencio/s3c/gLog"
 	"github.com/paulmatencio/s3c/sproxyd/lib"
 	"io/ioutil"
@@ -266,7 +267,7 @@ func listS3Pref(marker string, bucket string) (string, error) {
 								for k:=0; k<=numberOfpages ;k++ {
 									keys = append(keys, sproxyd.Env + "/" + rh.Key + "/p"+ strconv.Itoa(k))
 								}
-								getBlobs(keys)
+								getBlobs(rh.Key,keys)
 							} else {
 								gLog.Error.Printf("Invalid Page number in %s",usermd)
 							}
@@ -295,7 +296,7 @@ func listS3Pref(marker string, bucket string) (string, error) {
 }
 
 
-func getBlobs (keys []string) {
+func getBlobs (pn string, keys []string) {
 
 	var (
 		sproxydRequest   = sproxyd.HttpRequest{
@@ -307,24 +308,48 @@ func getBlobs (keys []string) {
 		}
 		 wg2 sync.WaitGroup
 	)
-	for _, key := range keys {
+	for p, key := range keys {
 		wg2.Add(1)
 		url :=  key
-		go func(url string) {
-			defer wg2.Done()
+		l := len(keys)
+		go func(url string,pn string,p int,l int ) {
+
 			sproxydRequest.Path = url
+			defer wg2.Done()
 			resp, err := sproxyd.Getobject(&sproxydRequest)
 			defer resp.Body.Close()
-			var body []byte
+			var (
+				body []byte
+				usermd string
+				md []byte
+			)
 			if err == nil {
 				body, _ = ioutil.ReadAll(resp.Body)
+				if body != nil {
+					if _, ok := resp.Header["X-Scal-Usermd"]; ok {
+						usermd = resp.Header["X-Scal-Usermd"][0]
+						if md,err =base64.Decode64(usermd); err != nil {
+							gLog.Warning.Printf("Invalid user metadata %s",usermd)
+						} else {
+							gLog.Trace.Printf("User metadata %s",string(md))
+						}
+					}
+				}
+
 			} else {
 				resp.Body.Close()
 			}
-			gLog.Info.Printf("object %s - length %d ",url,len(body))
+			gLog.Info.Printf("object %s - length %d ",url,len(body),string(md))
+			/*  add to the protoBuf */
 
-		}(url)
+		}(url,pn,p,l)
 	}
 	wg2.Wait()
 }
+
+func createDoc(pn string ,p int,l int)  {
+
+
+}
+
 
