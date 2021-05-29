@@ -309,7 +309,7 @@ func getBlobs (keys []string) {
 	)
 	for _, key := range keys {
 		wg2.Add(1)
-		url := "proxy/" + sproxyd.Driver+ "/"+ key
+		url :=  key
 		go func(url string) {
 			defer wg2.Done()
 			sproxydRequest.Path = url
