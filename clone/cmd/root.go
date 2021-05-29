@@ -70,17 +70,24 @@ func Execute() {
 	}
 }
 
+
 func init() {
+
+	rootCmd.PersistentFlags().IntVarP(&loglevel, "loglevel", "l", 0,"Output level of logs (1: error, 2: Warning, 3: Info , 4 Trace, 5 Debug)")
+	rootCmd.PersistentFlags().StringVarP(&config,"config", "c","", "sc config file; default $HOME/.clone/config.yaml")
+	rootCmd.PersistentFlags().BoolVarP(&autoCompletion,"autoCompletion", "C",false, "generate bash auto completion")
+	rootCmd.PersistentFlags().IntVarP(&profiling,"profiling", "P",0, "display memory usage every P seconds")
+
+	// bind application flags to viper key for future viper.Get()
+	// viper also to set default value to any key
+
+	viper.BindPFlag("loglevel",rootCmd.PersistentFlags().Lookup("loglevel"))
+	viper.BindPFlag("autoCompletion",rootCmd.PersistentFlags().Lookup("autoCompletion"))
+	viper.BindPFlag("profiling",rootCmd.PersistentFlags().Lookup("profiling"))
+
 	cobra.OnInitialize(initConfig)
 
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
-	rootCmd.PersistentFlags().StringVar(&config, "config", "", "config file (default is $HOME/.clone.yaml)")
 
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
 // initConfig reads in config file and ENV variables if set.
