@@ -21,6 +21,10 @@ import (
 	doc "github.com/paulmatencio/protobuf-doc/lib"
 	"github.com/paulmatencio/protobuf-doc/src/document/documentpb"
 	base64 "github.com/paulmatencio/ring/user/base64j"
+	"os"
+	"path/filepath"
+	"strings"
+
 	// "github.com/golang/protobuf/proto"
 	"github.com/paulmatencio/s3c/gLog"
 	"github.com/paulmatencio/s3c/sproxyd/lib"
@@ -354,7 +358,7 @@ func getBlobs (pn string, keys []string) {
 			} else {
 				resp.Body.Close()
 			}
-			gLog.Info.Printf("object %s - length %d %s",url,len(body),string(md))
+			gLog.Trace.Printf("object %s - length %d %s",url,len(body),string(md))
 			/*  add to the protoBuf */
 
 		}(document,url,pn,p,l)
@@ -362,8 +366,20 @@ func getBlobs (pn string, keys []string) {
 	// Write the document to File
 
 	wg2.Wait()
+	home, _ := os.UserHomeDir()
+	dest:="testbackup"
+	outdir := filepath.Join(home, dest)
 	if bytes, err := proto.Marshal(document); err == nil {
-		gLog.Info.Printf("Document %s  - length %d ",pn, len(bytes))
+		//gLog.Info.Printf("Document %s  - length %d ",pn, len(bytes))
+		strings.Replace(pn,"/","_",-1)
+		ofn := filepath.Join(outdir, pn)
+		if f, err := os.OpenFile(ofn, os.O_WRONLY|os.O_CREATE, 0600); err == nil {
+			if err := doc.Write(f, bytes); err == nil {
+				gLog.Info.Printf("%d bytes have be written to %s\n", len(bytes), ofn)
+			}
+		} else {
+			gLog.Info.Println(err)
+		}
 	} else {
 		gLog.Error.Println(err)
 	}
