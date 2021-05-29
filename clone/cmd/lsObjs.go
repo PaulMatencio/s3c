@@ -371,7 +371,7 @@ func getBlobs (pn string, keys []string) {
 	outdir := filepath.Join(home, dest)
 	if bytes, err := proto.Marshal(document); err == nil {
 		//gLog.Info.Printf("Document %s  - length %d ",pn, len(bytes))
-		strings.Replace(pn,"/","_",-1)
+		pn = strings.Replace(pn,"/","_",-1)
 		ofn := filepath.Join(outdir, pn)
 		if f, err := os.OpenFile(ofn, os.O_WRONLY|os.O_CREATE, 0600); err == nil {
 			if err := doc.Write(f, bytes); err == nil {
