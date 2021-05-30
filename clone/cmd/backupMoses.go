@@ -71,7 +71,7 @@ func initFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key")
 	cmd.Flags().StringVarP(&delimiter, "delimiter", "d", "", "key delimiter")
 	// cmd.Flags().BoolVarP(&loop,"loop","L",false,"loop until all keys are processed")
-	cmd.Flags().IntVarP(&maxPage, "maxPage", "", 1, "maximum number of concurrent pages ")
+	cmd.PersistentFlags().IntVarP(&maxPage, "maxPage", "", 40, "maximum number of concurrent pages ")
 	cmd.Flags().IntVarP(&maxLoop, "maxLoop", "", 1, "maximum number of loop, 0 means no upper limit")
 
 }
@@ -205,11 +205,11 @@ func BackupBlobs(marker string, bucket string) (string, error) {
 							json.Unmarshal([]byte(usermd), &userm)
 							pn :=rh.Key
 							if np, err := strconv.Atoi(userm.TotalPages); err == nil {
-								clone.GetBlobs(pn, np)
+								clone.GetBlobs(pn, np,maxPage)
 							} else {
 								gLog.Error.Printf("Document %s - Invalid number of pages in %s ", pn,usermd)
 								if np, err, status := clone.GetPageNumber(pn); err == nil {
-									clone.GetBlobs(pn, np)
+									clone.GetBlobs(pn, np,maxPage)
 								} else {
 									gLog.Error.Printf(" Error %v - Status Code: %v  - Getting number of pagess for %s ", err, status,pn)
 								}

@@ -17,8 +17,16 @@ import (
 	"sync"
 )
 
+func GetBlobs(pn string, np int, maxPage int) {
+	if np > maxPage {
+		getBlobs(pn, np)
+	} else {
+		getBig(pn, np, maxPage)
+	}
 
-func GetBlobs(pn string, np int) {
+}
+
+func getBlobs(pn string, np int) {
 	var (
 		sproxydRequest = sproxyd.HttpRequest{
 			Hspool: sproxyd.HP,
@@ -27,9 +35,10 @@ func GetBlobs(pn string, np int) {
 				Transport: sproxyd.Transport,
 			},
 		}
-		wg2 sync.WaitGroup
+		wg2      sync.WaitGroup
+		document = &documentpb.Document{}
 	)
-	document := &documentpb.Document{}
+
 	for k := 0; k <= np; k++ {
 		wg2.Add(1)
 		url := sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
@@ -76,34 +85,36 @@ func GetBlobs(pn string, np int) {
 	home, _ := os.UserHomeDir()
 	dest := "testbackup"
 	outdir := filepath.Join(home, dest)
-	WriteDocument(pn,document,outdir)
+	WriteDocument(pn, document, outdir)
 }
 
-func GetBig(pn string, np int,maxPage int) {
+func getBig(pn string, np int, maxPage int) {
 	var (
 		document = &documentpb.Document{}
+		q     int = (np + 1) / maxPage
+		r     int = (np + 1) / maxPage
+		start int = 0
+		end   int = start + maxPage
 	)
-	q := (np+1)/maxPage
-	r := (np+1)/maxPage
-	start:= 0
-	end:= start + maxPage
-	for s:=1;s <= q; s++ {
+	gLog.Warning.Printf("Big document %s  - number of pages %d ",pn,np)
+	for s := 1; s <= q; s++ {
 		GetParts(pn, start, end, document)
-		start = end +1
+		start = end + 1
 		end += maxPage
 		if end > np {
-			end= np
+			end = np
 		}
 	}
-	if r >0 {
+	if r > 0 {
 		GetParts(pn, q*maxPage+1, np, document)
 	}
 	home, _ := os.UserHomeDir()
 	dest := "testbackup"
 	outdir := filepath.Join(home, dest)
-	WriteDocument(pn,document,outdir)
+	WriteDocument(pn, document, outdir)
 }
-func GetParts(pn string, start  int, end  int, document *documentpb.Document) {
+
+func GetParts(pn string, start int, end int, document *documentpb.Document) {
 
 	var (
 		sproxydRequest = sproxyd.HttpRequest{
@@ -163,7 +174,7 @@ func GetParts(pn string, start  int, end  int, document *documentpb.Document) {
 
 }
 
-func WriteDocument(pn string , document *documentpb.Document,outdir string) {
+func WriteDocument(pn string, document *documentpb.Document, outdir string) {
 
 	if bytes, err := proto.Marshal(document); err == nil {
 		//gLog.Info.Printf("Document %s  - length %d ",pn, len(bytes))
