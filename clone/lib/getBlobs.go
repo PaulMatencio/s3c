@@ -1,13 +1,11 @@
 package lib
 
 import (
-	"github.com/golang/protobuf/proto"
 	doc "github.com/paulmatencio/protobuf-doc/lib"
 	"github.com/paulmatencio/protobuf-doc/src/document/documentpb"
 	base64 "github.com/paulmatencio/ring/user/base64j"
 	"os"
 	"path/filepath"
-	"strings"
 	// "github.com/golang/protobuf/proto"
 	"github.com/paulmatencio/s3c/gLog"
 	"github.com/paulmatencio/s3c/sproxyd/lib"
@@ -18,7 +16,7 @@ import (
 )
 
 func GetBlobs(pn string, np int, maxPage int) {
-	if np > maxPage {
+	if np <=  maxPage {
 		getBlobs(pn, np)
 	} else {
 		getBig(pn, np, maxPage)
@@ -174,20 +172,4 @@ func GetParts(pn string, start int, end int, document *documentpb.Document) {
 
 }
 
-func WriteDocument(pn string, document *documentpb.Document, outdir string) {
 
-	if bytes, err := proto.Marshal(document); err == nil {
-		//gLog.Info.Printf("Document %s  - length %d ",pn, len(bytes))
-		pn = strings.Replace(pn, "/", "_", -1)
-		ofn := filepath.Join(outdir, pn)
-		if f, err := os.OpenFile(ofn, os.O_WRONLY|os.O_CREATE, 0600); err == nil {
-			if err := doc.Write(f, bytes); err == nil {
-				gLog.Info.Printf("%d bytes have be written to %s\n", len(bytes), ofn)
-			}
-		} else {
-			gLog.Info.Println(err)
-		}
-	} else {
-		gLog.Error.Println(err)
-	}
-}

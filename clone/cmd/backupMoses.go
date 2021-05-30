@@ -71,7 +71,7 @@ func initFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key")
 	cmd.Flags().StringVarP(&delimiter, "delimiter", "d", "", "key delimiter")
 	// cmd.Flags().BoolVarP(&loop,"loop","L",false,"loop until all keys are processed")
-	cmd.PersistentFlags().IntVarP(&maxPage, "maxPage", "", 40, "maximum number of concurrent pages ")
+	cmd.Flags().IntVarP(&maxPage, "maxPage", "", 50, "maximum number of concurrent pages ")
 	cmd.Flags().IntVarP(&maxLoop, "maxLoop", "", 1, "maximum number of loop, 0 means no upper limit")
 
 }
