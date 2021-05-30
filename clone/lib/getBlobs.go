@@ -17,9 +17,7 @@ import (
 	"sync"
 )
 
-const (
-	MAX = 50
-)
+
 func GetBlobs(pn string, np int) {
 	var (
 		sproxydRequest = sproxyd.HttpRequest{
@@ -96,7 +94,7 @@ func GetBig(pn string, np int,maxPage int) {
 		}
 	}
 	if r >0 {
-		GetParts(pn, q*MAX+1, np, document)
+		GetParts(pn, q*maxPage+1, np, document)
 	}
 	home, _ := os.UserHomeDir()
 	dest := "testbackup"
