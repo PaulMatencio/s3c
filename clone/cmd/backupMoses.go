@@ -32,28 +32,28 @@ import (
 // listObjectCmd represents the listObject command
 var (
 	loshort       = "Command to list objects of a given bucket"
-	listObjectCmd = &cobra.Command{
-		Use:   "lsS3",
-		Short: loshort,
-		Long:  ``,
-		// Hidden: true,
-		Run: listS3,
+	lS3Cmd = &cobra.Command{
+		Use:    "lsS3",
+		Short:  loshort,
+		Long:   ``,
+		Hidden: true,
+		Run:    listS3,
 	}
 
-	loCmd = &cobra.Command{
-		Use:   "lsObjs",
-		Short: loshort,
+	backupCmd = &cobra.Command{
+		Use:   "backupMoses",
+		Short: "Command to backup MOSES",
 		Long:  ``,
-		Run:   listObject,
+		Run:   backup,
 	}
 )
 
 var (
-	prefix    string
-	maxKey    int64
-	marker    string
-	maxLoop,maxPage   int
-	delimiter string
+	prefix           string
+	maxKey           int64
+	marker           string
+	maxLoop, maxPage int
+	delimiter        string
 )
 
 type UserMd struct {
@@ -63,7 +63,7 @@ type UserMd struct {
 	TotalPages string `json:"totalPages"`
 }
 
-func initLoFlags(cmd *cobra.Command) {
+func initFlags(cmd *cobra.Command) {
 
 	cmd.Flags().StringVarP(&bucket, "bucket", "b", "", "the name of the bucket")
 	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "key prefix")
@@ -78,11 +78,11 @@ func initLoFlags(cmd *cobra.Command) {
 
 func init() {
 
-	rootCmd.AddCommand(listObjectCmd)
-	rootCmd.AddCommand(loCmd)
+	rootCmd.AddCommand(lS3Cmd)
+	rootCmd.AddCommand(backupCmd)
 	rootCmd.MarkFlagRequired("bucket")
-	initLoFlags(listObjectCmd)
-	initLoFlags(loCmd)
+	initFlags(lS3Cmd)
+	initFlags(backupCmd)
 }
 
 func listS3(cmd *cobra.Command, args []string) {
@@ -139,13 +139,13 @@ func listS3(cmd *cobra.Command, args []string) {
 	utils.Return(start)
 }
 
-func listObject(cmd *cobra.Command, args []string) {
+func backup(cmd *cobra.Command, args []string) {
 	var (
 		nextmarker string
 		err        error
 	)
 	start := time.Now()
-	if nextmarker, err = listS3Pref(marker, bucket); err != nil {
+	if nextmarker, err = BackupBlobs(marker, bucket); err != nil {
 		gLog.Error.Printf("error %v - Next marker %s", err, nextmarker)
 	} else {
 		gLog.Info.Printf("Next Marker %s", nextmarker)
@@ -155,7 +155,7 @@ func listObject(cmd *cobra.Command, args []string) {
 }
 
 /* S3 API list user metadata  function */
-func listS3Pref(marker string, bucket string) (string, error) {
+func BackupBlobs(marker string, bucket string) (string, error) {
 
 	var (
 		nextmarker string
@@ -203,14 +203,15 @@ func listS3Pref(marker string, bucket string) (string, error) {
 						if usermd, err := utils.GetUserMeta(rh.Result.Metadata); err == nil {
 							userm := UserMd{}
 							json.Unmarshal([]byte(usermd), &userm)
+							pn :=rh.Key
 							if np, err := strconv.Atoi(userm.TotalPages); err == nil {
-								clone.GetBlobs(rh.Key, np)
+								clone.GetBlobs(pn, np)
 							} else {
-								gLog.Error.Printf("Invalid number of pages in %s", usermd)
-								if np,err,status := clone.GetPageNumber(rh.Key); err == nil {
-									clone.GetBlobs(rh.Key, np)
+								gLog.Error.Printf("Document %s - Invalid number of pages in %s ", pn,usermd)
+								if np, err, status := clone.GetPageNumber(pn); err == nil {
+									clone.GetBlobs(pn, np)
 								} else {
-									gLog.Error.Printf(" Error %v - Status Code: %v  - Getting number of pagess for %s ",err,status,rh.Key)
+									gLog.Error.Printf(" Error %v - Status Code: %v  - Getting number of pagess for %s ", err, status,pn)
 								}
 							}
 						}
@@ -236,6 +237,3 @@ func listS3Pref(marker string, bucket string) (string, error) {
 	}
 	return nextmarker, nil
 }
-
-
-

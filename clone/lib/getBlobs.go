@@ -56,9 +56,11 @@ func GetBlobs(pn string, np int) {
 						}
 					}
 				}
+				//  Create  the document
 				if k == 0 {
 					document = doc.CreateDocument(pn, usermd, k, &body)
 				} else {
+					// Create a page and add it to the document
 					pg := doc.CreatePage(pn, usermd, k, &body)
 					doc.AddPageToDucument(pg, document)
 				}

@@ -8,7 +8,7 @@ import (
 	"net/http"
 )
 
-func GetPageNumber(key string) (int,error,int) {
+func GetPageNumber(key string) (int, error, int) {
 	var (
 		pgn            int
 		err            error
@@ -20,7 +20,7 @@ func GetPageNumber(key string) (int,error,int) {
 			},
 			Path: sproxyd.Env + "/" + key + "/p0",
 		}
-		resp  *http.Response
+		resp *http.Response
 	)
 
 	metadata := moses.DocumentMetadata{}
@@ -31,17 +31,13 @@ func GetPageNumber(key string) (int,error,int) {
 			if usermd, err := base64.Decode64(encoded_usermd[0]); err == nil {
 				if err = metadata.UsermdToStruct(string(usermd)); err == nil {
 					if pgn, err = metadata.GetPageNumber(); err == nil {
-						return pgn,err,resp.StatusCode
+						return pgn, err, resp.StatusCode
 					}
-				} else {
-					return 0,err,resp.StatusCode
 				}
 			}
 		default:
 			err = errors.New("Check the status Code for the reason")
-			return 0, err, resp.StatusCode
 		}
 	}
 	return 0, err, resp.StatusCode
 }
-
