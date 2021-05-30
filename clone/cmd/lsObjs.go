@@ -17,28 +17,16 @@ package cmd
 import (
 	"encoding/json"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/golang/protobuf/proto"
-	doc "github.com/paulmatencio/protobuf-doc/lib"
-	"github.com/paulmatencio/protobuf-doc/src/document/documentpb"
-	base64 "github.com/paulmatencio/ring/user/base64j"
-	"os"
-	"path/filepath"
-	"strings"
-
+	"github.com/paulmatencio/s3c/api"
+	clone "github.com/paulmatencio/s3c/clone/lib"
+	"github.com/paulmatencio/s3c/datatype"
 	// "github.com/golang/protobuf/proto"
 	"github.com/paulmatencio/s3c/gLog"
-	"github.com/paulmatencio/s3c/sproxyd/lib"
-	"io/ioutil"
-	"net/http"
+	"github.com/paulmatencio/s3c/utils"
+	"github.com/spf13/cobra"
 	"strconv"
 	"sync"
 	"time"
-
-	// "github.com/golang/gLog"
-	"github.com/paulmatencio/s3c/api"
-	"github.com/paulmatencio/s3c/datatype"
-	"github.com/paulmatencio/s3c/utils"
-	"github.com/spf13/cobra"
 )
 
 // listObjectCmd represents the listObject command
@@ -53,10 +41,10 @@ var (
 	}
 
 	loCmd = &cobra.Command{
-		Use:    "lsObjs",
-		Short:  loshort,
-		Long:   ``,
-		Run:    listObject,
+		Use:   "lsObjs",
+		Short: loshort,
+		Long:  ``,
+		Run:   listObject,
 	}
 )
 
@@ -64,7 +52,7 @@ var (
 	prefix    string
 	maxKey    int64
 	marker    string
-	maxLoop   int
+	maxLoop,maxPage   int
 	delimiter string
 )
 
@@ -75,9 +63,6 @@ type UserMd struct {
 	TotalPages string `json:"totalPages"`
 }
 
-
-
-
 func initLoFlags(cmd *cobra.Command) {
 
 	cmd.Flags().StringVarP(&bucket, "bucket", "b", "", "the name of the bucket")
@@ -86,6 +71,7 @@ func initLoFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key")
 	cmd.Flags().StringVarP(&delimiter, "delimiter", "d", "", "key delimiter")
 	// cmd.Flags().BoolVarP(&loop,"loop","L",false,"loop until all keys are processed")
+	cmd.Flags().IntVarP(&maxPage, "maxPage", "", 1, "maximum number of concurrent pages ")
 	cmd.Flags().IntVarP(&maxLoop, "maxLoop", "", 1, "maximum number of loop, 0 means no upper limit")
 
 }
@@ -153,61 +139,6 @@ func listS3(cmd *cobra.Command, args []string) {
 	utils.Return(start)
 }
 
-func listObjectV2(cmd *cobra.Command, args []string) {
-	var (
-		start       = utils.LumberPrefix(cmd)
-		total int64 = 0
-	)
-
-	if len(bucket) == 0 {
-		gLog.Warning.Printf("%s", missingBucket)
-		utils.Return(start)
-		return
-	}
-
-	req := datatype.ListObjRequest{
-		Service:   s3.New(api.CreateSession()),
-		Bucket:    bucket,
-		Prefix:    prefix,
-		MaxKey:    maxKey,
-		Marker:    marker,
-		Delimiter: delimiter,
-	}
-	L := 1
-	for {
-		var (
-			nextmarker string
-			result     *s3.ListObjectsV2Output
-			err        error
-		)
-		if result, err = api.ListObjectV2(req); err == nil {
-			if l := len(result.Contents); l > 0 {
-				total += int64(l)
-				for _, v := range result.Contents {
-					gLog.Info.Printf("Key: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size, v.LastModified)
-				}
-				if *result.IsTruncated {
-					//nextmarker = *result.Contents[l-1].Key
-					nextmarker = *result.ContinuationToken
-					gLog.Warning.Printf("Truncated %v  - Next marker : %s ", *result.IsTruncated, nextmarker)
-				}
-			}
-		} else {
-			gLog.Error.Printf("%v", err)
-			break
-		}
-		L++
-		if *result.IsTruncated && (maxLoop == 0 || L <= maxLoop) {
-			req.Marker = nextmarker
-		} else {
-			gLog.Info.Printf("Total number of objects returned: %d", total)
-			break
-		}
-	}
-
-	utils.Return(start)
-}
-
 func listObject(cmd *cobra.Command, args []string) {
 	var (
 		nextmarker string
@@ -215,7 +146,7 @@ func listObject(cmd *cobra.Command, args []string) {
 	)
 	start := time.Now()
 	if nextmarker, err = listS3Pref(marker, bucket); err != nil {
-		gLog.Error.Printf("error %v - Next marker %s",err,nextmarker)
+		gLog.Error.Printf("error %v - Next marker %s", err, nextmarker)
 	} else {
 		gLog.Info.Printf("Next Marker %s", nextmarker)
 	}
@@ -269,17 +200,18 @@ func listS3Pref(marker string, bucket string) (string, error) {
 						}
 						defer wg1.Done()
 						rh.Result, rh.Err = api.StatObject(head)
-						if usermd,err  := utils.GetUserMeta(rh.Result.Metadata); err ==nil  {
+						if usermd, err := utils.GetUserMeta(rh.Result.Metadata); err == nil {
 							userm := UserMd{}
-							json.Unmarshal([]byte(usermd),&userm)
-							if numberOfpages,err  := strconv.Atoi(userm.TotalPages); err == nil {
-								keys:= []string{}
-								for k:=0; k<=numberOfpages ;k++ {
-									keys = append(keys, sproxyd.Env + "/" + rh.Key + "/p"+ strconv.Itoa(k))
-								}
-								getBlobs(rh.Key,keys)
+							json.Unmarshal([]byte(usermd), &userm)
+							if np, err := strconv.Atoi(userm.TotalPages); err == nil {
+								clone.GetBlobs(rh.Key, np)
 							} else {
-								gLog.Error.Printf("Invalid Page number in %s",usermd)
+								gLog.Error.Printf("Invalid number of pages in %s", usermd)
+								if np,err,status := clone.GetPageNumber(rh.Key); err == nil {
+									clone.GetBlobs(rh.Key, np)
+								} else {
+									gLog.Error.Printf(" Error %v - Status Code: %v  - Getting number of pagess for %s ",err,status,rh.Key)
+								}
 							}
 						}
 						// utils.PrintUsermd(rh.Key, rh.Result.Metadata)
@@ -303,86 +235,6 @@ func listS3Pref(marker string, bucket string) (string, error) {
 		}
 	}
 	return nextmarker, nil
-}
-
-
-func getBlobs (pn string, keys []string) {
-
-	var (
-		sproxydRequest   = sproxyd.HttpRequest{
-			Hspool:    sproxyd.HP,
-			Client: &http.Client{
-				Timeout:   sproxyd.ReadTimeout,
-				Transport: sproxyd.Transport,
-			},
-		}
-		 wg2 sync.WaitGroup
-	)
-	document := &documentpb.Document{}
-	for p, key := range keys {
-		wg2.Add(1)
-		url :=  key
-		l := len(keys)
-
-		go func(document *documentpb.Document, url string,pn string,p int,l int ) {
-
-			sproxydRequest.Path = url
-			defer wg2.Done()
-			resp, err := sproxyd.Getobject(&sproxydRequest)
-			defer resp.Body.Close()
-			var (
-				body []byte
-				usermd string
-				md []byte
-
-			)
-			if err == nil {
-				body, _ = ioutil.ReadAll(resp.Body)
-				if body != nil {
-					if _, ok := resp.Header["X-Scal-Usermd"]; ok {
-						usermd = resp.Header["X-Scal-Usermd"][0]
-						if md,err =base64.Decode64(usermd); err != nil {
-							gLog.Warning.Printf("Invalid user metadata %s",usermd)
-						} else {
-							gLog.Trace.Printf("User metadata %s",string(md))
-						}
-					}
-				}
-				if p == 0 {
-					document = doc.CreateDocument(pn,usermd,p,&body)
-				} else {
-					pg :=doc.CreatePage(pn,usermd,p,&body)
-					doc.AddPageToDucument(pg, document)
-				}
-
-			} else {
-				resp.Body.Close()
-			}
-			gLog.Trace.Printf("object %s - length %d %s",url,len(body),string(md))
-			/*  add to the protoBuf */
-
-		}(document,url,pn,p,l)
-	}
-	// Write the document to File
-
-	wg2.Wait()
-	home, _ := os.UserHomeDir()
-	dest:="testbackup"
-	outdir := filepath.Join(home, dest)
-	if bytes, err := proto.Marshal(document); err == nil {
-		//gLog.Info.Printf("Document %s  - length %d ",pn, len(bytes))
-		pn = strings.Replace(pn,"/","_",-1)
-		ofn := filepath.Join(outdir, pn)
-		if f, err := os.OpenFile(ofn, os.O_WRONLY|os.O_CREATE, 0600); err == nil {
-			if err := doc.Write(f, bytes); err == nil {
-				gLog.Info.Printf("%d bytes have be written to %s\n", len(bytes), ofn)
-			}
-		} else {
-			gLog.Info.Println(err)
-		}
-	} else {
-		gLog.Error.Println(err)
-	}
 }
 
 

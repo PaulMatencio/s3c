@@ -164,6 +164,11 @@ func (docmeta *DocumentMetadata) GetPubDate() (Date, error) {
 	return date, err
 }
 
+func (docmeta *DocumentMetadata) GetNumberOfPages() (int) {
+	return docmeta.TotalPage
+}
+
+
 // get pages ranges and sub pages
 func (docmeta *DocumentMetadata) GetPagesRanges(section string) string {
 	var pagesranges string
@@ -205,16 +210,13 @@ func (docmeta *DocumentMetadata) GetPagesRanges(section string) string {
 		for _, ranges := range docmeta.ApplicantCitationsRangePageNumber {
 			pagesranges += fmt.Sprintf("%s:%s,", strconv.Itoa(ranges.Start), strconv.Itoa(ranges.End))
 		}
-
 	default:
 	}
-
 	if len(pagesranges) > 0 {
 		return pagesranges[0 : len(pagesranges)-1]
 	} else {
 		return pagesranges
 	}
-
 }
 
 func (docmeta *DocumentMetadata) UsermdToStruct(meta string) error {
