@@ -46,14 +46,12 @@ var (
 		Long:  ``,
 		Run:   backup,
 	}
-)
-
-var (
-	prefix           string
+	prefix,outDir,delimiter   string
 	maxKey           int64
 	marker           string
 	maxLoop, maxPage int
-	delimiter        string
+	missingoDir ="Missing output directory"
+
 )
 
 type UserMd struct {
@@ -63,13 +61,14 @@ type UserMd struct {
 	TotalPages string `json:"totalPages"`
 }
 
-func initFlags(cmd *cobra.Command) {
+func initBkFlags(cmd *cobra.Command) {
 
 	cmd.Flags().StringVarP(&bucket, "bucket", "b", "", "the name of the bucket")
 	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "key prefix")
-	cmd.Flags().Int64VarP(&maxKey, "maxKey", "m", 100, "maximum number of keys to be processed concurrently")
+	cmd.Flags().Int64VarP(&maxKey, "maxKey", "m", 40, "maximum number of keys to be processed concurrently")
 	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key")
 	cmd.Flags().StringVarP(&delimiter, "delimiter", "d", "", "key delimiter")
+	cmd.Flags().StringVarP(&outDir, "outDir", "O", "", "output directory")
 	// cmd.Flags().BoolVarP(&loop,"loop","L",false,"loop until all keys are processed")
 	cmd.Flags().IntVarP(&maxPage, "maxPage", "", 50, "maximum number of concurrent pages ")
 	cmd.Flags().IntVarP(&maxLoop, "maxLoop", "", 1, "maximum number of loop, 0 means no upper limit")
@@ -81,8 +80,8 @@ func init() {
 	rootCmd.AddCommand(lS3Cmd)
 	rootCmd.AddCommand(backupCmd)
 	rootCmd.MarkFlagRequired("bucket")
-	initFlags(lS3Cmd)
-	initFlags(backupCmd)
+	initBkFlags(lS3Cmd)
+	initBkFlags(backupCmd)
 }
 
 func listS3(cmd *cobra.Command, args []string) {
@@ -93,7 +92,11 @@ func listS3(cmd *cobra.Command, args []string) {
 
 	if len(bucket) == 0 {
 		gLog.Warning.Printf("%s", missingBucket)
-		utils.Return(start)
+		// utils.Return(start)
+		return
+	}
+	if len(outDir) ==0{
+		gLog.Warning.Printf("%s", missingoDir)
 		return
 	}
 
@@ -161,7 +164,9 @@ func BackupBlobs(marker string, bucket string) (string,  error) {
 		nextmarker string
 		N  int
 		tdocs,tpages,tsizes int64
+		terrors int
 		mu     sync.Mutex
+		mt     sync.Mutex
 	)
 
 	req := datatype.ListObjRequest{
@@ -180,6 +185,7 @@ func BackupBlobs(marker string, bucket string) (string,  error) {
 			ndocs  int = 0
 			npages int  = 0
 			docsizes int = 0
+			gerrors int = 0
 		)
 		N++ // number of loop
 		if result, err = api.ListObject(req); err == nil {
@@ -197,7 +203,6 @@ func BackupBlobs(marker string, bucket string) (string,  error) {
 						Bucket:  req.Bucket,
 						Key:     *v.Key,
 					}
-
 					go func(request datatype.StatObjRequest) {
 						var (
 							rh = datatype.Rh{
@@ -214,13 +219,28 @@ func BackupBlobs(marker string, bucket string) (string,  error) {
 							json.Unmarshal([]byte(usermd), &userm)
 							pn := rh.Key
 							if np, err = strconv.Atoi(userm.TotalPages); err == nil {
-								docsize = clone.GetBlobs(pn, np, maxPage)
+								if document,nerrors := clone.GetBlobs(pn, np, maxPage); nerrors == 0 {
+									clone.WriteDocument(pn, document, outDir)
+								} else {
+									mt.Lock()
+									gerrors += nerrors
+									mt.Unlock()
+								}
 							} else {
 								gLog.Error.Printf("Document %s - Invalid number of pages in %s ", pn, usermd)
 								if np, err, status = clone.GetPageNumber(pn); err == nil {
-									docsize= clone.GetBlobs(pn, np, maxPage)
+									if document,nerrors := clone.GetBlobs(pn, np, maxPage); nerrors == 0 {
+										clone.WriteDocument(pn, document, outDir)
+									} else {
+										mt.Lock()
+										gerrors += nerrors
+										mt.Unlock()
+									}
 								} else {
 									gLog.Error.Printf(" Error %v - Status Code: %v  - Getting number of pagess for %s ", err, status, pn)
+									mt.Lock()
+									gerrors += 1
+									mt.Unlock()
 								}
 							}
 						}
@@ -235,10 +255,11 @@ func BackupBlobs(marker string, bucket string) (string,  error) {
 				if *result.IsTruncated {
 					nextmarker = *result.Contents[l-1].Key
 					gLog.Warning.Printf("Truncated %v - Next marker: %s ", *result.IsTruncated, nextmarker)
-					gLog.Info.Printf("Total number of documents returned: %d  - total number of pages: %d  - Total document size: %d ", ndocs,npages,docsizes)
+					gLog.Info.Printf("Total number of documents returned: %d  - total number of pages: %d  - Total document size: %d - Total number of errors: %d", ndocs,npages,docsizes,gerrors)
 					tdocs += int64(ndocs)
 					tpages += int64(npages)
 					tsizes += int64(docsizes)
+					terrors += gerrors
 				}
 
 			}
@@ -249,7 +270,7 @@ func BackupBlobs(marker string, bucket string) (string,  error) {
 		if N < maxLoop && *result.IsTruncated {
 			req.Marker = nextmarker
 		} else {
-			gLog.Info.Printf("Total number of objects returned: %d  - total number of pages: %d  - Total document size: %d", tdocs,tpages,tsizes)
+			gLog.Info.Printf("Total number of objects returned: %d  - total number of pages: %d  - Total document size: %d - Total number of errors: %d", tdocs,tpages,tsizes,terrors)
 			break
 		}
 	}

@@ -4,8 +4,6 @@ import (
 	doc "github.com/paulmatencio/protobuf-doc/lib"
 	"github.com/paulmatencio/protobuf-doc/src/document/documentpb"
 	base64 "github.com/paulmatencio/ring/user/base64j"
-	"os"
-	"path/filepath"
 	// "github.com/golang/protobuf/proto"
 	"github.com/paulmatencio/s3c/gLog"
 	"github.com/paulmatencio/s3c/sproxyd/lib"
@@ -15,18 +13,16 @@ import (
 	"sync"
 )
 
-func GetBlobs(pn string, np int, maxPage int) (int){
+func GetBlobs(pn string, np int, maxPage int) (*documentpb.Document,int) {
 
-	var docsize int
 	if np <=  maxPage {
-		docsize= getBlobs(pn, np)
+		return getBlobs(pn, np)
 	} else {
-		docsize = getBig(pn, np, maxPage)
+		return getBig(pn, np, maxPage)
 	}
-	return docsize
 }
 
-func getBlobs(pn string, np int) (int){
+func getBlobs(pn string, np int) (*documentpb.Document,int){
 	var (
 		sproxydRequest = sproxyd.HttpRequest{
 			Hspool: sproxyd.HP,
@@ -37,7 +33,8 @@ func getBlobs(pn string, np int) (int){
 		}
 		wg2      sync.WaitGroup
 		document = &documentpb.Document{}
-
+		nerrors = 0
+		me = sync.Mutex{}
 	)
 
 	for k := 0; k <= np; k++ {
@@ -75,7 +72,11 @@ func getBlobs(pn string, np int) (int){
 					doc.AddPageToDucument(pg, document)
 				}
 			} else {
+				gLog.Error.Printf("error %v getting object %s",err,pn)
 				resp.Body.Close()
+				me.Lock()
+				nerrors += 1
+				me.Unlock()
 			}
 			gLog.Trace.Printf("object %s - length %d %s", url, len(body), string(md))
 			/*  add to the protoBuf */
@@ -83,39 +84,40 @@ func getBlobs(pn string, np int) (int){
 	}
 	// Write the document to File
 	wg2.Wait()
-	home, _ := os.UserHomeDir()
-	dest := "testbackup"
-	outdir := filepath.Join(home, dest)
-	return WriteDocument(pn, document, outdir)
+	return document,nerrors
 }
 
-func getBig(pn string, np int, maxPage int) (int){
+func getBig(pn string, np int, maxPage int) (*documentpb.Document,int){
+
 	var (
 		document = &documentpb.Document{}
 		q     int = (np + 1) / maxPage
 		r     int = (np + 1) / maxPage
 		start int = 0
 		end   int = start + maxPage
+		nerrors int = 0
+		terrors int = 0
+
 	)
 	gLog.Warning.Printf("Big document %s  - number of pages %d ",pn,np)
 	for s := 1; s <= q; s++ {
-		GetParts(pn, start, end, document)
+		nerrors = GetParts(pn, start, end, document)
 		start = end + 1
 		end += maxPage
 		if end > np {
 			end = np
 		}
+		terrors += nerrors
 	}
 	if r > 0 {
-		GetParts(pn, q*maxPage+1, np, document)
+		nerrors = GetParts(pn, q*maxPage+1, np, document)
+		terrors += nerrors
 	}
-	home, _ := os.UserHomeDir()
-	dest := "testbackup"
-	outdir := filepath.Join(home, dest)
-	return WriteDocument(pn, document, outdir)
+	return document,terrors
+	// return WriteDocument(pn, document, outdir)
 }
 
-func GetParts(pn string, start int, end int, document *documentpb.Document) {
+func GetParts(pn string, start int, end int, document *documentpb.Document) int {
 
 	var (
 		sproxydRequest = sproxyd.HttpRequest{
@@ -125,6 +127,8 @@ func GetParts(pn string, start int, end int, document *documentpb.Document) {
 				Transport: sproxyd.Transport,
 			},
 		}
+		me sync.Mutex
+		nerrors int = 0
 		wg2 sync.WaitGroup
 	)
 
@@ -164,7 +168,12 @@ func GetParts(pn string, start int, end int, document *documentpb.Document) {
 					doc.AddPageToDucument(pg, document)
 				}
 			} else {
+				gLog.Error.Printf("error %v getting object %s",err,pn)
 				resp.Body.Close()
+				me.Lock()
+				nerrors += 1
+				me.Unlock()
+
 			}
 			gLog.Trace.Printf("object %s - length %d %s", url, len(body), string(md))
 			/*  add to the protoBuf */
@@ -172,6 +181,7 @@ func GetParts(pn string, start int, end int, document *documentpb.Document) {
 	}
 	// Write the document to File
 	wg2.Wait()
+	return nerrors
 
 }
 
