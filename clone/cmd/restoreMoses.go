@@ -17,6 +17,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/paulmatencio/protobuf-doc/src/document/documentpb"
+	base64 "github.com/paulmatencio/ring/user/base64j"
 	clone "github.com/paulmatencio/s3c/clone/lib"
 	"github.com/paulmatencio/s3c/gLog"
 	"github.com/spf13/cobra"
@@ -64,6 +65,13 @@ func restore(cmd *cobra.Command, args []string) {
 	start := time.Now()
 	if document,err  = clone.ReadDocument(pn,inDir); err == nil {
 		pages := document.GetPage()
+		gLog.Info.Printf("Document id %s - Page Numnber %d ",document.DocId,document.PageNumber)
+		if usermd, err := base64.Decode64(document.GetMetadata()); err == nil {
+			gLog.Info.Printf("Document metadata %s",string(usermd))
+		} else {
+			gLog.Error.Println(err)
+		}
+
 		if len(pages) != int(document.NumberOfPages) {
 			gLog.Error.Printf("Backup of document is inconsistent %s  %d - %d ", pn,len(pages),document.NumberOfPages)
 			os.Exit(100)
