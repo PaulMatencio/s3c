@@ -235,7 +235,7 @@ func BackupBlobs(marker string, bucket string) (string,  error) {
 				if *result.IsTruncated {
 					nextmarker = *result.Contents[l-1].Key
 					gLog.Warning.Printf("Truncated %v - Next marker: %s ", *result.IsTruncated, nextmarker)
-					gLog.Info.Printf("Total number of documents returned: %d  - total number of pages %d ", ndocs,npages,docsizes)
+					gLog.Info.Printf("Total number of documents returned: %d  - total number of pages: %d  - Total document size: %d ", ndocs,npages,docsizes)
 					tdocs += int64(ndocs)
 					tpages += int64(npages)
 					tsizes += int64(docsizes)
@@ -249,7 +249,7 @@ func BackupBlobs(marker string, bucket string) (string,  error) {
 		if N < maxLoop && *result.IsTruncated {
 			req.Marker = nextmarker
 		} else {
-			gLog.Info.Printf("Total number of objects returned: %d  - total number of pages %d ", tdocs,tpages,tsizes)
+			gLog.Info.Printf("Total number of objects returned: %d  - total number of pages: %d  - Total document size: %d", tdocs,tpages,tsizes)
 			break
 		}
 	}

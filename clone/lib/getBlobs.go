@@ -129,13 +129,13 @@ func GetParts(pn string, start int, end int, document *documentpb.Document) {
 	)
 
 	// document := &documentpb.Document{}
-
+	gLog.Info.Printf("Getpart of pn %s - start-page %d - end-page %d ",pn,start,end)
 	for k := start; k <= end; k++ {
 		wg2.Add(1)
 		url := sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
 		// l := np+1
 		go func(document *documentpb.Document, url string, pn string, k int) {
-
+			gLog.Trace.Printf("Getpart of pn: %s - url:%s",pn,url)
 			sproxydRequest.Path = url
 			defer wg2.Done()
 			resp, err := sproxyd.Getobject(&sproxydRequest)
