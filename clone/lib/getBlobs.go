@@ -32,9 +32,7 @@ func getBlobs(pn string, np int) (*documentpb.Document,int){
 			},
 		}
 		wg2      sync.WaitGroup
-		document = &documentpb.Document{
-			NumberOfPages: int32(np),
-		}
+		document = &documentpb.Document{}
 		nerrors = 0
 		me = sync.Mutex{}
 	)
@@ -68,6 +66,7 @@ func getBlobs(pn string, np int) (*documentpb.Document,int){
 				//  Create  the document
 				if k == 0 {
 					document = doc.CreateDocument(pn, usermd, k, &body)
+					document.NumberOfPages= int32(np)
 				} else {
 					// Create a page and add it to the document
 					pg := doc.CreatePage(pn, usermd, k, &body)
@@ -90,23 +89,19 @@ func getBlobs(pn string, np int) (*documentpb.Document,int){
 }
 
 func getBig(pn string, np int, maxPage int) (*documentpb.Document,int){
-
 	var (
+		document = &documentpb.Document {}
 
-		document = &documentpb.Document{
-			NumberOfPages: int32(np+1),    //inclusive p0
-		}
 		q     int = (np + 1) / maxPage
 		r     int = (np + 1) / maxPage
 		start int = 0
 		end   int = start + maxPage
 		nerrors int = 0
 		terrors int = 0
-
 	)
 	gLog.Warning.Printf("Big document %s  - number of pages %d ",pn,np)
 	for s := 1; s <= q; s++ {
-		nerrors = GetParts(pn, start, end, document)
+		nerrors = GetParts(pn, np,start, end, document)
 		start = end + 1
 		end += maxPage
 		if end > np {
@@ -115,15 +110,14 @@ func getBig(pn string, np int, maxPage int) (*documentpb.Document,int){
 		terrors += nerrors
 	}
 	if r > 0 {
-		nerrors = GetParts(pn, q*maxPage+1, np, document)
+		nerrors = GetParts(pn, np,q*maxPage+1, np, document)
 		terrors += nerrors
 	}
 	return document,terrors
 	// return WriteDocument(pn, document, outdir)
 }
 
-func GetParts(pn string, start int, end int, document *documentpb.Document) int {
-
+func GetParts(pn string, np int, start int, end int, document *documentpb.Document) int {
 	var (
 		sproxydRequest = sproxyd.HttpRequest{
 			Hspool: sproxyd.HP,
@@ -168,6 +162,7 @@ func GetParts(pn string, start int, end int, document *documentpb.Document) int 
 				}
 				if k == 0 {
 					document = doc.CreateDocument(pn, usermd, k, &body)
+					document.NumberOfPages= int32(np)
 				} else {
 					pg := doc.CreatePage(pn, usermd, k, &body)
 					doc.AddPageToDucument(pg, document)
