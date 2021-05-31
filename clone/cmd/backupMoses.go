@@ -159,8 +159,8 @@ func BackupBlobs(marker string, bucket string) (string,  error) {
 
 	var (
 		nextmarker string
-		N          int
-
+		N  int
+		tdocs,tpages int64
 		mu     sync.Mutex
 	)
 
@@ -177,15 +177,15 @@ func BackupBlobs(marker string, bucket string) (string,  error) {
 			// nextmarker string
 			result *s3.ListObjectsOutput
 			err    error
-			ndocs  int64 = 0
-			npages int   = 0
+			ndocs  int = 0
+			npages int  = 0
 		)
 		N++ // number of loop
 		if result, err = api.ListObject(req); err == nil {
 			gLog.Info.Println(bucket, len(result.Contents))
 
 			if l := len(result.Contents); l > 0 {
-				ndocs += int64(l)
+				ndocs += int(l)
 				var wg1 sync.WaitGroup
 				wg1.Add(len(result.Contents))
 				for _, v := range result.Contents {
@@ -234,7 +234,9 @@ func BackupBlobs(marker string, bucket string) (string,  error) {
 				if *result.IsTruncated {
 					nextmarker = *result.Contents[l-1].Key
 					gLog.Warning.Printf("Truncated %v - Next marker: %s ", *result.IsTruncated, nextmarker)
-					gLog.Info.Printf("Total number of objects returned: %d  - total number of pages ", ndocs,npages)
+					gLog.Info.Printf("Total number of documents returned: %d  - total number of pages %d ", ndocs,npages)
+					tdocs += int64(ndocs)
+					tpages += int64(npages)
 				}
 
 			}
@@ -245,7 +247,7 @@ func BackupBlobs(marker string, bucket string) (string,  error) {
 		if N < maxLoop && *result.IsTruncated {
 			req.Marker = nextmarker
 		} else {
-			gLog.Info.Printf("Total number of objects returned: %d  - total number of pages ", ndocs,npages)
+			gLog.Info.Printf("Total number of objects returned: %d  - total number of pages %d ", tdocs,tpages)
 			break
 		}
 	}
