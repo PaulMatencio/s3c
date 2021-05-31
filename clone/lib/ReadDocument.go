@@ -13,7 +13,7 @@ import (
 func ReadDocument(pn string, inDir string) (*documentpb.Document,error) {
 	var (
 		bytes    []byte
-		document *documentpb.Document
+		document= documentpb.Document{}
 		err error
 		f *os.File
 	)
@@ -23,7 +23,7 @@ func ReadDocument(pn string, inDir string) (*documentpb.Document,error) {
 	if f, err = os.OpenFile(ifn, os.O_RDONLY, 0600); err == nil {
 		if bytes, err = doc.Read(f); err == nil {
 			gLog.Info.Printf("%d bytes are read\n", len(bytes))
-			if err = proto.Unmarshal(bytes, document); err != nil {
+			if err = proto.Unmarshal(bytes, &document); err != nil {
 				gLog.Error.Println("Error %v unma  file %s", ifn, err)
 			}
 		} else {
@@ -32,5 +32,5 @@ func ReadDocument(pn string, inDir string) (*documentpb.Document,error) {
 	} else {
 		gLog.Error.Println("Error %v  opening file %s", ifn, err)
 	}
-	return document,err
+	return &document,err
 }
