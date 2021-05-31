@@ -32,7 +32,9 @@ func getBlobs(pn string, np int) (*documentpb.Document,int){
 			},
 		}
 		wg2      sync.WaitGroup
-		document = &documentpb.Document{}
+		document = &documentpb.Document{
+			NumberOfPages: int32(np),
+		}
 		nerrors = 0
 		me = sync.Mutex{}
 	)
@@ -90,7 +92,10 @@ func getBlobs(pn string, np int) (*documentpb.Document,int){
 func getBig(pn string, np int, maxPage int) (*documentpb.Document,int){
 
 	var (
-		document = &documentpb.Document{}
+
+		document = &documentpb.Document{
+			NumberOfPages: int32(np+1),    //inclusive p0
+		}
 		q     int = (np + 1) / maxPage
 		r     int = (np + 1) / maxPage
 		start int = 0
