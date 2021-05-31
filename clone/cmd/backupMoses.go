@@ -160,7 +160,7 @@ func BackupBlobs(marker string, bucket string) (string,  error) {
 	var (
 		nextmarker string
 		N  int
-		tdocs,tpages int64
+		tdocs,tpages,tsizes int64
 		mu     sync.Mutex
 	)
 
@@ -179,6 +179,7 @@ func BackupBlobs(marker string, bucket string) (string,  error) {
 			err    error
 			ndocs  int = 0
 			npages int  = 0
+			docsizes int = 0
 		)
 		N++ // number of loop
 		if result, err = api.ListObject(req); err == nil {
@@ -202,8 +203,7 @@ func BackupBlobs(marker string, bucket string) (string,  error) {
 							rh = datatype.Rh{
 								Key: head.Key,
 							}
-							np     int
-							status int
+							np, status,docsize int
 							err    error
 							usermd string
 						)
@@ -214,11 +214,11 @@ func BackupBlobs(marker string, bucket string) (string,  error) {
 							json.Unmarshal([]byte(usermd), &userm)
 							pn := rh.Key
 							if np, err = strconv.Atoi(userm.TotalPages); err == nil {
-								clone.GetBlobs(pn, np, maxPage)
+								docsize = clone.GetBlobs(pn, np, maxPage)
 							} else {
 								gLog.Error.Printf("Document %s - Invalid number of pages in %s ", pn, usermd)
 								if np, err, status = clone.GetPageNumber(pn); err == nil {
-									clone.GetBlobs(pn, np, maxPage)
+									docsize= clone.GetBlobs(pn, np, maxPage)
 								} else {
 									gLog.Error.Printf(" Error %v - Status Code: %v  - Getting number of pagess for %s ", err, status, pn)
 								}
@@ -226,6 +226,7 @@ func BackupBlobs(marker string, bucket string) (string,  error) {
 						}
 						mu.Lock()
 						npages += np
+						docsizes += docsize
 						mu.Unlock()
 						// utils.PrintUsermd(rh.Key, rh.Result.Metadata)
 					}(head)
@@ -234,9 +235,10 @@ func BackupBlobs(marker string, bucket string) (string,  error) {
 				if *result.IsTruncated {
 					nextmarker = *result.Contents[l-1].Key
 					gLog.Warning.Printf("Truncated %v - Next marker: %s ", *result.IsTruncated, nextmarker)
-					gLog.Info.Printf("Total number of documents returned: %d  - total number of pages %d ", ndocs,npages)
+					gLog.Info.Printf("Total number of documents returned: %d  - total number of pages %d ", ndocs,npages,docsizes)
 					tdocs += int64(ndocs)
 					tpages += int64(npages)
+					tsizes += int64(docsizes)
 				}
 
 			}
@@ -247,7 +249,7 @@ func BackupBlobs(marker string, bucket string) (string,  error) {
 		if N < maxLoop && *result.IsTruncated {
 			req.Marker = nextmarker
 		} else {
-			gLog.Info.Printf("Total number of objects returned: %d  - total number of pages %d ", tdocs,tpages)
+			gLog.Info.Printf("Total number of objects returned: %d  - total number of pages %d ", tdocs,tpages,tsizes)
 			break
 		}
 	}

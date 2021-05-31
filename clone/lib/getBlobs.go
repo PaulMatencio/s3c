@@ -15,16 +15,18 @@ import (
 	"sync"
 )
 
-func GetBlobs(pn string, np int, maxPage int) {
-	if np <=  maxPage {
-		getBlobs(pn, np)
-	} else {
-		getBig(pn, np, maxPage)
-	}
+func GetBlobs(pn string, np int, maxPage int) (int){
 
+	var docsize int
+	if np <=  maxPage {
+		docsize= getBlobs(pn, np)
+	} else {
+		docsize = getBig(pn, np, maxPage)
+	}
+	return docsize
 }
 
-func getBlobs(pn string, np int) {
+func getBlobs(pn string, np int) (int){
 	var (
 		sproxydRequest = sproxyd.HttpRequest{
 			Hspool: sproxyd.HP,
@@ -35,6 +37,7 @@ func getBlobs(pn string, np int) {
 		}
 		wg2      sync.WaitGroup
 		document = &documentpb.Document{}
+
 	)
 
 	for k := 0; k <= np; k++ {
@@ -83,10 +86,10 @@ func getBlobs(pn string, np int) {
 	home, _ := os.UserHomeDir()
 	dest := "testbackup"
 	outdir := filepath.Join(home, dest)
-	WriteDocument(pn, document, outdir)
+	return WriteDocument(pn, document, outdir)
 }
 
-func getBig(pn string, np int, maxPage int) {
+func getBig(pn string, np int, maxPage int) (int){
 	var (
 		document = &documentpb.Document{}
 		q     int = (np + 1) / maxPage
@@ -109,7 +112,7 @@ func getBig(pn string, np int, maxPage int) {
 	home, _ := os.UserHomeDir()
 	dest := "testbackup"
 	outdir := filepath.Join(home, dest)
-	WriteDocument(pn, document, outdir)
+	return WriteDocument(pn, document, outdir)
 }
 
 func GetParts(pn string, start int, end int, document *documentpb.Document) {
