@@ -31,8 +31,8 @@ import (
 
 // listObjectCmd represents the listObject command
 var (
-	loshort       = "Command to list objects of a given bucket"
-	lS3Cmd = &cobra.Command{
+	loshort = "Command to list objects of a given bucket"
+	lS3Cmd  = &cobra.Command{
 		Use:    "lsS3",
 		Short:  loshort,
 		Long:   ``,
@@ -155,11 +155,13 @@ func backup(cmd *cobra.Command, args []string) {
 }
 
 /* S3 API list user metadata  function */
-func BackupBlobs(marker string, bucket string) (string, error) {
+func BackupBlobs(marker string, bucket string) (string,  error) {
 
 	var (
 		nextmarker string
 		N          int
+
+		mu     sync.Mutex
 	)
 
 	req := datatype.ListObjRequest{
@@ -175,14 +177,15 @@ func BackupBlobs(marker string, bucket string) (string, error) {
 			// nextmarker string
 			result *s3.ListObjectsOutput
 			err    error
-			total  int64 = 0
+			ndocs  int64 = 0
+			npages int   = 0
 		)
-		N++
+		N++ // number of loop
 		if result, err = api.ListObject(req); err == nil {
 			gLog.Info.Println(bucket, len(result.Contents))
 
 			if l := len(result.Contents); l > 0 {
-				total += int64(l)
+				ndocs += int64(l)
 				var wg1 sync.WaitGroup
 				wg1.Add(len(result.Contents))
 				for _, v := range result.Contents {
@@ -195,34 +198,45 @@ func BackupBlobs(marker string, bucket string) (string, error) {
 					}
 
 					go func(request datatype.StatObjRequest) {
-						rh := datatype.Rh{
-							Key: head.Key,
-						}
+						var (
+							rh = datatype.Rh{
+								Key: head.Key,
+							}
+							np     int
+							status int
+							err    error
+							usermd string
+						)
 						defer wg1.Done()
 						rh.Result, rh.Err = api.StatObject(head)
-						if usermd, err := utils.GetUserMeta(rh.Result.Metadata); err == nil {
+						if usermd, err = utils.GetUserMeta(rh.Result.Metadata); err == nil {
 							userm := UserMd{}
 							json.Unmarshal([]byte(usermd), &userm)
-							pn :=rh.Key
-							if np, err := strconv.Atoi(userm.TotalPages); err == nil {
-								clone.GetBlobs(pn, np,maxPage)
+							pn := rh.Key
+							if np, err = strconv.Atoi(userm.TotalPages); err == nil {
+								clone.GetBlobs(pn, np, maxPage)
 							} else {
-								gLog.Error.Printf("Document %s - Invalid number of pages in %s ", pn,usermd)
-								if np, err, status := clone.GetPageNumber(pn); err == nil {
-									clone.GetBlobs(pn, np,maxPage)
+								gLog.Error.Printf("Document %s - Invalid number of pages in %s ", pn, usermd)
+								if np, err, status = clone.GetPageNumber(pn); err == nil {
+									clone.GetBlobs(pn, np, maxPage)
 								} else {
-									gLog.Error.Printf(" Error %v - Status Code: %v  - Getting number of pagess for %s ", err, status,pn)
+									gLog.Error.Printf(" Error %v - Status Code: %v  - Getting number of pagess for %s ", err, status, pn)
 								}
 							}
 						}
+						mu.Lock()
+						npages += np
+						mu.Unlock()
 						// utils.PrintUsermd(rh.Key, rh.Result.Metadata)
 					}(head)
 				}
+				wg1.Wait()
 				if *result.IsTruncated {
 					nextmarker = *result.Contents[l-1].Key
 					gLog.Warning.Printf("Truncated %v - Next marker: %s ", *result.IsTruncated, nextmarker)
+					gLog.Info.Printf("Total number of objects returned: %d  - total number of pages ", ndocs,npages)
 				}
-				wg1.Wait()
+
 			}
 		} else {
 			gLog.Error.Printf("%v", err)
@@ -231,7 +245,7 @@ func BackupBlobs(marker string, bucket string) (string, error) {
 		if N < maxLoop && *result.IsTruncated {
 			req.Marker = nextmarker
 		} else {
-			gLog.Info.Printf("Total number of objects returned: %d", total)
+			gLog.Info.Printf("Total number of objects returned: %d  - total number of pages ", ndocs,npages)
 			break
 		}
 	}
