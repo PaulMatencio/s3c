@@ -65,7 +65,7 @@ func restore(cmd *cobra.Command, args []string) {
 	if document,err  = clone.ReadDocument(pn,inDir); err == nil {
 		pages := document.GetPage()
 		if len(pages) != int(document.NumberOfPages) {
-			fmt.Println("Backup of document is inconsistent %s", pn)
+			gLog.Error.Println("Backup of document is inconsistent %s  %d - %d ", pn,pages,document.NumberOfPages)
 			os.Exit(100)
 		}
 		for _, page := range pages {
