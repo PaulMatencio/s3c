@@ -120,7 +120,7 @@ func initListS3Flags(cmd *cobra.Command) {
 }
 
 func initCheckS3Flags(cmd *cobra.Command) {
-	cmd.Flags().StringVarP(&prefixs, "prefix", "p", "/", "prefix of the keys separated by a commma")
+	cmd.Flags().StringVarP(&prefixs, "prefix", "p", "", "prefix of the keys separated by a commma")
 	cmd.Flags().StringVarP(&marker, "marker", "k", "", "Start with this marker (Key) for the Get Prefix")
 	cmd.Flags().Int64VarP(&maxS3Key, "maxKey", "m", 20, "maximum number of keys to be processed concurrently")
 	cmd.Flags().StringVarP(&bucket, "bucket", "b", "", "the name of the S3  bucket")
