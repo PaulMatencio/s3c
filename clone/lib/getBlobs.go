@@ -13,6 +13,14 @@ import (
 	"sync"
 )
 
+type GetBlobResponse struct {
+	Size          int
+	PageNumber    int
+	Errors      int
+	UserMd		string
+	Body    	*[]byte
+}
+
 func GetBlobs(pn string, np int, maxPage int) (*documentpb.Document,int) {
 
 	if np <=  maxPage {
@@ -36,6 +44,7 @@ func getBlobs(pn string, np int) (*documentpb.Document,int){
 		nerrors = 0
 		me = sync.Mutex{}
 	)
+	/*   Create a document */
 
 	for k := 0; k <= np; k++ {
 		wg2.Add(1)
@@ -65,8 +74,8 @@ func getBlobs(pn string, np int) (*documentpb.Document,int){
 				}
 				//  Create  the document
 				if k == 0 {
-					document = doc.CreateDocument(pn, usermd, k, &body)
-					document.NumberOfPages= int32(np)
+					doc.CreateDocument(pn, usermd, k, np,&body)
+
 				} else {
 					// Create a page and add it to the document
 					pg := doc.CreatePage(pn, usermd, k, &body)
@@ -91,7 +100,6 @@ func getBlobs(pn string, np int) (*documentpb.Document,int){
 func getBig(pn string, np int, maxPage int) (*documentpb.Document,int){
 	var (
 		document = &documentpb.Document {}
-
 		q     int = (np + 1) / maxPage
 		r     int = (np + 1) / maxPage
 		start int = 0
@@ -161,11 +169,11 @@ func GetParts(pn string, np int, start int, end int, document *documentpb.Docume
 					}
 				}
 				if k == 0 {
-					document = doc.CreateDocument(pn, usermd, k, &body)
-					document.NumberOfPages= int32(np)
+					 document =doc.CreateDocument(pn, usermd, k, np,&body)
+
 				} else {
 					pg := doc.CreatePage(pn, usermd, k, &body)
-					doc.AddPageToDucument(pg, document)
+					doc.AddPageToDucument(pg,document)
 				}
 			} else {
 				gLog.Error.Printf("error %v getting object %s",err,pn)

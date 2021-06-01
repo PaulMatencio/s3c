@@ -61,6 +61,8 @@ type UserMd struct {
 	TotalPages string `json:"totalPages"`
 }
 
+
+
 func initBkFlags(cmd *cobra.Command) {
 
 	cmd.Flags().StringVarP(&bucket, "bucket", "b", "", "the name of the bucket")
@@ -195,6 +197,7 @@ func BackupBlobs(marker string, bucket string) (string,  error) {
 				ndocs += int(l)
 				var wg1 sync.WaitGroup
 				wg1.Add(len(result.Contents))
+
 				for _, v := range result.Contents {
 					gLog.Trace.Printf("Key: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size, v.LastModified)
 					svc := req.Service
@@ -203,6 +206,7 @@ func BackupBlobs(marker string, bucket string) (string,  error) {
 						Bucket:  req.Bucket,
 						Key:     *v.Key,
 					}
+
 					go func(request datatype.StatObjRequest) {
 						var (
 							rh = datatype.Rh{
@@ -244,6 +248,7 @@ func BackupBlobs(marker string, bucket string) (string,  error) {
 								}
 							}
 						}
+
 						mu.Lock()
 						npages += np
 						docsizes += docsize
@@ -252,6 +257,7 @@ func BackupBlobs(marker string, bucket string) (string,  error) {
 					}(head)
 				}
 				wg1.Wait()
+
 				if *result.IsTruncated {
 					nextmarker = *result.Contents[l-1].Key
 					gLog.Warning.Printf("Truncated %v - Next marker: %s ", *result.IsTruncated, nextmarker)
@@ -270,7 +276,7 @@ func BackupBlobs(marker string, bucket string) (string,  error) {
 		if N < maxLoop && *result.IsTruncated {
 			req.Marker = nextmarker
 		} else {
-			gLog.Info.Printf("Total number of objects returned: %d  - total number of pages: %d  - Total document size: %d - Total number of errors: %d", tdocs,tpages,tsizes,terrors)
+			gLog.Info.Printf("Total number of documents returned: %d  - total number of pages: %d  - Total document size: %d - Total number of errors: %d", tdocs,tpages,tsizes,terrors)
 			break
 		}
 	}
