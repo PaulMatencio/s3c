@@ -125,7 +125,7 @@ func initCheckS3Flags(cmd *cobra.Command) {
 	cmd.Flags().Int64VarP(&maxS3Key, "maxKey", "m", 20, "maximum number of keys to be processed concurrently")
 	cmd.Flags().StringVarP(&bucket, "bucket", "b", "", "the name of the S3  bucket")
 	// cmd.Flags().IntVarP(&loop, "loop", "L", 1, "Number of loop using the next marker if there is one")
-	cmd.Flags().IntVarP(&maxLoop,"maxLoop","",1,"maximum number of loop, 0 means no upper limit")
+	cmd.Flags().IntVarP(&maxLoop, "maxLoop", "", 1, "maximum number of loop, 0 means no upper limit")
 }
 
 func listS3(cmd *cobra.Command, args []string) {
@@ -434,73 +434,59 @@ func ListCommonPrefix(cp []interface{}) {
 /* level DB API list function */
 func checkS3(cmd *cobra.Command, args []string) {
 
-	if len(prefixs) == 0 {
-		usage(cmd.Name())
-		return
-	}
-	prefixa = strings.Split(prefixs, ",")
-	if len(prefixa) > 0 {
-		start := time.Now()
-		var wg sync.WaitGroup
-		wg.Add(len(prefixa))
 
-		for _, prefix := range prefixa {
-			go func(prefix string, bucket string) {
-				defer wg.Done()
-				var (
-					s3Meta = datatype.S3Metadata{}
-					// marker string
-					nextMarker string
-					N          = 0
-				)
-				for {
-					if err, result := listS3cPref(prefix, marker); err != nil || len(result) == 0 {
-						if err != nil {
-							gLog.Error.Println(err)
-						} else {
-							gLog.Info.Println("Result is empty")
-						}
-					} else {
-						if err = json.Unmarshal([]byte(result), &s3Meta); err == nil {
-							//gLog.Info.Println("Key:",s3Meta.Contents[0].Key,s3Meta.Contents[0].Value.XAmzMetaUsermd)
-							//num := len(s3Meta.Contentss3Meta.Contents)
-							l := len(s3Meta.Contents)
-							for _, c := range s3Meta.Contents {
-								//m := &s3Meta.Contents[i].Value.XAmzMetaUsermd
-								m := &c.Value.XAmzMetaUsermd
-								usermd, _ := base64.StdEncoding.DecodeString(*m)
-								userm := UserMd{}
-								if err := json.Unmarshal([]byte(usermd), &userm); err != nil {
-									gLog.Error.Printf("Key %s  has invalid  User metadata %s",c.Key,string(usermd))
-								}
-							}
-							//* print  common prefix if any
-							ListCommonPrefix(s3Meta.CommonPrefixes)
-							if l > 0 {
-								nextMarker = s3Meta.Contents[l-1].Key
-								gLog.Info.Printf("Next marker %s Istruncated %v", nextMarker, s3Meta.IsTruncated)
-							}
-							N++
-						} else {
-							gLog.Info.Println(err)
-						}
-					}
-					if !s3Meta.IsTruncated {
-						return
-					} else {
-						marker = nextMarker
-						gLog.Info.Printf("marker %s", marker)
-					}
-					if maxLoop != 0  && N >= maxLoop {
-						return
+	var (
+		s3Meta = datatype.S3Metadata{}
+		// marker string
+		nextMarker string
+		N          = 0
+	)
+	start := time.Now()
+	prefix = ""
+	for {
+		if err, result := listS3cPref(prefix, marker); err != nil || len(result) == 0 {
+			if err != nil {
+				gLog.Error.Println(err)
+			} else {
+				gLog.Info.Println("Result is empty")
+			}
+		} else {
+			if err = json.Unmarshal([]byte(result), &s3Meta); err == nil {
+				//gLog.Info.Println("Key:",s3Meta.Contents[0].Key,s3Meta.Contents[0].Value.XAmzMetaUsermd)
+				//num := len(s3Meta.Contentss3Meta.Contents)
+				l := len(s3Meta.Contents)
+				for _, c := range s3Meta.Contents {
+					//m := &s3Meta.Contents[i].Value.XAmzMetaUsermd
+					m := &c.Value.XAmzMetaUsermd
+					usermd, _ := base64.StdEncoding.DecodeString(*m)
+					userm := UserMd{}
+					if err := json.Unmarshal([]byte(usermd), &userm); err != nil {
+						gLog.Error.Printf("Key %s  has invalid  User metadata %s", c.Key, string(usermd))
 					}
 				}
-
-			}(prefix, bucket)
+				//* print  common prefix if any
+				ListCommonPrefix(s3Meta.CommonPrefixes)
+				if l > 0 {
+					nextMarker = s3Meta.Contents[l-1].Key
+					gLog.Info.Printf("Next marker %s Istruncated %v", nextMarker, s3Meta.IsTruncated)
+				}
+				N++
+			} else {
+				gLog.Info.Println(err)
+			}
 		}
-		wg.Wait()
-		gLog.Info.Printf("Total Elapsed time: %v", time.Since(start))
+		if !s3Meta.IsTruncated {
+			return
+		} else {
+			marker = nextMarker
+			gLog.Info.Printf("marker %s", marker)
+		}
+		if maxLoop != 0 && N >= maxLoop {
+			return
+		}
 	}
+	gLog.Info.Printf("Total Elapsed time: %v", time.Since(start))
+
 }
 
 func listS3cPref(prefix string, marker string) (error, string) {
