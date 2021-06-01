@@ -461,8 +461,11 @@ func checkS3(cmd *cobra.Command, args []string) {
 					usermd, _ := base64.StdEncoding.DecodeString(*m)
 					userm := UserMd{}
 					if err := json.Unmarshal([]byte(usermd), &userm); err != nil {
-						gLog.Error.Printf("Key %s  has invalid  User metadata %s", c.Key, string(usermd))
+						gLog.Error.Printf("Key %s  has No  User metadata %s", c.Key, string(usermd))
 					} else {
+						if len(userm.TotalPages) == 0 || len(userm.SubPartFP) == 0 {
+							gLog.Error.Printf("Key %s  has invalid User metadata %s", c.Key, string(usermd))
+						}
 						gLog.Trace.Printf("Key %s  has  valid User metadata %s", c.Key, string(usermd))
 					}
 				}
