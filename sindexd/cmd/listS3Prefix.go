@@ -462,6 +462,8 @@ func checkS3(cmd *cobra.Command, args []string) {
 					userm := UserMd{}
 					if err := json.Unmarshal([]byte(usermd), &userm); err != nil {
 						gLog.Error.Printf("Key %s  has invalid  User metadata %s", c.Key, string(usermd))
+					} else {
+						gLog.Trace.Printf("Key %s  has  valid User metadata %s", c.Key, string(usermd))
 					}
 				}
 				//* print  common prefix if any
