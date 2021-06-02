@@ -108,12 +108,8 @@ var (
      --index [PN|NP|OM|XX-PN]
      Explanation of the --index flag 
         PN => Full migration of Publication number and Publication data tables for a given country
-        BN => Full migration of the Legacy BNS id table for a given country	
         NP => Full migration of Cite NPL table ofr PN/PD
         OM => Full migration of publication number and publication date tables for other countries
-        OB => Full migration of legacy BNS tables for other countries
-        NB => Full migration of Cite NPL table for BN ( legacy)
-        XX-PN => Incremental migration of publication number tables ( every or specific country, XP and Cite NPL inclusive )
 
         Note : XP table contains the indexes of the Non Patent Literature documents
                Cite NPL  contains the indexes of the Cite NPL documents 
@@ -351,7 +347,7 @@ func migrateToS3pn(cmd *cobra.Command, args []string) {
 
 	switch iIndex {
 	case "PN": /* pubication date or publication number */
-		migToS3pn("PD") // Read sindexd pub date tables and write to both  s3 bucket-pd and bucket-pn
+		migToS3pn(iIndex) // Read sindexd pub date tables and write to both  s3 bucket-pd and bucket-pn
 	case "OM", "NP": /* all other countries or Cite NPL table */
 		migToS3pn(iIndex)
 	default:
@@ -883,7 +879,7 @@ func migToS3pn(index string) {
 			gLog.Error.Printf("No OTHER entry in PD or PN Index-id specification")
 			os.Exit(2)
 		}
-		gLog.Info.Printf("Index-id specification PN: %v - PD: %v",  *i)
+		gLog.Info.Printf("Index-id specification PN: %v ",  *i)
 	case "NP":
 		prefix = "XP"
 		i := indSpecs["NP"]
@@ -892,9 +888,10 @@ func migToS3pn(index string) {
 			gLog.Error.Printf("No NP entry in PD or PN Index spcification tables")
 			os.Exit(2)
 		}
-		gLog.Info.Printf("Indexd specification PN: %v  - PD %v", *i)
+		gLog.Info.Printf("Indexd specification PN: %v", *i)
 	default:
 		/*  just continue */
+
 	}
 	gLog.Info.Printf("Index: %s - Prefix: %s - Start with key %s ", index, prefix, marker)
 	/*
@@ -948,7 +945,7 @@ func migToS3pn(index string) {
 										// continue redo
 									} else {
 										if len(userm.TotalPages) == 0 || len(userm.SubPartFP) == 0 {
-											gLog.Error.Printf("Key %s  has invalid user metadata %s", k, string(usermd))
+											gLog.Warning.Printf("Key %s  has invalid user metadata %s", k, string(usermd))
 											mu.Lock()
 											invalid++
 											mu.Unlock()
