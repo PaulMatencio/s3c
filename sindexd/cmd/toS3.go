@@ -1007,7 +1007,8 @@ func migToS3pn(index string) {
 			Nextmarker = false
 		}
 	}
-	gLog.Info.Printf("Index/Prefix: %s/%s - Total processed: %d - Total skipped: %d - Total missed: %d -Total errors: %d/%d - Duration: %v", index, prefix, total,skip, missed, error, error1, time.Since(start))
+	updated := total - ( skip + missed)
+	gLog.Info.Printf("Index/Prefix: %s/%s - #Processed: %d - #Skipped: %d - #Added: %d - #Errors: %d - #Updated:  - Duration: %v", index, prefix, total,skip, missed, updated, error1, time.Since(start))
 }
 
 
