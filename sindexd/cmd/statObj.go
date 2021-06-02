@@ -57,7 +57,7 @@ Example: sindexd headb -i pn -k AT/000648/U1,AT/000647/U3,AT/,FR/500004/A,FR/567
 		Use:   "head",
 		Short: "Retrieve S3 user metadata using Amazon S3 SDK",
 		Long: `Retrieve S3 user metadata using Amazon S3 SDK
-Example: sindexd  head -i pn -k AT/000648/U1,AT/000647/U3,AT/,FR/500004/A,FR/567812/A`,
+		Example: sindexd  head -i pn -k AT/000648/U1,AT/000647/U3,AT/,FR/500004/A,FR/567812/A`,
 		Run: func(cmd *cobra.Command, args []string) {
 			if index != "pn" && index != "pd" && index != "bn" {
 				gLog.Warning.Printf("Index argument must be in [pn,pd,bn]")
@@ -108,7 +108,7 @@ func stat3b(cmd *cobra.Command) {
 			go func(key string, bucket string) {
 				defer wg.Done()
 				gLog.Trace.Printf("key: %s - bucket: %s",key, bucket)
-			 	if resp := stat_3b(key); resp.Err == nil {
+			 	if resp := Stat_3b(key); resp.Err == nil {
 			 		if resp.Status == 200 {
 						gLog.Info.Printf("Key %s - Usermd: %s", key, resp.Usermd)
 					} else {
@@ -177,7 +177,7 @@ func stat3(cmd *cobra.Command) {
 }
 
 
-func stat_3b (key string) (Response) {
+func Stat_3b (key string) (Response) {
 	var (
 		err error
 		buck,result string

@@ -99,6 +99,67 @@ var (
 			migrateToS3(cmd, args)
 		},
 	}
+	toS3pnCmd = &cobra.Command{
+		Use:   "toS3pn",
+		Short: "Migrate Scality index-ids to S3 metadata",
+		Long: `Migtate Scality  index-ids to S3 metadata: 
+
+     See Usage for the description of the other -- flags. See Examples below for full and incremental migration below 
+     --index [PN|NP|OM|XX-PN]
+     Explanation of the --index flag 
+        PN => Full migration of Publication number and Publication data tables for a given country
+        BN => Full migration of the Legacy BNS id table for a given country	
+        NP => Full migration of Cite NPL table ofr PN/PD
+        OM => Full migration of publication number and publication date tables for other countries
+        OB => Full migration of legacy BNS tables for other countries
+        NB => Full migration of Cite NPL table for BN ( legacy)
+        XX-PN => Incremental migration of publication number tables ( every or specific country, XP and Cite NPL inclusive )
+
+        Note : XP table contains the indexes of the Non Patent Literature documents
+               Cite NPL  contains the indexes of the Cite NPL documents 
+     
+     --prefix [CC|XP|WO|EP] 
+         CC is a country code such as US,CN,JP,GB,DE,KR,ES,FR,IT,NO,TW,SU,BG etc ...
+         XP is the code for Non Patent literature, Cite NPL  inclusive
+         WO is the code for WIPO 
+         EP is the code for European patents 
+
+        Examples
+
+        - Full migration
+                    
+           - There are 3 indexes tables per large country ( check the documentation for such countries)
+				
+                sindexd toS3  -i PN  -p US -m 500 ( Publication number and Publication date indexes for the US )
+                sindexd toS3  -i BN  -p US -m 500 ( legacy BNS indexes for the US )
+                sindexd toS3  -i PN  -p US -m 500 -k <Key1> ( From key1 to migrate from a specific key)
+					
+           - Small countries indexes are grouped in one table named "OTHER"
+
+                sindexd toS3  -i OM -m 500 ( Publication number and Publication Date for the small countries)
+                sindexd toS3 -i OB -m 500 ( Legacy BNS index the small countries)
+					
+           - Cite NPL table 
+                sindexd toSindexd -i NP -m 1000
+				sindexd toSindexd -i NB -m 1000
+     	
+        - Incremental migration (!!!  IMPORTANT: Please use the incToS3 subcommand for the incremental migration !!!)  
+                
+                sindexd toS3-i XX-PN  -p 20200403  -m 500 ( publication number for every country of April 3,2020 )
+                sindexd toS3 -i XX-PN  -p 20200403/US  ( publication number for for US  of April 3,2020)
+                sindexd toS3 -i XX-PD  -p 20200403  -m 500 ( publication date for every country of April 3,2020 )
+                sindexd toS3 -i XX-BN  -p 20200403/US  ( legacy BNS id for US of April 3,020 )
+                sindexd toS3 -i XX-BN  -p 20200403/US  ( legacy BNS id for US of April 3,2020 )
+
+         Note : XX-PN, includes Cite NPL publication number
+                XX-PD  includes Cite NPL publication date
+                XX-BN  There is no Cite NPL publication number or publication date
+ 				`,
+		Run: func(cmd *cobra.Command, args []string) {
+			migrateToS3pn(cmd, args)
+		},
+	}
+
 	// bucket_pd, bucket_pn string
 	maxLoop int
 	redo    bool
@@ -122,6 +183,8 @@ type delRequest struct {
 func init() {
 	rootCmd.AddCommand(toS3Cmd)
 	initToS3Flags(toS3Cmd)
+	rootCmd.AddCommand(toS3pnCmd)
+	initToS3Flags(toS3pnCmd)
 }
 
 func initToS3Flags(cmd *cobra.Command) {
@@ -249,6 +312,50 @@ func migrateToS3(cmd *cobra.Command, args []string) {
 		incToS3("XX", "BN")
 	default:
 		gLog.Info.Printf("%s", "invalid index table : [PN|PD|BN|OM|OB|XX-PN|XX-PD|XX-BN]")
+		os.Exit(2)
+	}
+}
+
+func migrateToS3pn(cmd *cobra.Command, args []string) {
+
+	if len(sindexUrl) == 0 {
+		sindexUrl = viper.GetString("sindexd.url")
+	}
+
+	if iIndex[0:2] == "XX" {
+		gLog.Warning.Printf("Please use the command incToS3 for the incremental migration of the index-ids to S3")
+		return
+	}
+	if len(iIndex) == 0 {
+		iIndex = "PN"
+	}
+
+	// indSpecs := directory.GetIndexSpec(iIndex)
+	if len(prefix) == 0 {
+		if iIndex == "PN" || iIndex == "XX" {
+			gLog.Info.Printf("%s", missingPrefix)
+			os.Exit(2)
+		}
+	}
+
+	if len(bucket) == 0 {
+		if bucket = viper.GetString("s3.bucket"); len(bucket) == 0 {
+			gLog.Info.Println("%s", missingBucket)
+			os.Exit(2)
+		}
+	}
+
+	sindexd.Delimiter = delimiter
+	sindexd.Host = strings.Split(sindexUrl, ",")
+	sindexd.HP = hostpool.NewEpsilonGreedy(sindexd.Host, 0, &hostpool.LinearEpsilonValueCalculator{})
+
+	switch iIndex {
+	case "PN": /* pubication date or publication number */
+		migToS3pn("PD") // Read sindexd pub date tables and write to both  s3 bucket-pd and bucket-pn
+	case "OM", "NP": /* all other countries or Cite NPL table */
+		migToS3pn(iIndex)
+	default:
+		gLog.Info.Printf("%s", "invalid index table : [PN||OM|NP]")
 		os.Exit(2)
 	}
 }
@@ -751,3 +858,154 @@ func delFromS3(req delRequest) (*s3.DeleteObjectOutput, error) {
 	return api.DeleteObjects(delreq)
 
 }
+
+
+func migToS3pn(index string) {
+	var (
+		indSpecs  = directory.GetIndexSpec("PN")
+		tos3 = datatype.CreateSession{
+			EndPoint:  viper.GetString("toS3.url"),
+			Region:    viper.GetString("toS3.region"),
+			AccessKey: viper.GetString("toS3.access_key_id"),
+			SecretKey: viper.GetString("toS3.secret_access_key"),
+		}
+		svc                             = s3.New(api.CreateSession2(tos3))
+		num, total, skip, invalid,error, error1 = 0, 0, 0, 0, 0,0 // num =  number of loop , total = total number of k
+		mue,mu                sync.Mutex      // mu = mutex for counter skip, mu1 mutex for counter total
+	)
+
+	switch index {
+	case "OM":
+		prefix = ""
+		i := indSpecs["OTHER"]
+
+		if i == nil   {
+			gLog.Error.Printf("No OTHER entry in PD or PN Index-id specification")
+			os.Exit(2)
+		}
+		gLog.Info.Printf("Index-id specification PN: %v - PD: %v",  *i)
+	case "NP":
+		prefix = "XP"
+		i := indSpecs["NP"]
+
+		if i == nil   {
+			gLog.Error.Printf("No NP entry in PD or PN Index spcification tables")
+			os.Exit(2)
+		}
+		gLog.Info.Printf("Indexd specification PN: %v  - PD %v", *i)
+	default:
+		/*  just continue */
+	}
+	gLog.Info.Printf("Index: %s - Prefix: %s - Start with key %s ", index, prefix, marker)
+	/*
+			Loop on  the get prefix
+		     for each key value returned by the list prefix of the Sindexd index-id
+		     	write ( publication date key, value) to bucket-pd
+		     	write ( publication number key, vale ) to bucket-pn
+	*/
+	start := time.Now()
+	for Nextmarker {
+
+		if response = directory.GetSerialPrefix(index, prefix, delimiter, marker, maxKey, indSpecs); response.Err == nil {
+			resp := response.Response
+			var wg sync.WaitGroup
+			wg.Add(len(resp.Fetched))
+
+			for k, v := range resp.Fetched {
+
+				/*
+						Publication date
+					    key  format  CC/YYYY/MM/DD/NNNNNNNNNN/KC ( no KC for Cite NPL )
+				*/
+
+				if v1, err := json.Marshal(v); err == nil {
+					cc := strings.Split(k, "/")[0]
+					total++
+					go func(svc *s3.S3, k string, cc string, value []byte, check bool) {
+						defer wg.Done()
+						var (
+							buck  = setBucketName(cc, bucket, "pn")
+							// keys  = strings.Split(k, "/")
+
+						)
+
+						/*
+							write to S3 buckets of not run in check mode
+						*/
+						if !check {
+							// if redo , bypass write to S3  if  key exist and meta data is valid
+							// if document not found
+							if redo {
+								resp :=Stat_3b(k)
+								if resp.Status == 200 {
+									usermd := resp.Usermd
+									userm := UserMd{}
+									if err := json.Unmarshal([]byte(usermd), &userm); err != nil {
+										gLog.Error.Printf("Key %s does not contain user metadata %s", k, string(usermd))
+										mu.Lock()
+										invalid++
+										mu.Unlock()
+										// continue redo
+									} else {
+										if len(userm.TotalPages) == 0 || len(userm.SubPartFP) == 0 {
+											gLog.Error.Printf("Key %s  has invalid user metadata %s", k, string(usermd))
+											mu.Lock()
+											invalid++
+											mu.Unlock()
+											// continue redo
+										} else {
+											mu.Lock()
+											skip++
+											mu.Unlock()
+											return
+											// SKIP  redo
+										}
+									}
+								}
+							}
+							//  write toS3
+							if r, err := writeToS3(svc, buck, k, value); err == nil {
+								gLog.Trace.Println(buck, *r.ETag, *r)
+
+							} else {
+								gLog.Error.Printf("Error %v  - Writing key %s to bucket %s", err, k, buck)
+								mue.Lock()
+								error++
+								mue.Unlock()
+							}
+						} else {
+							gLog.Trace.Printf("Check mode: Writing key/value %s/%s - to bucket %s", k, value, buck)
+						}
+					}(svc, k, cc, v1, check)
+
+				} else {
+					gLog.Error.Printf("Error %v - Marshalling %s:%v", err, k, v)
+					mue.Lock()
+					error++
+					mue.Unlock()
+					wg.Done()
+				}
+			}
+			// Wait for all the go routine to be completed
+			wg.Wait()
+
+			if len(resp.Next_marker) == 0 {
+				Nextmarker = false
+			} else {
+				num++
+				marker = resp.Next_marker
+				gLog.Info.Printf("Next marker => %s %d - Processed: %d - Skipped: %d - Errors: %d - Duration: %v ", marker, num, total, skip, error, time.Since(start))
+				// stop if number of iteration > maxLoop
+				if maxLoop != 0 && num >= maxLoop {
+					Nextmarker = false
+				}
+			}
+		} else {
+			gLog.Error.Printf("Error: %v getting prefix %s", response.Err, prefix)
+			Nextmarker = false
+		}
+	}
+	gLog.Info.Printf("Index/Prefix: %s/%s - Total processed: %d - Total skipped: %d - Total errors: %d/%d - Duration: %v", index, prefix, total, skip, error, error1, time.Since(start))
+}
+
+

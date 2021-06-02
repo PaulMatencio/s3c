@@ -444,7 +444,7 @@ func checkS3(cmd *cobra.Command, args []string) {
 	start := time.Now()
 	prefix = ""
 	for {
-		if err, result := listS3cPref(prefix, marker); err != nil || len(result) == 0 {
+		if err, result := checkS3p(prefix, marker); err != nil || len(result) == 0 {
 			if err != nil {
 				gLog.Error.Println(err)
 			} else {
@@ -461,12 +461,13 @@ func checkS3(cmd *cobra.Command, args []string) {
 					usermd, _ := base64.StdEncoding.DecodeString(*m)
 					userm := UserMd{}
 					if err := json.Unmarshal([]byte(usermd), &userm); err != nil {
-						gLog.Error.Printf("Key %s  has No  User metadata %s", c.Key, string(usermd))
+						gLog.Error.Printf("Key %s does not contain user metadata %s", c.Key, string(usermd))
 					} else {
 						if len(userm.TotalPages) == 0 || len(userm.SubPartFP) == 0 {
-							gLog.Error.Printf("Key %s  has invalid User metadata %s", c.Key, string(usermd))
+							gLog.Error.Printf("Key %s  has invalid user metadata %s", c.Key, string(usermd))
+						} else {
+							gLog.Trace.Printf("Key %s  has  valid User metadata %s", c.Key, string(usermd))
 						}
-						gLog.Trace.Printf("Key %s  has  valid User metadata %s", c.Key, string(usermd))
 					}
 				}
 				//* print  common prefix if any
@@ -494,7 +495,7 @@ func checkS3(cmd *cobra.Command, args []string) {
 
 }
 
-func listS3cPref(prefix string, marker string) (error, string) {
+func checkS3p(prefix string, marker string) (error, string) {
 	var (
 		err      error
 		result   string
