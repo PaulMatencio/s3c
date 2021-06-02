@@ -962,7 +962,7 @@ func migToS3pn(index string) {
 									mi.Lock()
 									missed++
 									mi.Unlock()
-
+									// continue redo
 								}
 							}
 							//  write toS3
@@ -1007,7 +1007,7 @@ func migToS3pn(index string) {
 			Nextmarker = false
 		}
 	}
-	gLog.Info.Printf("Index/Prefix: %s/%s - Total processed: %d - Total skipped: %d - Total missed  -Total errors: %d/%d - Duration: %v", index, prefix, total, missed,skip, error, error1, time.Since(start))
+	gLog.Info.Printf("Index/Prefix: %s/%s - Total processed: %d - Total skipped: %d - Total missed: %d -Total errors: %d/%d - Duration: %v", index, prefix, total,skip, missed, error, error1, time.Since(start))
 }
 
 
