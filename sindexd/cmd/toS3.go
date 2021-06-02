@@ -866,8 +866,8 @@ func migToS3pn(index string) {
 			SecretKey: viper.GetString("toS3.secret_access_key"),
 		}
 		svc                             = s3.New(api.CreateSession2(tos3))
-		num, total, skip, invalid,error, error1 = 0, 0, 0, 0, 0,0 // num =  number of loop , total = total number of k
-		mue,mu                sync.Mutex      // mu = mutex for counter skip, mu1 mutex for counter total
+		num, total, skip, invalid,missed,error, error1 = 0, 0, 0, 0, 0,0,0 // num =  number of loop , total = total number of k
+		mue,mu,mi                sync.Mutex      // mu = mutex for counter skip, mu1 mutex for counter total
 	)
 
 	switch index {
@@ -958,6 +958,11 @@ func migToS3pn(index string) {
 											// SKIP  redo
 										}
 									}
+								} else {
+									mi.Lock()
+									missed++
+									mi.Unlock()
+
 								}
 							}
 							//  write toS3
@@ -991,7 +996,7 @@ func migToS3pn(index string) {
 			} else {
 				num++
 				marker = resp.Next_marker
-				gLog.Info.Printf("Next marker => %s %d - Processed: %d - Skipped: %d - Errors: %d - Duration: %v ", marker, num, total, skip, error, time.Since(start))
+				gLog.Info.Printf("Next marker => %s %d - Processed: %d - Skipped: %d - Missed: %d - Errors: %d - Duration: %v ", marker, num, total, skip, missed,error, time.Since(start))
 				// stop if number of iteration > maxLoop
 				if maxLoop != 0 && num >= maxLoop {
 					Nextmarker = false
@@ -1002,7 +1007,7 @@ func migToS3pn(index string) {
 			Nextmarker = false
 		}
 	}
-	gLog.Info.Printf("Index/Prefix: %s/%s - Total processed: %d - Total skipped: %d - Total errors: %d/%d - Duration: %v", index, prefix, total, skip, error, error1, time.Since(start))
+	gLog.Info.Printf("Index/Prefix: %s/%s - Total processed: %d - Total skipped: %d - Total missed  -Total errors: %d/%d - Duration: %v", index, prefix, total, missed,skip, error, error1, time.Since(start))
 }
 
 
