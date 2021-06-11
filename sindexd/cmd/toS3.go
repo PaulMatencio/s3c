@@ -518,10 +518,10 @@ func migToS3(index string) {
 
 func migToS3b(index string) {
 	var (
-		indSpecs                = directory.GetIndexSpec("BN")
-		svc                     = s3.New(api.CreateSession())
-		num, total, skip, error = 0, 0, 0, 0 // num =  number of loop , total = total number of k
-		mu, mue                 sync.Mutex   // mu = mutex for counter skip, mu1 mutex for counter total
+		indSpecs                        = directory.GetIndexSpec("BN")
+		svc                             = s3.New(api.CreateSession())
+		num, total, skip, missed, error = 0, 0, 0, 0, 0 // num =  number of loop , total = total number of k
+		mu, mue, mi                     sync.Mutex      // mu = mutex for counter skip, mu1 mutex for counter total
 	)
 	switch index {
 	case "OB":
@@ -573,10 +573,10 @@ func migToS3b(index string) {
 						/*
 							write to S3 buckets of not run in check mode
 						*/
-						if !check {
-
-							// if redo , bypass write to S3  if the object already existed
-							if redo {
+						// if !check {
+						// if redo , bypass write to S3  if the object already existed
+						if redo {
+							/*
 								stat := datatype.StatObjRequest{Service: svc, Bucket: buck, Key: k}
 								if _, err := api.StatObject(stat); err == nil {
 									gLog.Trace.Printf("Object %s already existed in the target Bucket %s", k, buck)
@@ -593,9 +593,25 @@ func migToS3b(index string) {
 										return
 									}
 								}
+							*/
+							if resp := Stat_3b(k); resp.Status == 404 {
+								// gLog.Trace.Printf("Object %s is missing in the target Bucket %s", k, buck)
+								mi.Lock()
+								missed++
+								mi.Unlock()
+								// continue redo
+							} else {
+								// gLog.Trace.Printf("Object %s is missing in the target Bucket %s", k, buck)
+								mu.Lock()
+								skip++
+								mu.Unlock()
+								return
 							}
+						}
 
-							// write to S3
+						// write to S3 if not check
+						if !check {
+
 							if r, err := writeToS3(svc, buck, k, value); err == nil {
 								gLog.Trace.Println(buck, *r.ETag, *r)
 
@@ -605,7 +621,6 @@ func migToS3b(index string) {
 								error++
 								mue.Unlock()
 							}
-
 						} else {
 							gLog.Trace.Printf("Checking mode: Writing key/value %s/%s - to bucket %s", k, value, buck)
 						}
@@ -855,19 +870,18 @@ func delFromS3(req delRequest) (*s3.DeleteObjectOutput, error) {
 
 }
 
-
 func migToS3pn(index string) {
 	var (
-		indSpecs  = directory.GetIndexSpec("PN")
-		tos3 = datatype.CreateSession{
+		indSpecs = directory.GetIndexSpec("PN")
+		tos3     = datatype.CreateSession{
 			EndPoint:  viper.GetString("toS3.url"),
 			Region:    viper.GetString("toS3.region"),
 			AccessKey: viper.GetString("toS3.access_key_id"),
 			SecretKey: viper.GetString("toS3.secret_access_key"),
 		}
-		svc                             = s3.New(api.CreateSession2(tos3))
-		num, total, skip, invalid,missed,error, error1 = 0, 0, 0, 0, 0,0,0 // num =  number of loop , total = total number of k
-		mue,mu,mi                sync.Mutex      // mu = mutex for counter skip, mu1 mutex for counter total
+		svc                                              = s3.New(api.CreateSession2(tos3))
+		num, total, skip, invalid, missed, error, error1 = 0, 0, 0, 0, 0, 0, 0 // num =  number of loop , total = total number of k
+		mue, mu, mi                                      sync.Mutex            // mu = mutex for counter skip, mu1 mutex for counter total
 	)
 
 	switch index {
@@ -875,16 +889,16 @@ func migToS3pn(index string) {
 		prefix = ""
 		i := indSpecs["OTHER"]
 
-		if i == nil   {
+		if i == nil {
 			gLog.Error.Printf("No OTHER entry in PD or PN Index-id specification")
 			os.Exit(2)
 		}
-		gLog.Info.Printf("Index-id specification PN: %v ",  *i)
+		gLog.Info.Printf("Index-id specification PN: %v ", *i)
 	case "NP":
 		prefix = "XP"
 		i := indSpecs["NP"]
 
-		if i == nil   {
+		if i == nil {
 			gLog.Error.Printf("No NP entry in PD or PN Index spcification tables")
 			os.Exit(2)
 		}
@@ -921,7 +935,7 @@ func migToS3pn(index string) {
 					go func(svc *s3.S3, k string, cc string, value []byte, check bool) {
 						defer wg.Done()
 						var (
-							buck  = setBucketName(cc, bucket, "pn")
+							buck = setBucketName(cc, bucket, "pn")
 							// keys  = strings.Split(k, "/")
 
 						)
@@ -933,7 +947,7 @@ func migToS3pn(index string) {
 							// if redo , bypass write to S3  if  key exist and meta data is valid
 							// if document not found
 							if redo {
-								resp :=Stat_3b(k)
+								resp := Stat_3b(k)
 								if resp.Status == 200 {
 									usermd := resp.Usermd
 									userm := UserMd{}
@@ -996,7 +1010,7 @@ func migToS3pn(index string) {
 			} else {
 				num++
 				marker = resp.Next_marker
-				gLog.Info.Printf("Next marker => %s %d - Processed: %d - Skipped: %d - Missed: %d - Errors: %d - Duration: %v ", marker, num, total, skip, missed,error, time.Since(start))
+				gLog.Info.Printf("Next marker => %s %d - Processed: %d - Skipped: %d - Missed: %d - Errors: %d - Duration: %v ", marker, num, total, skip, missed, error, time.Since(start))
 				// stop if number of iteration > maxLoop
 				if maxLoop != 0 && num >= maxLoop {
 					Nextmarker = false
@@ -1007,8 +1021,6 @@ func migToS3pn(index string) {
 			Nextmarker = false
 		}
 	}
-	updated := total - ( skip + missed)
-	gLog.Info.Printf("Index/Prefix: %s/%s - #Processed: %d - #Skipped: %d - #Added: %d - #Errors: %d - #Updated:  - Duration: %v", index, prefix, total,skip, missed, updated, error1, time.Since(start))
+	updated := total - (skip + missed)
+	gLog.Info.Printf("Index/Prefix: %s/%s - #Processed: %d - #Skipped: %d - #Added: %d - #Errors: %d - #Updated:  - Duration: %v", index, prefix, total, skip, missed, updated, error1, time.Since(start))
 }
-
-
