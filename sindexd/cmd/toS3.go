@@ -595,13 +595,13 @@ func migToS3b(index string) {
 								}
 							*/
 							if resp := Stat_3b(k); resp.Status == 404 {
-								// gLog.Trace.Printf("Object %s is missing in the target Bucket %s", k, buck)
+								gLog.Trace.Printf("Status %d - Object %s is missing in the target Bucket %s", resp.Status, k, buck)
 								mi.Lock()
 								missed++
 								mi.Unlock()
 								// continue redo
 							} else {
-								// gLog.Trace.Printf("Object %s is missing in the target Bucket %s", k, buck)
+								gLog.Trace.Printf("Status %d - Object %s already exist in the target Bucket %s", resp.Status, k, buck)
 								mu.Lock()
 								skip++
 								mu.Unlock()
@@ -643,7 +643,7 @@ func migToS3b(index string) {
 				marker = resp.Next_marker
 				num++
 				// gLog.Info.Printf("Next marker => %s %d", marker, num)
-				gLog.Info.Printf("Next marker => %s %d - Processed: %d - Skipped: %d - Errors: %d - Duration: %v ", marker, num, total, skip, error, time.Since(start))
+				gLog.Info.Printf("Next marker => %s %d - Processed: %d - Skipped: %d - %Total added: %d - Errors: %d - Duration: %v ", marker, num, total, skip, missed, error, time.Since(start))
 				// stop if number of iteration > maxLoop
 				if maxLoop != 0 && num >= maxLoop {
 					Nextmarker = false
@@ -654,7 +654,7 @@ func migToS3b(index string) {
 			Nextmarker = false
 		}
 	}
-	gLog.Info.Printf("Index/Prefix: %s/%s - Total processed: %d - Total skipped: %d - Total errors: %v - Duration: %v", index, prefix, total, skip, error, time.Since(start))
+	gLog.Info.Printf("Index/Prefix: %s/%s - Total processed: %d - Total skipped: %d - %Total added: %d - Total errors: %v - Duration: %v", index, prefix, total, skip, missed, error, time.Since(start))
 }
 
 func incToS3(index string, index1 string) {
