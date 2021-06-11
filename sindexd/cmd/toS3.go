@@ -643,7 +643,7 @@ func migToS3b(index string) {
 				marker = resp.Next_marker
 				num++
 				// gLog.Info.Printf("Next marker => %s %d", marker, num)
-				gLog.Info.Printf("Next marker => %s %d - Processed: %d - Skipped: %d - %Total added: %d - Errors: %d - Duration: %v ", marker, num, total, skip, missed, error, time.Since(start))
+				gLog.Info.Printf("Next marker => %s %d - Processed: %d - Skipped: %d - Total added: %d - Errors: %d - Duration: %v ", marker, num, total, skip, missed, error, time.Since(start))
 				// stop if number of iteration > maxLoop
 				if maxLoop != 0 && num >= maxLoop {
 					Nextmarker = false
@@ -654,7 +654,7 @@ func migToS3b(index string) {
 			Nextmarker = false
 		}
 	}
-	gLog.Info.Printf("Index/Prefix: %s/%s - Total processed: %d - Total skipped: %d - %Total added: %d - Total errors: %v - Duration: %v", index, prefix, total, skip, missed, error, time.Since(start))
+	gLog.Info.Printf("Index/Prefix: %s/%s - Total processed: %d - Total skipped: %d - Total added: %d - Total errors: %v - Duration: %v", index, prefix, total, skip, missed, error, time.Since(start))
 }
 
 func incToS3(index string, index1 string) {
