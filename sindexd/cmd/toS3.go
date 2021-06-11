@@ -595,7 +595,7 @@ func migToS3b(index string) {
 								}
 							*/
 							if resp := Stat_3b(k); resp.Status == 404 {
-								gLog.Trace.Printf("Status %d - Object %s is missing in the target Bucket %s", resp.Status, k, buck)
+								gLog.Warning.Printf("Status %d - Object %s is missing in the target Bucket %s", resp.Status, k, buck)
 								mi.Lock()
 								missed++
 								mi.Unlock()
