@@ -594,19 +594,36 @@ func migToS3b(index string) {
 									}
 								}
 							*/
-							if resp := Stat_3b(k); resp.Status == 404 {
-								gLog.Warning.Printf("Status %d - Object %s is missing in the target Bucket %s", resp.Status, k, buck)
-								mi.Lock()
-								missed++
-								mi.Unlock()
-								// continue redo
+
+							if resp := Stat_3b(k); resp.Err == nil {
+								if resp.Status == 200 {
+									gLog.Trace.Printf("Status %d - Object %s already exist in the target Bucket %s", resp.Status, k, buck)
+									mu.Lock()
+									skip++
+									mu.Unlock()
+									return
+								} else {
+									if resp.Status == 404 {
+										gLog.Warning.Printf("Status %d - Object %s is missing in the target Bucket %s", resp.Status, k, buck)
+										mi.Lock()
+										missed++
+										mi.Unlock()
+									} else {
+										gLog.Error.Printf("status code %d - Object %s - Bucket:%v ",resp.Status,k, buck)
+										mue.Lock()
+										error++
+										mue.Unlock()
+										return
+									}
+								}
 							} else {
-								gLog.Trace.Printf("Status %d - Object %s already exist in the target Bucket %s", resp.Status, k, buck)
-								mu.Lock()
-								skip++
-								mu.Unlock()
+								gLog.Error.Printf("Error: %v - Object: %s - Bucket: %v ",resp.Err,k, buck)
+								mue.Lock()
+								error++
+								mue.Unlock()
 								return
 							}
+
 						}
 
 						// write to S3 if not check
