@@ -576,7 +576,7 @@ func migToS3b(index string) {
 						// if !check {
 						// if redo , bypass write to S3  if the object already existed
 						if redo {
-							/*
+
 								stat := datatype.StatObjRequest{Service: svc, Bucket: buck, Key: k}
 								if _, err := api.StatObject(stat); err == nil {
 									gLog.Trace.Printf("Object %s already existed in the target Bucket %s", k, buck)
@@ -593,7 +593,12 @@ func migToS3b(index string) {
 										return
 									}
 								}
-							*/
+								gLog.Warning.Printf("Status %d - Object %s is missing in the target Bucket %s", resp.Status, k, buck)
+								mi.Lock()
+								missed++
+								mi.Unlock()
+
+							/*
 
 							if resp := Stat_3b(k); resp.Err == nil {
 								if resp.Status == 200 {
@@ -623,7 +628,7 @@ func migToS3b(index string) {
 								mue.Unlock()
 								return
 							}
-
+							*/
 						}
 
 						// write to S3 if not check
