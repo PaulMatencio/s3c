@@ -593,7 +593,7 @@ func migToS3b(index string) {
 										return
 									}
 								}
-								gLog.Warning.Printf("Status %d - Object %s is missing in the target Bucket %s", resp.Status, k, buck)
+								gLog.Warning.Printf("Object %s is missing in the target Bucket %s", k, buck)
 								mi.Lock()
 								missed++
 								mi.Unlock()
