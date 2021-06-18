@@ -4,6 +4,10 @@ import (
 	doc "github.com/paulmatencio/protobuf-doc/lib"
 	"github.com/paulmatencio/protobuf-doc/src/document/documentpb"
 	base64 "github.com/paulmatencio/ring/user/base64j"
+	"time"
+
+	"errors"
+	"fmt"
 	// "github.com/golang/protobuf/proto"
 	"github.com/paulmatencio/s3c/gLog"
 	"github.com/paulmatencio/s3c/sproxyd/lib"
@@ -14,23 +18,32 @@ import (
 )
 
 type GetBlobResponse struct {
-	Size          int
-	PageNumber    int
-	Errors      int
-	UserMd		string
-	Body    	*[]byte
+	Size       int
+	PageNumber int
+	Error      int
+	Err        error
+	UserMd     string
+	Body       *[]byte
 }
 
-func GetBlobs(pn string, np int, maxPage int) (*documentpb.Document,int) {
-	if np <=  maxPage {
+func GetBlobs(pn string, np int, maxPage int) (*documentpb.Document, int) {
+	if np <= maxPage {
 		return getBlobs(pn, np)
 	} else {
 		return getBig(pn, np, maxPage)
 	}
 }
 
+func GetBlob1(pn string, np int, maxPage int) ([]error,*documentpb.Document) {
+	if np <= maxPage {
+		return getBlob1(pn,np)
+	} else {
+		return getBig1(pn, np, maxPage)
+	}
+}
+
 //  document with  smaller pages number than maxPage
-func getBlobs(pn string, np int) (*documentpb.Document,int){
+func getBlobs(pn string, np int) (*documentpb.Document, int) {
 	var (
 		sproxydRequest = sproxyd.HttpRequest{
 			Hspool: sproxyd.HP,
@@ -41,8 +54,8 @@ func getBlobs(pn string, np int) (*documentpb.Document,int){
 		}
 		wg2      sync.WaitGroup
 		document = &documentpb.Document{}
-		nerrors = 0
-		me = sync.Mutex{}
+		nerrors  = 0
+		me       = sync.Mutex{}
 	)
 
 	for k := 0; k <= np; k++ {
@@ -53,7 +66,7 @@ func getBlobs(pn string, np int) (*documentpb.Document,int){
 			sproxydRequest.Path = sproxyd.Env + "/" + pn
 		}
 
-		go func(document *documentpb.Document,  sproxydRequest sproxyd.HttpRequest, pn string, np int,k int) {
+		go func(document *documentpb.Document, sproxydRequest sproxyd.HttpRequest, pn string, np int, k int) {
 			defer wg2.Done()
 			resp, err := sproxyd.Getobject(&sproxydRequest)
 			defer resp.Body.Close()
@@ -76,16 +89,16 @@ func getBlobs(pn string, np int) (*documentpb.Document,int){
 				}
 				//  Create  the document
 				if k == 0 {
-					doc.CreateDocument1(document,pn, usermd, k, np,&body)
-					gLog.Trace.Printf("DocId:%s - Number of Pages:%d - Page number:%d",document.DocId,document.NumberOfPages,document.PageNumber)
+					doc.CreateDocument1(document, pn, usermd, k, np, &body)
+					gLog.Trace.Printf("DocId:%s - Number of Pages:%d - Page number:%d", document.DocId, document.NumberOfPages, document.PageNumber)
 				} else {
 					// Create a page and add it to the document
 					pg := doc.CreatePage(pn, usermd, k, &body)
 					doc.AddPageToDucument(pg, document)
-					gLog.Trace.Printf("DocId:%s - Number of Pages:%d - Page number:%d",document.DocId,document.NumberOfPages,document.PageNumber)
+					gLog.Trace.Printf("DocId:%s - Number of Pages:%d - Page number:%d", document.DocId, document.NumberOfPages, document.PageNumber)
 				}
 			} else {
-				gLog.Error.Printf("error %v getting object %s",err,pn)
+				gLog.Error.Printf("error %v getting object %s", err, pn)
 				resp.Body.Close()
 				me.Lock()
 				nerrors += 1
@@ -93,12 +106,14 @@ func getBlobs(pn string, np int) (*documentpb.Document,int){
 			}
 			gLog.Trace.Printf("object %s - length %d %s", sproxydRequest.Path, len(body), string(md))
 			/*  add to the protoBuf */
-		}(document, sproxydRequest, pn, np,k)
+		}(document, sproxydRequest, pn, np, k)
 	}
 	// Write the document to File
 	wg2.Wait()
-	return document,nerrors
+	return document, nerrors
 }
+
+//  document with bigger  pages number than maxPage
 
 //  document with bigger  pages number than maxPage
 
@@ -141,22 +156,22 @@ func GetParts(pn string, np int, start int, end int, document *documentpb.Docume
 				Transport: sproxyd.Transport,
 			},
 		}
-		me sync.Mutex
+		me      sync.Mutex
 		nerrors int = 0
-		wg2 sync.WaitGroup
+		wg2     sync.WaitGroup
 	)
 
 	// document := &documentpb.Document{}
-	gLog.Info.Printf("Getpart of pn %s - start-page %d - end-page %d ",pn,start,end)
+	gLog.Info.Printf("Getpart of pn %s - start-page %d - end-page %d ", pn, start, end)
 	for k := start; k <= end; k++ {
 		wg2.Add(1)
 		if k > 0 {
 			sproxydRequest.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
 		} else {
-			sproxydRequest.Path = sproxyd.Env + "/" + pn 
+			sproxydRequest.Path = sproxyd.Env + "/" + pn
 		}
-		go func(document *documentpb.Document, sproxydRequest sproxyd.HttpRequest, pn string, np int,k int) {
-			gLog.Trace.Printf("Getpart of pn: %s - url:%s",pn,sproxydRequest.Path)
+		go func(document *documentpb.Document, sproxydRequest sproxyd.HttpRequest, pn string, np int, k int) {
+			gLog.Trace.Printf("Getpart of pn: %s - url:%s", pn, sproxydRequest.Path)
 			defer wg2.Done()
 			resp, err := sproxyd.Getobject(&sproxydRequest)
 			defer resp.Body.Close()
@@ -178,15 +193,15 @@ func GetParts(pn string, np int, start int, end int, document *documentpb.Docume
 					}
 				}
 				if k == 0 {
-					 doc.CreateDocument1(document,pn, usermd, k, np,&body)
-					gLog.Trace.Printf("DocId:%s - Number of Pages:%d - Page number:%d",document.DocId,document.NumberOfPages,document.PageNumber)
+					doc.CreateDocument1(document, pn, usermd, k, np, &body)
+					gLog.Trace.Printf("DocId:%s - Number of Pages:%d - Page number:%d", document.DocId, document.NumberOfPages, document.PageNumber)
 				} else {
 					pg := doc.CreatePage(pn, usermd, k, &body)
-					doc.AddPageToDucument(pg,document)
-					gLog.Trace.Printf("DocId:%s - Number of Pages:%d - Page number:%d",document.DocId,document.NumberOfPages,document.PageNumber)
+					doc.AddPageToDucument(pg, document)
+					gLog.Trace.Printf("DocId:%s - Number of Pages:%d - Page number:%d", document.DocId, document.NumberOfPages, document.PageNumber)
 				}
 			} else {
-				gLog.Error.Printf("error %v getting object %s",err,pn)
+				gLog.Error.Printf("error %v getting object %s", err, pn)
 				resp.Body.Close()
 				me.Lock()
 				nerrors += 1
@@ -194,10 +209,209 @@ func GetParts(pn string, np int, start int, end int, document *documentpb.Docume
 			}
 			gLog.Trace.Printf("object %s - length %d %s", sproxydRequest.Path, len(body), string(md))
 			/*  add to the protoBuf */
-		}(document, sproxydRequest, pn,np,k)
+		}(document, sproxydRequest, pn, np, k)
 	}
 	// Write the document to File
 	wg2.Wait()
 	return nerrors
 }
 
+
+func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
+	var (
+		document = &documentpb.Document {}
+		q     int = (np + 1) / maxPage
+		r     int = (np + 1) / maxPage
+		start int = 0
+		end   int = start + maxPage
+		errs []error
+
+	)
+	gLog.Warning.Printf("Big document %s  - number of pages %d ",pn,np)
+	for s := 1; s <= q; s++ {
+		errs,document = GetPart1(document, pn, np,start, end)
+		start = end + 1
+		end += maxPage
+		if end > np {
+			end = np
+		}
+
+	}
+	// if remainder> 0
+	if r > 0 {
+		errs,document = GetPart1(document, pn,np,q*maxPage+1 , np)
+	}
+	return errs,document
+}
+
+
+//  document with  smaller pages number than maxPage
+func getBlob1(pn string, np int) ( []error,*documentpb.Document) {
+	var (
+		request = sproxyd.HttpRequest{
+			Hspool: sproxyd.HP,
+			Client: &http.Client{
+				Timeout:   sproxyd.ReadTimeout,
+				Transport: sproxyd.Transport,
+			},
+		}
+		err      error
+		errs     []error
+		usermd   string
+		body     *[]byte
+		ch       = make(chan *GetBlobResponse)
+		document = &documentpb.Document{}
+	)
+
+	//  get document
+	if err, usermd = GetMetadata(request, pn); err != nil {
+		errs = append(errs, err)
+		return errs,document
+	}
+	//  create the document
+	document = doc.CreateDocument(pn, usermd, 0, np, body)
+
+	//  add pages to document
+	for k := 1; k <= np; k++ {
+		request.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
+		go func(request sproxyd.HttpRequest, k int) {
+			err, usermd, body = GetObject(request, pn)
+			ch <- &GetBlobResponse{
+				Size:       len(*body),
+				PageNumber: k,
+				Err:        err,
+				UserMd:     usermd,
+				Body:       body,
+			}
+			/*  add to the protoBuf */
+		}(request, k)
+	}
+	r1 := 0
+	for {
+		select {
+		case r := <-ch:
+			r1++
+			if r.Err == nil {
+				pg := doc.CreatePage(pn, r.UserMd, r.PageNumber, r.Body)
+				doc.AddPageToDucument(pg, document)
+			} else {
+				errs = append(errs, r.Err)
+			}
+			if r1 == np {
+				return errs,document
+			}
+		case <-time.After(100 * time.Millisecond):
+			fmt.Printf("r")
+		}
+	}
+}
+
+func GetMetadata(request sproxyd.HttpRequest, pn string) (error, string) {
+	var (
+		usermd string
+		md     []byte
+		resp   *http.Response
+		err    error
+	)
+	request.Path = sproxyd.Env + "/" + pn
+	if resp, err = sproxyd.GetMetadata(&request); err != nil  {
+		return err, usermd
+	}
+	defer resp.Body.Close()
+	if  resp.StatusCode != 200 {
+		err = errors.New(fmt.Sprintf("Request document %s  status code %d", request.Path, resp.StatusCode))
+		return err, usermd
+	}
+	if _, ok := resp.Header["X-Scal-Usermd"]; ok {
+		usermd = resp.Header["X-Scal-Usermd"][0]
+		if md, err = base64.Decode64(usermd); err != nil {
+			gLog.Warning.Printf("Invalid user metadata %s", usermd)
+		} else {
+			gLog.Trace.Printf("User metadata %s", string(md))
+		}
+	}
+	return err, usermd
+}
+
+func GetObject(request sproxyd.HttpRequest, pn string) (error, string, *[]byte) {
+	var (
+		body   []byte
+		usermd string
+		md     []byte
+	)
+	resp, err := sproxyd.Getobject(&request)
+	if err == nil {
+		defer resp.Body.Close()
+		if resp.StatusCode == 200 {
+			body, _ = ioutil.ReadAll(resp.Body)
+			if body != nil {
+				if _, ok := resp.Header["X-Scal-Usermd"]; ok {
+					usermd = resp.Header["X-Scal-Usermd"][0]
+					if md, err = base64.Decode64(usermd); err != nil {
+						gLog.Warning.Printf("Invalid user metadata %s", usermd)
+					} else {
+						gLog.Trace.Printf("User metadata %s", string(md))
+					}
+				}
+			} else {
+				err = errors.New(fmt.Sprintf("Request url %s - Body is empty", request.Path))
+			}
+		} else {
+			err = errors.New(fmt.Sprintf("Request url %s -Status Code %d", request.Path, resp.StatusCode))
+		}
+	}
+	return err, usermd, &body
+}
+
+func GetPart1(document *documentpb.Document, pn string, np int, start int, end int) ([]error, *documentpb.Document) {
+
+	var (
+		request = sproxyd.HttpRequest{
+			Hspool: sproxyd.HP,
+			Client: &http.Client{
+				Timeout:   sproxyd.ReadTimeout,
+				Transport: sproxyd.Transport,
+			},
+		}
+		err    error
+		errs   []error
+		usermd string
+		body   *[]byte
+		ch     = make(chan *GetBlobResponse)
+	)
+
+	gLog.Info.Printf("Getpart of pn %s - start-page %d - end-page %d ", pn, start, end)
+	for k := start; k <= end; k++ {
+		request.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
+		go func(request sproxyd.HttpRequest, k int) {
+			err, usermd, body = GetObject(request, pn)
+			ch <- &GetBlobResponse{
+				Size:       len(*body),
+				PageNumber: k,
+				Err:        err,
+				UserMd:     usermd,
+				Body:       body,
+			}
+			/*  add to the protoBuf */
+		}(request, k)
+	}
+	r1 := 0
+	for {
+		select {
+		case r := <-ch:
+			r1++
+			if r.Err == nil {
+				pg := doc.CreatePage(pn, r.UserMd, r.PageNumber, r.Body)
+				doc.AddPageToDucument(pg, document)
+			} else {
+				errs = append(errs, r.Err)
+			}
+			if r1 == np {
+				return errs, document
+			}
+		case <-time.After(100 * time.Millisecond):
+			fmt.Printf("r")
+		}
+	}
+	return errs, document
+}

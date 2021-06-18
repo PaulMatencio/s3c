@@ -223,21 +223,21 @@ func BackupBlobs(marker string, bucket string) (string,  error) {
 							json.Unmarshal([]byte(usermd), &userm)
 							pn := rh.Key
 							if np, err = strconv.Atoi(userm.TotalPages); err == nil {
-								if document,nerrors := clone.GetBlobs(pn, np, maxPage); nerrors == 0 {
+								if errs,document := clone.GetBlob1(pn, np, maxPage); len(errs) == 0 {
 									clone.WriteDocument(pn, document, outDir)
 								} else {
 									mt.Lock()
-									gerrors += nerrors
+									gerrors += len(errs)
 									mt.Unlock()
 								}
 							} else {
 								gLog.Error.Printf("Document %s - Invalid number of pages in %s ", pn, usermd)
 								if np, err, status = clone.GetPageNumber(pn); err == nil {
-									if document,nerrors := clone.GetBlobs(pn, np, maxPage); nerrors == 0 {
+									 if errs,document := clone.GetBlob1(pn, np, maxPage); len(errs) == 0 {
 										clone.WriteDocument(pn, document, outDir)
 									} else {
 										mt.Lock()
-										gerrors += nerrors
+										gerrors += len(errs)
 										mt.Unlock()
 									}
 								} else {
@@ -248,7 +248,6 @@ func BackupBlobs(marker string, bucket string) (string,  error) {
 								}
 							}
 						}
-
 						mu.Lock()
 						npages += np
 						docsizes += docsize
