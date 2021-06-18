@@ -47,7 +47,12 @@ func getBlobs(pn string, np int) (*documentpb.Document,int){
 
 	for k := 0; k <= np; k++ {
 		wg2.Add(1)
-		sproxydRequest.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
+		if k > 0 {
+			sproxydRequest.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
+		} else {
+			sproxydRequest.Path = sproxyd.Env + "/" + pn
+		}
+
 		go func(document *documentpb.Document,  sproxydRequest sproxyd.HttpRequest, pn string, np int,k int) {
 			defer wg2.Done()
 			resp, err := sproxyd.Getobject(&sproxydRequest)
@@ -127,6 +132,7 @@ func getBig(pn string, np int, maxPage int) (*documentpb.Document,int){
 
 
 func GetParts(pn string, np int, start int, end int, document *documentpb.Document) int {
+
 	var (
 		sproxydRequest = sproxyd.HttpRequest{
 			Hspool: sproxyd.HP,
@@ -144,7 +150,11 @@ func GetParts(pn string, np int, start int, end int, document *documentpb.Docume
 	gLog.Info.Printf("Getpart of pn %s - start-page %d - end-page %d ",pn,start,end)
 	for k := start; k <= end; k++ {
 		wg2.Add(1)
-		sproxydRequest.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
+		if k > 0 {
+			sproxydRequest.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
+		} else {
+			sproxydRequest.Path = sproxyd.Env + "/" + pn 
+		}
 		go func(document *documentpb.Document, sproxydRequest sproxyd.HttpRequest, pn string, np int,k int) {
 			gLog.Trace.Printf("Getpart of pn: %s - url:%s",pn,sproxydRequest.Path)
 			defer wg2.Done()
