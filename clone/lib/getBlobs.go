@@ -247,7 +247,7 @@ func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 	}
 	//  create the document
 	document := doc.CreateDocument(pn, usermd, 0, np, body)
-
+	// gLog.Trace.Printf("Docid: %s - number of pages: %d - document metadata: %s",document.DocId,document.NumberOfPages,document.Metadata)
 	for s := 1; s <= q; s++ {
 		errs,document = GetPart1(document, pn, np,start, end)
 		start = end + 1
@@ -290,7 +290,7 @@ func getBlob1(pn string, np int) ( []error,*documentpb.Document) {
 	}
 	//  create the document
 	document := doc.CreateDocument(pn, usermd, 0, np, body)
-
+	gLog.Trace.Printf("Docid: %s - number of pages: %d - document metadata: %s",document.DocId,document.NumberOfPages,document.Metadata)
 	//  add pages to document
 	for k := 1; k <= np; k++ {
 		request.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
@@ -313,6 +313,7 @@ func getBlob1(pn string, np int) ( []error,*documentpb.Document) {
 			r1++
 			if r.Err == nil {
 				pg := doc.CreatePage(pn, r.UserMd, r.PageNumber, r.Body)
+				gLog.Trace.Printf("Docid: %s - Page Number: %d - Page Id: %s" ,document.DocId,pg.PageNumber,pg.PageId)
 				doc.AddPageToDucument(pg, document)
 			} else {
 				errs = append(errs, r.Err)
@@ -422,6 +423,7 @@ func GetPart1(document *documentpb.Document, pn string, np int, start int, end i
 			r1++
 			if r.Err == nil {
 				pg := doc.CreatePage(pn, r.UserMd, r.PageNumber, r.Body)
+				gLog.Trace.Printf("Docid: %s - Page Number: %d - Page Id: %s" ,document.DocId,pg.PageNumber,pg.PageId)
 				doc.AddPageToDucument(pg, document)
 			} else {
 				errs = append(errs, r.Err)
