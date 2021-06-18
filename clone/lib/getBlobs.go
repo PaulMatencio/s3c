@@ -48,7 +48,7 @@ func getBlobs(pn string, np int) (*documentpb.Document,int){
 	for k := 0; k <= np; k++ {
 		wg2.Add(1)
 		sproxydRequest.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
-		go func(document *documentpb.Document,  sproxydRequest sproxyd.HttpRequest, pn string, k int) {
+		go func(document *documentpb.Document,  sproxydRequest sproxyd.HttpRequest, pn string, np int,k int) {
 			defer wg2.Done()
 			resp, err := sproxyd.Getobject(&sproxydRequest)
 			defer resp.Body.Close()
@@ -88,7 +88,7 @@ func getBlobs(pn string, np int) (*documentpb.Document,int){
 			}
 			gLog.Trace.Printf("object %s - length %d %s", sproxydRequest.Path, len(body), string(md))
 			/*  add to the protoBuf */
-		}(document, sproxydRequest, pn, k)
+		}(document, sproxydRequest, pn, np,k)
 	}
 	// Write the document to File
 	wg2.Wait()
@@ -145,7 +145,7 @@ func GetParts(pn string, np int, start int, end int, document *documentpb.Docume
 	for k := start; k <= end; k++ {
 		wg2.Add(1)
 		sproxydRequest.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
-		go func(document *documentpb.Document, sproxydRequest sproxyd.HttpRequest, pn string, k int) {
+		go func(document *documentpb.Document, sproxydRequest sproxyd.HttpRequest, pn string, np int,k int) {
 			gLog.Trace.Printf("Getpart of pn: %s - url:%s",pn,sproxydRequest.Path)
 			defer wg2.Done()
 			resp, err := sproxyd.Getobject(&sproxydRequest)
@@ -184,7 +184,7 @@ func GetParts(pn string, np int, start int, end int, document *documentpb.Docume
 			}
 			gLog.Trace.Printf("object %s - length %d %s", sproxydRequest.Path, len(body), string(md))
 			/*  add to the protoBuf */
-		}(document, sproxydRequest, pn, k)
+		}(document, sproxydRequest, pn,np,k)
 	}
 	// Write the document to File
 	wg2.Wait()
