@@ -72,10 +72,12 @@ func getBlobs(pn string, np int) (*documentpb.Document,int){
 				//  Create  the document
 				if k == 0 {
 					doc.CreateDocument(pn, usermd, k, np,&body)
+					gLog.Trace.Printf("DocId:%s - Number of Pages:%d - Page number:%d",document.DocId,document.NumberOfPages,document.PageNumber)
 				} else {
 					// Create a page and add it to the document
 					pg := doc.CreatePage(pn, usermd, k, &body)
 					doc.AddPageToDucument(pg, document)
+					gLog.Trace.Printf("DocId:%s - Number of Pages:%d - Page number:%d",document.DocId,document.NumberOfPages,document.PageNumber)
 				}
 			} else {
 				gLog.Error.Printf("error %v getting object %s",err,pn)
@@ -167,10 +169,11 @@ func GetParts(pn string, np int, start int, end int, document *documentpb.Docume
 				}
 				if k == 0 {
 					 document =doc.CreateDocument(pn, usermd, k, np,&body)
-
+					gLog.Trace.Printf("DocId:%s - Number of Pages:%d - Page number:%d",document.DocId,document.NumberOfPages,document.PageNumber)
 				} else {
 					pg := doc.CreatePage(pn, usermd, k, &body)
 					doc.AddPageToDucument(pg,document)
+					gLog.Trace.Printf("DocId:%s - Number of Pages:%d - Page number:%d",document.DocId,document.NumberOfPages,document.PageNumber)
 				}
 			} else {
 				gLog.Error.Printf("error %v getting object %s",err,pn)
