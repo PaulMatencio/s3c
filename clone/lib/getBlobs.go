@@ -222,11 +222,11 @@ func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 		// document = &documentpb.Document {}
 		q     int = (np + 1) / maxPage
 		r     int = (np + 1) / maxPage
-		start int = 0
+		start int = 1
 		usermd string
 		err error
 		body     *[]byte
-		end   int = start + maxPage
+		end   int = start + maxPage-1
 		errs []error
 		request = sproxyd.HttpRequest{
 			Hspool: sproxyd.HP,
@@ -399,6 +399,7 @@ func GetPart1(document *documentpb.Document, pn string, np int, start int, end i
 		usermd string
 		body   *[]byte
 		ch     = make(chan *GetBlobResponse)
+		num   =  end -start +1
 	)
 
 	gLog.Info.Printf("Getpart of pn %s - start-page %d - end-page %d ", pn, start, end)
@@ -428,7 +429,7 @@ func GetPart1(document *documentpb.Document, pn string, np int, start int, end i
 			} else {
 				errs = append(errs, r.Err)
 			}
-			if r1 == np {
+			if r1 == num {
 				return errs, document
 			}
 		case <-time.After(100 * time.Millisecond):
