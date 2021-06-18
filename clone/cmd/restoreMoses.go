@@ -28,14 +28,15 @@ import (
 
 // restoreMosesCmd represents the restoreMoses command
 var (
-	pn,inDir string
+	pn, inDir  string
 	restoreCmd = &cobra.Command{
-	Use:   "restoreMoses",
-	Short: "Command to restore",
-	Long: ``,
-	Run: restore,
-}
+		Use:   "restoreMoses",
+		Short: "Command to restore",
+		Long:  ``,
+		Run:   restore,
+	}
 )
+
 func initResFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&bucket, "bucket", "b", "", "the name of the bucket")
 	// cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "key prefix")
@@ -50,7 +51,6 @@ func initResFlags(cmd *cobra.Command) {
 	// cmd.Flags().IntVarP(&maxLoop, "maxLoop", "", 1, "maximum number of loop, 0 means no upper limit")
 }
 
-
 func init() {
 	rootCmd.AddCommand(restoreCmd)
 	initResFlags(restoreCmd)
@@ -60,31 +60,49 @@ func init() {
 func restore(cmd *cobra.Command, args []string) {
 	var (
 		document *documentpb.Document
-		err error
+		err      error
 	)
 	start := time.Now()
-	if document,err  = clone.ReadDocument(pn,inDir); err == nil {
+	if document, err = clone.ReadDocument(pn, inDir); err == nil {
 		pages := document.GetPage()
-		gLog.Info.Printf("Document id %s - Page Numnber %d ",document.DocId,document.PageNumber)
+		gLog.Info.Printf("Document id %s - Page Numnber %d ", document.DocId, document.PageNumber)
 		if usermd, err := base64.Decode64(document.GetMetadata()); err == nil {
-			gLog.Info.Printf("Document metadata %s",string(usermd))
+			gLog.Info.Printf("Document metadata %s", string(usermd))
 		} else {
 			gLog.Error.Println(err)
 		}
 
 		if len(pages) != int(document.NumberOfPages) {
-			gLog.Error.Printf("Backup of document is inconsistent %s  %d - %d ", pn,len(pages),document.NumberOfPages)
+			gLog.Error.Printf("Backup of document is inconsistent %s  %d - %d ", pn, len(pages), document.NumberOfPages)
 			os.Exit(100)
 		}
 		for _, page := range pages {
 			//object := page.GetObject()
 			pfn := pn + "_" + fmt.Sprintf("%04d", page.GetPageNumber())
+
 			if fi, err := os.OpenFile(filepath.Join(outDir, pfn), os.O_WRONLY|os.O_CREATE, 0600); err == nil {
 				defer fi.Close()
 				bytes := page.GetObject()
 				if _, err := fi.Write(bytes); err != nil {
 					fmt.Printf("Error %v writing page %d", err, pfn)
 				}
+			} else {
+				gLog.Error.Println(err)
+			}
+
+			pfm := pfn + ".md"
+			if fm, err := os.OpenFile(filepath.Join(outDir, pfm), os.O_WRONLY|os.O_CREATE, 0600); err == nil {
+				defer fm.Close()
+				// meta:= page.GetMetadata()
+				if usermd, err := base64.Decode64(page.GetMetadata()); err == nil {
+					if _, err := fm.Write(usermd); err != nil {
+						fmt.Printf("Error %v writing page %d", err, pfm)
+					}
+				} else {
+					gLog.Error.Println(err)
+				}
+			} else{
+				gLog.Error.Println(err)
 			}
 		}
 		fmt.Println(document.NumberOfPages)
@@ -93,4 +111,3 @@ func restore(cmd *cobra.Command, args []string) {
 	}
 	gLog.Info.Printf("Total Elapsed time: %v", time.Since(start))
 }
-

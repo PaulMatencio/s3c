@@ -30,7 +30,7 @@ func ReadDocument(pn string, inDir string) (*documentpb.Document,error) {
 			gLog.Error.Println("Error %v reading  file %s", ifn, err)
 		}
 	} else {
-		gLog.Error.Println("Error %v  opening file %s", ifn, err)
+		gLog.Error.Printf("Error %v  opening file %s", ifn, err)
 	}
 	return &document,err
 }
