@@ -219,15 +219,35 @@ func GetParts(pn string, np int, start int, end int, document *documentpb.Docume
 
 func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 	var (
-		document = &documentpb.Document {}
+		// document = &documentpb.Document {}
 		q     int = (np + 1) / maxPage
 		r     int = (np + 1) / maxPage
 		start int = 0
+		usermd string
+		err error
+		body     *[]byte
 		end   int = start + maxPage
 		errs []error
+		request = sproxyd.HttpRequest{
+			Hspool: sproxyd.HP,
+			Client: &http.Client{
+				Timeout:   sproxyd.ReadTimeout,
+				Transport: sproxyd.Transport,
+			},
+		}
 
 	)
+
 	gLog.Warning.Printf("Big document %s  - number of pages %d ",pn,np)
+
+
+	if err, usermd = GetMetadata(request, pn); err != nil {
+		errs = append(errs, err)
+		return errs,nil
+	}
+	//  create the document
+	document := doc.CreateDocument(pn, usermd, 0, np, body)
+
 	for s := 1; s <= q; s++ {
 		errs,document = GetPart1(document, pn, np,start, end)
 		start = end + 1
@@ -260,16 +280,16 @@ func getBlob1(pn string, np int) ( []error,*documentpb.Document) {
 		usermd   string
 		body     *[]byte
 		ch       = make(chan *GetBlobResponse)
-		document = &documentpb.Document{}
+		// document = &documentpb.Document{}
 	)
 
 	//  get document
 	if err, usermd = GetMetadata(request, pn); err != nil {
 		errs = append(errs, err)
-		return errs,document
+		return errs,nil
 	}
 	//  create the document
-	document = doc.CreateDocument(pn, usermd, 0, np, body)
+	document := doc.CreateDocument(pn, usermd, 0, np, body)
 
 	//  add pages to document
 	for k := 1; k <= np; k++ {
