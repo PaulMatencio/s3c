@@ -160,12 +160,12 @@ func backup(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	if metaAccessKey = viper.GetString("meta.s3.access_key_id"); len(bS3AccessKey) == 0 {
+	if metaAccessKey = viper.GetString("meta.credential.access_key_id"); len(metaAccessKey) == 0 {
 		gLog.Error.Println(errors.New(missingMetaak))
 		return
 	}
 
-	if metaSecretKey = viper.GetString("meta.s3.secret_access_key"); len(bS3SecretKey) == 0 {
+	if metaSecretKey = viper.GetString("meta.credential.secret_access_key"); len(metaSecretKey) == 0 {
 		gLog.Error.Println(errors.New(missingMetask))
 		return
 	}
@@ -190,12 +190,12 @@ func backup(cmd *cobra.Command, args []string) {
 			return
 		}
 
-		if bS3AccessKey = viper.GetString("backup.s3.access_key_id"); len(bS3AccessKey) == 0 {
+		if bS3AccessKey = viper.GetString("backup.credential.access_key_id"); len(bS3AccessKey) == 0 {
 			gLog.Error.Println(errors.New(missingBS3ak))
 			return
 		}
 
-		if bS3SecretKey = viper.GetString("backup.s3.secret_access_key"); len(bS3SecretKey) == 0 {
+		if bS3SecretKey = viper.GetString("backup.credential.secret_access_key"); len(bS3SecretKey) == 0 {
 			gLog.Error.Println(errors.New(missingBS3sk))
 			return
 		}

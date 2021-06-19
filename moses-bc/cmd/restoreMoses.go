@@ -94,7 +94,7 @@ func restore(cmd *cobra.Command, args []string) {
 				gLog.Error.Println(err)
 			}
 		}
-		
+
 		if len(pages) != int(document.NumberOfPages) {
 			gLog.Error.Printf("Backup of document is inconsistent %s  %d - %d ", pn, len(pages), document.NumberOfPages)
 			os.Exit(100)

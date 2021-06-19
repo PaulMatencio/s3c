@@ -49,7 +49,7 @@ var (
 	missingBS3ak = "Missing Backup S3 access key"
 	missingBS3sk = "Missing Backup S3 secret key"
 	missingMetaurl = "Missing source meta-moses S3 rest endpoint url"
-	missingMetaak = "Missing source meta-moses aws access key key"
+	missingMetaak = "Missing source meta-moses aws access key"
 	missingMetask = "Missing source meta-moses aws secret key"
 
 
