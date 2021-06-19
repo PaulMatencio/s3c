@@ -14,7 +14,7 @@
 
 package main
 
-import "github.com/paulmatencio/s3c/clone/cmd"
+import "github.com/paulmatencio/s3c/moses-bc/cmd"
 
 func main() {
 	cmd.Execute()

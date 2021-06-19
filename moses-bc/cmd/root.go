@@ -39,23 +39,27 @@ var (
 	loglevel,profiling, bucketNumber, retryNumber  int
 	waitTime time.Duration
 	source,target string
+	bMedia,bS3Url,bS3AccessKey,bS3SecretKey,metaUrl,metaAccessKey,metaSecretKey string
 	// conTimeout,readTimeout,writeTimeout, copyTimeout,timeout time.Duration
 	missingBucket = "Missing bucket - please provide the bucket name"
 	missingPrefix = "Missing prefix  - please provide the prefix of the keys"
 	missingSource = "Missing source sproxyd urls, add sproxyd source urls in the config file"
 	missingTarget = "Missing target sproxyd urls, add sproxzd target urls in the confif file"
+	missingBS3url = "Missing Backup S3 url"
+	missingBS3ak = "Missing Backup S3 access key"
+	missingBS3sk = "Missing Backup S3 secret key"
+	missingMetaurl = "Missing source meta-moses S3 rest endpoint url"
+	missingMetaak = "Missing source meta-moses aws access key key"
+	missingMetask = "Missing source meta-moses aws secret key"
+
+
 )
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "clone",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Use:   "moses-bc",
+	Short: "Command to backup/clone moses",
+	Long: ``,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	//	Run: func(cmd *cobra.Command, args []string) { },
@@ -77,14 +81,12 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&config,"config", "c","", "sc config file; default $HOME/.clone/config.yaml")
 	rootCmd.PersistentFlags().BoolVarP(&autoCompletion,"autoCompletion", "C",false, "generate bash auto completion")
 	rootCmd.PersistentFlags().IntVarP(&profiling,"profiling", "P",0, "display memory usage every P seconds")
-
-	// bind application flags to viper key for future viper.Get()
-	// viper also to set default value to any key
+	rootCmd.PersistentFlags().StringVarP(&bMedia,"backupMedia","","S3","backup media [S3|File]")
 
 	viper.BindPFlag("loglevel",rootCmd.PersistentFlags().Lookup("loglevel"))
 	viper.BindPFlag("autoCompletion",rootCmd.PersistentFlags().Lookup("autoCompletion"))
 	viper.BindPFlag("profiling",rootCmd.PersistentFlags().Lookup("profiling"))
-
+	viper.BindPFlag("backupMedia",rootCmd.PersistentFlags().Lookup("backupMedia"))
 	cobra.OnInitialize(initConfig)
 
 
@@ -152,7 +154,6 @@ func initConfig() {
 	} else {
 		sproxyd.TargetUrl = target
 	}
-
 
 	if conTimeout := viper.GetDuration("sproxyd.target.connectionTimeout"); conTimeout >  0 {
 		sproxyd.ConnectionTimeout= conTimeout

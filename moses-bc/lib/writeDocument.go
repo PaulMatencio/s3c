@@ -1,16 +1,20 @@
 package lib
 
 import (
+	"bytes"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/golang/protobuf/proto"
 	doc "github.com/paulmatencio/protobuf-doc/lib"
 	"github.com/paulmatencio/protobuf-doc/src/document/documentpb"
+	"github.com/paulmatencio/s3c/api"
+	"github.com/paulmatencio/s3c/datatype"
 	"github.com/paulmatencio/s3c/gLog"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-func WriteDocument(pn string, document *documentpb.Document, outdir string) (int){
+func WriteDirectory(pn string, document *documentpb.Document, outdir string) (int){
 	var (
 		err error
 		bytes []byte
@@ -30,4 +34,23 @@ func WriteDocument(pn string, document *documentpb.Document, outdir string) (int
 		gLog.Error.Println(err)
 	}
 	return  len(bytes)
+}
+
+func WriteS3 (service *s3.S3,bucket string,  document *documentpb.Document)(*s3.PutObjectOutput,error){
+
+	if data, err := proto.Marshal(document); err == nil{
+		meta := document.GetS3Meta()
+		req:= datatype.PutObjRequest{
+			//Service : s3.New(api.CreateSession()),
+			Service: service,
+			Bucket: bucket,
+			Key: document.DocId,
+			Buffer: bytes.NewBuffer(data), // convert []byte into *bytes.Buffer
+			Meta : []byte(meta),
+
+		}
+		return api.PutObject(req)
+	} else {
+		return nil,err
+	}
 }
