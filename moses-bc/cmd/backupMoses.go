@@ -293,9 +293,11 @@ func BackupBlobs(marker string, bucket string) (string, error) {
 									document.S3Meta = usermd
 									if bMedia != "S3" {
 										docsize = clone.WriteDirectory(pn, document, outDir)
+										docsize = (int)(document.Size)
 									} else {
 										if so, err := clone.WriteS3(svcb, bbucket, document); err != nil {
 											gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
+											docsize = (int)(document.Size)
 											mt.Lock()
 											gerrors += 1
 											mt.Unlock()
@@ -318,10 +320,12 @@ func BackupBlobs(marker string, bucket string) (string, error) {
 										document.S3Meta = usermd
 										if bMedia != "S3" {
 											docsize = clone.WriteDirectory(pn, document, outDir)
+											docsize = (int)(document.Size)
 										} else {
 											// clone.WriteS3(svcb, bucket, document)
 											if so, err := clone.WriteS3(svcb, bbucket, document); err != nil {
 												gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
+												docsize = (int)(document.Size)
 												mt.Lock()
 												gerrors += 1
 												mt.Unlock()
