@@ -35,3 +35,13 @@ func ReadDocument(pn string, inDir string) (*documentpb.Document,error) {
 	}
 	return &document,err
 }
+
+
+func GetDocument(bytes  []byte) (*documentpb.Document,error){
+	var (
+		document= documentpb.Document{}
+		err error
+	)
+	err = proto.Unmarshal(bytes, &document)
+	return &document,err
+}

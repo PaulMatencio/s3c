@@ -317,7 +317,7 @@ func getBlob1(pn string, np int) ( []error,*documentpb.Document) {
 			if r.Err == nil {
 				pg := doc.CreatePage(pn, r.UserMd, r.PageNumber, r.Body)
 				document.Size += int64(pg.Size)
-				gLog.Trace.Printf("Docid: %s - Page Number: %d - Page Id: %s" ,document.DocId,pg.PageNumber,pg.PageId)
+				gLog.Trace.Printf("Docid: %s - Page Number: %d - Page Id: %s - Page size:%d" ,document.DocId,pg.PageNumber,pg.PageId,r.Size)
 				doc.AddPageToDucument(pg, document)
 			} else {
 				errs = append(errs, r.Err)
@@ -349,7 +349,7 @@ func GetPart1(document *documentpb.Document, pn string, np int, start int, end i
 		num   =  end -start +1
 	)
 
-	gLog.Info.Printf("Getpart of pn %s - start-page %d - end-page %d ", pn, start, end)
+	// gLog.Info.Printf("Getpart of pn %s - start-page %d - end-page %d ", pn, start, end)
 	for k := start; k <= end; k++ {
 		request.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
 		go func(request sproxyd.HttpRequest, k int) {
@@ -381,7 +381,7 @@ func GetPart1(document *documentpb.Document, pn string, np int, start int, end i
 			if r1 == num {
 				return errs, document
 			}
-		case <-time.After(100 * time.Millisecond):
+		case <-time.After(200 * time.Millisecond):
 			fmt.Printf("r")
 		}
 	}

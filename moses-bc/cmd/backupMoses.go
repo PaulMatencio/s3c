@@ -34,15 +34,6 @@ import (
 
 // listObjectCmd represents the listObject command
 var (
-	loshort = "Command to list objects of a given bucket"
-	lS3Cmd  = &cobra.Command{
-		Use:    "lsS3",
-		Short:  loshort,
-		Long:   ``,
-		Hidden: true,
-		Run:    listS3,
-	}
-
 	backupCmd = &cobra.Command{
 		Use:   "backup",
 		Short: "Command to backup MOSES",
@@ -71,9 +62,9 @@ func initBkFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&mbucket, "mbucket", "b", "", "the name of the metadata bucket")
 	cmd.Flags().StringVarP(&bbucket, "bbucket", "t", "", "the name of the backup bucket")
 	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "key prefix")
-	cmd.Flags().Int64VarP(&maxKey, "maxKey", "m", 40, "maximum number of keys to be processed concurrently")
+	cmd.Flags().Int64VarP(&maxKey, "maxKey", "m", 40, "maximum number of documents (keys) to be backed up concurrently")
 	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key")
-	cmd.Flags().StringVarP(&delimiter, "delimiter", "d", "", "key delimiter")
+	cmd.Flags().StringVarP(&delimiter, "delimiter", "d", "", "prefix  delimiter")
 	cmd.Flags().StringVarP(&outDir, "outDir", "O", "", "output directory for --backupMedia = File")
 	cmd.Flags().IntVarP(&maxPage, "maxPage", "", 50, "maximum number of concurrent pages")
 	cmd.Flags().IntVarP(&maxLoop, "maxLoop", "", 1, "maximum number of loop, 0 means no upper limit")
@@ -81,71 +72,8 @@ func initBkFlags(cmd *cobra.Command) {
 }
 
 func init() {
-	rootCmd.AddCommand(lS3Cmd)
-	rootCmd.AddCommand(backupCmd)
-	rootCmd.MarkFlagRequired("bucket")
-	initBkFlags(lS3Cmd)
+ 	rootCmd.AddCommand(backupCmd)
 	initBkFlags(backupCmd)
-}
-
-func listS3(cmd *cobra.Command, args []string) {
-	var (
-		start       = utils.LumberPrefix(cmd)
-		total int64 = 0
-	)
-
-	if len(bucket) == 0 {
-		gLog.Warning.Printf("%s", missingBucket)
-		// utils.Return(start)
-		return
-	}
-	/*
-		if len(outDir) ==0 {
-			gLog.Warning.Printf("%s", missingoDir)
-			return
-		}
-	*/
-
-	req := datatype.ListObjRequest{
-		Service:   s3.New(api.CreateSession()),
-		Bucket:    bucket,
-		Prefix:    prefix,
-		MaxKey:    maxKey,
-		Marker:    marker,
-		Delimiter: delimiter,
-	}
-	L := 1
-	for {
-		var (
-			nextmarker string
-			result     *s3.ListObjectsOutput
-			err        error
-		)
-		if result, err = api.ListObject(req); err == nil {
-			if l := len(result.Contents); l > 0 {
-				total += int64(l)
-				for _, v := range result.Contents {
-					gLog.Info.Printf("Key: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size, v.LastModified)
-				}
-				if *result.IsTruncated {
-					nextmarker = *result.Contents[l-1].Key
-					// nextmarker = *result.NextMarker
-					gLog.Warning.Printf("Truncated %v  - Next marker : %s ", *result.IsTruncated, nextmarker)
-				}
-			}
-		} else {
-			gLog.Error.Printf("%v", err)
-			break
-		}
-		L++
-		if *result.IsTruncated && (maxLoop == 0 || L <= maxLoop) {
-			req.Marker = nextmarker
-		} else {
-			gLog.Info.Printf("Total number of objects returned: %d", total)
-			break
-		}
-	}
-	utils.Return(start)
 }
 
 func backup(cmd *cobra.Command, args []string) {
@@ -240,7 +168,6 @@ func BackupBlobs(marker string, bucket string) (string, error) {
 	)
 
 	req := datatype.ListObjRequest{
-		// Service:   s3.New(api.CreateSession()),
 		Service:   svcm,
 		Bucket:    bucket,
 		Prefix:    prefix,
