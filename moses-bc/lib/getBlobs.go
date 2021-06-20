@@ -225,8 +225,8 @@ func GetBlob1(pn string, np int, maxPage int) ([]error,*documentpb.Document) {
 }
 func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 	var (
-		q     int = (np + 1) / maxPage
-		r     int = (np + 1) % maxPage
+		q     int = np  / maxPage
+		r     int = np  % maxPage
 		start int = 1
 		usermd string
 		err error
@@ -344,7 +344,7 @@ func GetPart1(document *documentpb.Document, pn string, np int, start int, end i
 		errs   []error
 		usermd string
 		body   *[]byte
-		ch     = make(chan *GetBlobResponse)
+		ch    = make(chan *GetBlobResponse)
 		num   =  end -start +1
 	)
 
