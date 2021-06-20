@@ -70,8 +70,6 @@ func restore(cmd *cobra.Command, args []string) {
 
 		if usermd, err = base64.Decode64(document.GetMetadata()); err == nil {
 			gLog.Info.Printf("Document metadata %s", string(usermd))
-		} else {
-			gLog.Error.Println(err)
 		}
 		// write document metadata
 		pnm := pn + ".md"
@@ -79,8 +77,6 @@ func restore(cmd *cobra.Command, args []string) {
 			defer fi.Close()
 			if _, err := fi.Write(usermd); err != nil {
 				fmt.Printf("Error %v writing Document metadat %s", err, pnm)
-			} else {
-				gLog.Error.Println(err)
 			}
 		}
 

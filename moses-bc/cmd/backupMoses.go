@@ -55,7 +55,7 @@ var (
 	maxLoop, maxPage          int
 	missingoDir               = "Missing backup output directory"
 	missingbBucket            = "Missing backup bucket"
-	back,meta                datatype.CreateSession
+	back, meta                datatype.CreateSession
 	svcb, svcm                *s3.S3
 )
 
@@ -176,7 +176,7 @@ func backup(cmd *cobra.Command, args []string) {
 		AccessKey: metaAccessKey,
 		SecretKey: metaSecretKey,
 	}
-	svcm= s3.New(api.CreateSession2(meta))
+	svcm = s3.New(api.CreateSession2(meta))
 
 	if bMedia == "S3" {
 
@@ -241,7 +241,7 @@ func BackupBlobs(marker string, bucket string) (string, error) {
 
 	req := datatype.ListObjRequest{
 		// Service:   s3.New(api.CreateSession()),
-		Service:  svcm,
+		Service:   svcm,
 		Bucket:    bucket,
 		Prefix:    prefix,
 		MaxKey:    maxKey,
@@ -294,7 +294,14 @@ func BackupBlobs(marker string, bucket string) (string, error) {
 									if bMedia != "S3" {
 										docsize = clone.WriteDirectory(pn, document, outDir)
 									} else {
-										clone.WriteS3(svcb, bucket, document)
+										if so, err := clone.WriteS3(svcb, bucket, document); err != nil {
+											gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
+											mt.Lock()
+											gerrors += 1
+											mt.Unlock()
+										} else {
+											gLog.Trace.Printf("Etag %v", so.ETag)
+										}
 									}
 									gLog.Trace.Printf("Docid: %s - number of pages: %d - Document metadata: %s", document.DocId, document.NumberOfPages, document.Metadata)
 								} else {
@@ -310,9 +317,17 @@ func BackupBlobs(marker string, bucket string) (string, error) {
 										//  Add  s3 moses meta to the document even if it may be  invalid
 										document.S3Meta = usermd
 										if bMedia != "S3" {
-											docsize = clone.WriteDirectory(pn,  document, outDir)
+											docsize = clone.WriteDirectory(pn, document, outDir)
 										} else {
-											clone.WriteS3(svcb, bucket, document)
+											// clone.WriteS3(svcb, bucket, document)
+											if so, err := clone.WriteS3(svcb, bucket, document); err != nil {
+												gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
+												mt.Lock()
+												gerrors += 1
+												mt.Unlock()
+											} else {
+												gLog.Trace.Printf("Docid: %s - Etag %v", document.DocId,so.ETag)
+											}
 										}
 
 									} else {
@@ -364,7 +379,7 @@ func BackupBlobs(marker string, bucket string) (string, error) {
 }
 
 func printErr(errs []error) {
-	for _,e := range errs {
+	for _, e := range errs {
 		gLog.Error.Println(e)
 	}
 }
