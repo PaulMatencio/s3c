@@ -181,7 +181,7 @@ func backup(cmd *cobra.Command, args []string) {
 	if bMedia == "S3" {
 
 		if len(bbucket) == 0 {
-			gLog.Warning.Printf("%s", missingoDir)
+			gLog.Warning.Printf("%s", missingbBucket)
 			return
 		}
 
@@ -294,7 +294,7 @@ func BackupBlobs(marker string, bucket string) (string, error) {
 									if bMedia != "S3" {
 										docsize = clone.WriteDirectory(pn, document, outDir)
 									} else {
-										if so, err := clone.WriteS3(svcb, bucket, document); err != nil {
+										if so, err := clone.WriteS3(svcb, bbucket, document); err != nil {
 											gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
 											mt.Lock()
 											gerrors += 1
@@ -320,7 +320,7 @@ func BackupBlobs(marker string, bucket string) (string, error) {
 											docsize = clone.WriteDirectory(pn, document, outDir)
 										} else {
 											// clone.WriteS3(svcb, bucket, document)
-											if so, err := clone.WriteS3(svcb, bucket, document); err != nil {
+											if so, err := clone.WriteS3(svcb, bbucket, document); err != nil {
 												gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
 												mt.Lock()
 												gerrors += 1
