@@ -251,7 +251,6 @@ func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 	document := doc.CreateDocument(pn, usermd, 0, np, body)
 	// gLog.Trace.Printf("Docid: %s - number of pages: %d - document metadata: %s",document.DocId,document.NumberOfPages,document.Metadata)
 	for s := 1; s <= q; s++ {
-		gLog.Info.Printf("GetPart1 s= %d",s)
 		errs,document = GetPart1(document, pn, np,start, end)
 		start = end + 1
 		end += maxPage
@@ -261,10 +260,9 @@ func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 	}
 
 	if r > 0 {
-		gLog.Info.Printf("GetPart1 q=%d r=%d",q,r)
 		errs,document = GetPart1(document, pn,np,q*maxPage+1 , np)
 	}
-	 
+
 	return errs,document
 }
 
