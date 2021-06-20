@@ -316,6 +316,7 @@ func getBlob1(pn string, np int) ( []error,*documentpb.Document) {
 			r1++
 			if r.Err == nil {
 				pg := doc.CreatePage(pn, r.UserMd, r.PageNumber, r.Body)
+				document.Size += int64(pg.Size)
 				gLog.Trace.Printf("Docid: %s - Page Number: %d - Page Id: %s" ,document.DocId,pg.PageNumber,pg.PageId)
 				doc.AddPageToDucument(pg, document)
 			} else {
@@ -370,7 +371,7 @@ func GetPart1(document *documentpb.Document, pn string, np int, start int, end i
 			r1++
 			if r.Err == nil {
 				pg := doc.CreatePage(pn, r.UserMd, r.PageNumber, r.Body)
-				document.Size += int64(r.Size)
+				document.Size += int64(pg.Size)
 				gLog.Trace.Printf("Docid: %s - Page Number: %d - Page Id: %s - Page size:%d" ,document.DocId,pg.PageNumber,pg.PageId,r.Size)
 				doc.AddPageToDucument(pg, document)
 
