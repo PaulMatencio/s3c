@@ -297,11 +297,11 @@ func BackupBlobs(marker string, bucket string) (string, error) {
 									} else {
 										if so, err := clone.WriteS3(svcb, bbucket, document); err != nil {
 											gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
-											docsize = (int)(document.Size)
 											mt.Lock()
 											gerrors += 1
 											mt.Unlock()
 										} else {
+											docsize = (int)(document.Size)
 											gLog.Trace.Printf("Etag %v", so.ETag)
 										}
 									}
@@ -325,11 +325,11 @@ func BackupBlobs(marker string, bucket string) (string, error) {
 											// clone.WriteS3(svcb, bucket, document)
 											if so, err := clone.WriteS3(svcb, bbucket, document); err != nil {
 												gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
-												docsize = (int)(document.Size)
 												mt.Lock()
 												gerrors += 1
 												mt.Unlock()
 											} else {
+												docsize = (int)(document.Size)
 												gLog.Trace.Printf("Docid: %s - Etag %v", document.DocId,so.ETag)
 											}
 										}
