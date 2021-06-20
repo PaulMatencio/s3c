@@ -226,7 +226,7 @@ func GetBlob1(pn string, np int, maxPage int) ([]error,*documentpb.Document) {
 func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 	var (
 		q     int = (np + 1) / maxPage
-		// r     int = (np + 1) % maxPage
+		r     int = (np + 1) % maxPage
 		start int = 1
 		usermd string
 		err error
@@ -259,12 +259,12 @@ func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 			end = np
 		}
 	}
-	/*
+
 	if r > 0 {
 		gLog.Info.Printf("GetPart1 q=%d r=%d",q,r)
 		errs,document = GetPart1(document, pn,np,q*maxPage+1 , np)
 	}
-	 */
+	 
 	return errs,document
 }
 
