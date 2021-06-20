@@ -372,7 +372,8 @@ func BackupBlobs(marker string, bucket string) (string, error) {
 			gLog.Error.Printf("%v", err)
 			break
 		}
-		if N < maxLoop && *result.IsTruncated {
+
+		if *result.IsTruncated && (maxLoop == 0 || N <= maxLoop) {
 			req.Marker = nextmarker
 		} else {
 			gLog.Info.Printf("Total number of documents returned: %d  - total number of pages: %d  - Total document size: %d - Total number of errors: %d", tdocs, tpages, tsizes, terrors)
