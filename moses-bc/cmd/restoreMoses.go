@@ -51,8 +51,8 @@ var (
 )
 
 func initResFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVarP(&bucket, "bbucket", "b", "", "the name of the backup bucket")
-	cmd.Flags().StringVarP(&bucket, "mbucket", "t", "", "the name of the metadata bucket to be restored")
+	cmd.Flags().StringVarP(&bbucket, "bbucket", "b", "", "the name of the backup bucket")
+	cmd.Flags().StringVarP(&mbucket, "mbucket", "t", "", "the name of the metadata bucket to be restored")
 	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "key prefix")
 	cmd.Flags().Int64VarP(&maxKey, "maxKey", "m", 100, "maximum number of keys to be restored concurrently")
 	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key")
@@ -75,12 +75,11 @@ func restore(cmd *cobra.Command, args []string) {
 		err        error
 	)
 	start := time.Now()
-
+	// OUTPUT
 	if metaUrl = viper.GetString("meta.s3.url"); len(metaUrl) == 0 {
 		gLog.Error.Println(errors.New(missingMetaurl))
 		return
 	}
-
 	if metaAccessKey = viper.GetString("meta.credential.access_key_id"); len(metaAccessKey) == 0 {
 		gLog.Error.Println(errors.New(missingMetaak))
 		return
@@ -99,6 +98,7 @@ func restore(cmd *cobra.Command, args []string) {
 	}
 	svcm = s3.New(api.CreateSession2(meta))
 
+	// INPUT 
 	if bMedia == "S3" {
 
 		if len(bbucket) == 0 {
