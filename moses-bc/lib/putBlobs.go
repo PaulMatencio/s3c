@@ -133,7 +133,7 @@ func WriteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Documen
 	request.ReqHeader["Content-Type"] = "application/octet-stream"
 	request.ReqHeader["Usermd"] = document.GetMetadata()
 	gLog.Trace.Printf("writing pn %s - Path %s ",pn,request.Path)
-	if resp, err := sproxyd.Putobject(request, []byte{}); err != nil {
+	if resp, err := sproxyd.PutObj(request, true,[]byte{}); err != nil {
 		gLog.Error.Printf("Error %v - Put Document object %s", err, pn)
 		perrors++
 	} else {
@@ -156,12 +156,12 @@ func WriteDocPage(request sproxyd.HttpRequest, pg *documentpb.Page) int {
 	request.ReqHeader["Usermd"] = pg.GetMetadata()
 	request.ReqHeader["Content-Type"] = "application/octet-stream" // Content type
 	gLog.Trace.Printf("writing %d bytes to path  %s/%s",pg.Size,sproxyd.TargetDriver,request.Path)
-	if resp, err := sproxyd.Putobject(&request, pg.GetObject()); err != nil {
+	if resp, err := sproxyd.PutObj(&request,true, pg.GetObject()); err != nil {
 		gLog.Error.Printf("Error %v - Put Page object %s", err, pn)
 		perrors++
 	} else {
 		if resp != nil && resp.StatusCode != 200 {
-			gLog.Error.Printf("Status %s - Put page Object %s", resp.StatusCode, pn)
+			gLog.Error.Printf("Status Code; %d - Put page Object: %s", resp.StatusCode, pn)
 			perrors++
 		}
 	}

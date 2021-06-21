@@ -64,3 +64,40 @@ func Putobject(sproxydRequest *HttpRequest, object []byte) (*http.Response, erro
 	}
 
 }
+
+func PutObj(sproxydRequest *HttpRequest, update bool, object []byte) (*http.Response, error) {
+
+	url := DummyHost + sproxydRequest.Path
+	req, _ := http.NewRequest("PUT", url, bytes.NewBuffer(object))
+	if usermd, ok := sproxydRequest.ReqHeader["Usermd"]; ok {
+
+		/*
+			if pagemd, err := base64.Decode64(usermd); err == nil {
+				fmt.Println("Update Object : url=>", url, "page meata=>", string(pagemd), " Image length ", len(object))
+			}
+		*/
+		req.Header.Add("X-Scal-Usermd", usermd)
+	}
+	if contentType, ok := sproxydRequest.ReqHeader["Content-Type"]; ok {
+		req.Header.Add("Content-Type", contentType)
+	}
+	if contentLength, ok := sproxydRequest.ReqHeader["Content-Length"]; ok {
+		req.Header.Add("Content-Length", contentLength)
+	} else {
+		req.Header.Add("Content-Length", strconv.Itoa(len(object)))
+	}
+	if policy, ok := sproxydRequest.ReqHeader["X-Scal-Replica-Policy"]; ok {
+		req.Header.Add("X-Scal-Replica-Policy", policy)
+	}
+	if !update {
+		req.Header.Add("If-None-Match", "*")
+	}
+
+	// Test is a global sproxyd variable
+	if !Test {
+		return DoRequest(sproxydRequest.Hspool, sproxydRequest.Client, req, object)
+	} else {
+		return DoRequestTest(sproxydRequest.Hspool, sproxydRequest.Client, req, object)
+	}
+
+}
