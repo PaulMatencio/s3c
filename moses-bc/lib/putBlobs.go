@@ -100,7 +100,7 @@ func putPart1(document *documentpb.Document,start int,end int) (int) {
 		wg1 sync.WaitGroup
 	)
 	for k := start; k <= end; k++ {
-		pg := *pages[k]
+		pg := *pages[k-1]
 		wg1.Add(1)
 		request.Path = sproxyd.TargetEnv + "/" + pg.PageId + "/p" + strconv.Itoa(int(pg.PageNumber))
 		go func(request sproxyd.HttpRequest, pg *documentpb.Page) {
