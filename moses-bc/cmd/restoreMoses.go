@@ -27,6 +27,7 @@ import (
 	clone "github.com/paulmatencio/s3c/moses-bc/lib"
 	"os"
 	"path/filepath"
+	"strings"
 	// "strconv"
 	"sync"
 
@@ -255,11 +256,11 @@ func RestoreBlobs(marker string, bucket string) (string, error) {
 }
 
 func writeDocument(document *documentpb.Document,pn string,outDir string) {
+
 	var (
 		err    error
 		usermd []byte
 	)
-
 
 	gLog.Info.Printf("Document id %s - Page Numnber %d ", document.DocId, document.PageNumber)
 	if usermd, err = base64.Decode64(document.GetMetadata()); err == nil {
@@ -292,6 +293,7 @@ func writeDocument(document *documentpb.Document,pn string,outDir string) {
 	}
 	for _, page := range pages {
 		//object := page.GetObject()
+		pn = strings.Replace(pn,"/","_",-1)
 		pfn := pn + "_" + fmt.Sprintf("%04d", page.GetPageNumber())
 		if fi, err := os.OpenFile(filepath.Join(outDir, pfn), os.O_WRONLY|os.O_CREATE, 0600); err == nil {
 			defer fi.Close()
@@ -302,6 +304,7 @@ func writeDocument(document *documentpb.Document,pn string,outDir string) {
 		} else {
 			gLog.Error.Println(err)
 		}
+
 
 		pfm := pfn + ".md"
 		if fm, err := os.OpenFile(filepath.Join(outDir, pfm), os.O_WRONLY|os.O_CREATE, 0600); err == nil {
