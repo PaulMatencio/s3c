@@ -27,18 +27,18 @@ func RestoreBlob1(document *documentpb.Document) int {
 
 	//   Write document metadata
 	perrors += WriteDocMetadata(&request, document)
-	pn := document.GetDocId()
 	pages := document.GetPage()
 	for _, pg := range pages {
 		wg1.Add(1)
-		go func(request *sproxyd.HttpRequest, pn string, pg *documentpb.Page) {
-			if perr := WriteDocPage(*request, pn, pg); perr > 0 {
+		go func(request *sproxyd.HttpRequest,  pg *documentpb.Page) {
+
+			if perr := WriteDocPage(*request,  pg); perr > 0 {
 				pu.Lock()
 				perrors += perr
 				pu.Unlock()
 			}
 			wg1.Done()
-		}(&request, pn, pg)
+		}(&request, pg)
 	}
 	wg1.Wait()
 	return perrors
@@ -55,7 +55,7 @@ func WriteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Documen
 	request.ReqHeader["Content-Type"] = "application/octet-stream"
 	request.ReqHeader["Usermd"] = document.GetMetadata()
 	gLog.Info.Printf("writing pn %s - Path %s ",pn,request.Path)
-	/*
+
 	if resp, err := sproxyd.Putobject(request, []byte{}); err != nil {
 		gLog.Error.Printf("Error %v - Put Document object %s", err, pn)
 		perrors++
@@ -64,23 +64,23 @@ func WriteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Documen
 			gLog.Error.Printf("Status %s - Put page Object %s", resp.StatusCode, pn)
 			perrors++
 		}
-	}strconv.Itoa(k)
-
-	*/
-
-
+	}
 	return perrors
 }
 
 // write a page af a document pn ( publication number)
 
-func WriteDocPage(request sproxyd.HttpRequest, pn string, pg *documentpb.Page) int {
-	var perrors = 0
+func WriteDocPage(request sproxyd.HttpRequest, pg *documentpb.Page) int {
+	var (
+		perrors = 0
+		pn = pg.GetPageId()
+	)
 	request.Path = sproxyd.TargetEnv + "/" + pn + "/p" + strconv.Itoa((int)(pg.PageNumber))
 	request.ReqHeader["Usermd"] = pg.GetMetadata()
 	request.ReqHeader["Content-Type"] = "application/octet-stream" // Content type
-	gLog.Info.Printf("writing pn %s - Path  %s",pn,request.Path)
-	/*
+	gLog.Info.Printf("writing %d bytes to path  %s/%s",pg.Size,sproxyd.TargetDriver,request.Path)
+
+
 	if resp, err := sproxyd.Putobject(&request, pg.GetObject()); err != nil {
 		gLog.Error.Printf("Error %v - Put Page object %s", err, pn)
 		perrors++
@@ -90,7 +90,7 @@ func WriteDocPage(request sproxyd.HttpRequest, pn string, pg *documentpb.Page) i
 			perrors++
 		}
 	}
-	 */
+
 
 	return perrors
 }
