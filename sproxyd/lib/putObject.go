@@ -3,12 +3,9 @@ package sproxyd
 
 import (
 	"bytes"
+	hostpool "github.com/bitly/go-hostpool"
 	"net/http"
 	"strconv"
-	// "fmt"
-	// base64 "moses/user/base64j"
-
-	hostpool "github.com/bitly/go-hostpool"
 )
 
 func PutObject(hspool hostpool.HostPool, client *http.Client, path string, object []byte, putHeader map[string]string) (*http.Response, error) {
@@ -39,7 +36,6 @@ func Putobject(sproxydRequest *HttpRequest, object []byte) (*http.Response, erro
 	url := DummyHost + sproxydRequest.Path
 	req, _ := http.NewRequest("PUT", url, bytes.NewBuffer(object))
 	if usermd, ok := sproxydRequest.ReqHeader["Usermd"]; ok {
-
 		/*
 			if pagemd, err := base64.Decode64(usermd); err == nil {
 				fmt.Println("Update Object : url=>", url, "page meata=>", string(pagemd), " Image length ", len(object))
@@ -62,7 +58,7 @@ func Putobject(sproxydRequest *HttpRequest, object []byte) (*http.Response, erro
 
 	// Test is a global sproxyd variable
 	if !Test {
-		return DoRequest(sproxydRequest.Hspool, sproxydRequest.Client, req, object)
+		return DoRequestTest(sproxydRequest.Hspool, sproxydRequest.Client, req, object)
 	} else {
 		return DoRequestTest(sproxydRequest.Hspool, sproxydRequest.Client, req, object)
 	}

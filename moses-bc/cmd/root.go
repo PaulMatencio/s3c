@@ -184,6 +184,7 @@ func initConfig() {
 		sproxyd.HP
 	    sproxyd.TargetHP
 	 */
+
 	sproxyd.SetNewProxydHost()
 	sproxyd.SetNewTargetProxydHost()
 

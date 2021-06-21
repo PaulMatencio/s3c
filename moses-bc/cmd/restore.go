@@ -228,10 +228,19 @@ func RestoreBlobs(marker string, bucket string) (string, error) {
 							if body, err := utils.ReadObject(result.Body); err == nil {
 								document, err = clone.GetDocument(body.Bytes())
 								// WriteDocumentToFile(document,request.Key,outDir)
-								if nerr := clone.RestoreBlob1(document); nerr > 0 {
-									re.Lock()
-									gerrors += nerr
-									re.Unlock()
+								if document.NumberOfPages <= int32(maxPage) {
+									if nerr := clone.PutBlob1(document); nerr > 0 {
+										re.Lock()
+										gerrors += nerr
+										re.Unlock()
+									}
+								} else {
+									if nerr := clone.PutBig1(document,maxPage); nerr > 0 {
+										re.Lock()
+										gerrors += nerr
+										re.Unlock()
+									}
+
 								}
 							} else {
 								gLog.Error.Printf("Error %v reading body", err)
@@ -340,3 +349,4 @@ func WriteDocumentToFile(document *documentpb.Document, pn string, outDir string
 	}
 
 }
+
