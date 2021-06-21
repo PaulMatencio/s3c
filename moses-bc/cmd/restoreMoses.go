@@ -98,7 +98,7 @@ func restore(cmd *cobra.Command, args []string) {
 	}
 	svcm = s3.New(api.CreateSession2(meta))
 
-	// INPUT 
+	// INPUT
 	if bMedia == "S3" {
 
 		if len(bbucket) == 0 {
@@ -218,7 +218,7 @@ func RestoreBlobs(marker string, bucket string) (string, error) {
 							}
 							if body, err := utils.ReadObject(result.Body) ; err == nil {
 								document, err = clone.GetDocument(body.Bytes())
-								writeDocument(document,pn,outDir)
+								writeDocument(document,request.Key,outDir)
 							} else {
 								gLog.Error.Printf("Error %v reading body",err)
 							}
@@ -259,11 +259,7 @@ func writeDocument(document *documentpb.Document,pn string,outDir string) {
 		err    error
 		usermd []byte
 	)
-	pages := document.GetPage()
-	if len(pages) != int(document.NumberOfPages) {
-		gLog.Error.Printf("Backup of document is inconsistent %s  %d - %d ", pn, len(pages), document.NumberOfPages)
-		return
-	}
+
 
 	gLog.Info.Printf("Document id %s - Page Numnber %d ", document.DocId, document.PageNumber)
 	if usermd, err = base64.Decode64(document.GetMetadata()); err == nil {
@@ -289,6 +285,11 @@ func writeDocument(document *documentpb.Document,pn string,outDir string) {
 		}
 	}
 
+	pages := document.GetPage()
+	if len(pages) != int(document.NumberOfPages) {
+		gLog.Error.Printf("Backup of document is inconsistent %s  %d - %d ", pn, len(pages), document.NumberOfPages)
+		return
+	}
 	for _, page := range pages {
 		//object := page.GetObject()
 		pfn := pn + "_" + fmt.Sprintf("%04d", page.GetPageNumber())

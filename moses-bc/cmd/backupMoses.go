@@ -144,6 +144,7 @@ func backup(cmd *cobra.Command, args []string) {
 		//  create the output directory if it does not exist
 		utils.MakeDir(outDir)
 	}
+	utils.MakeDir(outDir)
 	// start backing up
 	if nextmarker, err = BackupBlobs(marker, mbucket); err != nil {
 		gLog.Error.Printf("error %v - Next marker %s", err, nextmarker)
@@ -249,7 +250,9 @@ func BackupBlobs(marker string, bucket string) (string, error) {
 											docsize = clone.WriteDirectory(pn, document, outDir)
 											docsize = (int)(document.Size)
 										} else {
-											// clone.WriteS3(svcb, bucket, document)
+
+											docsize = clone.WriteDirectory(pn, document, outDir)
+
 											if so, err := clone.WriteS3(svcb, bbucket, document); err != nil {
 												gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
 												mt.Lock()
