@@ -137,7 +137,7 @@ func WriteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Documen
 		gLog.Error.Printf("Error %v - Put Document object %s", err, pn)
 		perrors++
 	} else {
-		if resp.StatusCode != 200 {
+		if resp !=  nil && resp.StatusCode != 200 {
 			gLog.Error.Printf("Status %s - Put page Object %s", resp.StatusCode, pn)
 			perrors++
 		}
@@ -160,7 +160,7 @@ func WriteDocPage(request sproxyd.HttpRequest, pg *documentpb.Page) int {
 		gLog.Error.Printf("Error %v - Put Page object %s", err, pn)
 		perrors++
 	} else {
-		if resp.StatusCode != 200 {
+		if resp != nil && resp.StatusCode != 200 {
 			gLog.Error.Printf("Status %s - Put page Object %s", resp.StatusCode, pn)
 			perrors++
 		}
