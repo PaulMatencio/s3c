@@ -145,7 +145,7 @@ func GetParts(pn string, np int, start int, end int, document *documentpb.Docume
 
 	var (
 		sproxydRequest = sproxyd.HttpRequest{
-			Hspool: sproxyd.HP,
+			Hspool: sproxyd.HP,  // IP of source sproxyd
 			Client: &http.Client{
 				Timeout:   sproxyd.ReadTimeout,
 				Transport: sproxyd.Transport,
@@ -223,6 +223,7 @@ func GetBlob1(pn string, np int, maxPage int) ([]error,*documentpb.Document) {
 		return getBig1(pn, np, maxPage)
 	}
 }
+
 func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 	var (
 		q     int = np  / maxPage
@@ -388,6 +389,7 @@ func GetPart1(document *documentpb.Document, pn string, np int, start int, end i
 	return errs, document
 }
 
+
 func GetMetadata(request sproxyd.HttpRequest, pn string) (error, string) {
 	var (
 		usermd string
@@ -443,4 +445,46 @@ func GetObject(request sproxyd.HttpRequest, pn string) (error, string, *[]byte) 
 		}
 	}
 	return err, usermd, &body
+}
+
+func WriteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Document) (int){
+
+	var (
+		pn = document.GetDocId()
+		perrors = 0
+	)
+	request.Path = sproxyd.TargetEnv + "/" + pn
+	request.ReqHeader["Content-Type"] = "application/octet-stream"
+	request.ReqHeader["Usermd"] = document.GetMetadata()
+	if resp,err := sproxyd.Putobject(request,[]byte{}); err != nil {
+		gLog.Error.Printf("Error %v - Put Document object %s",err,pn)
+		perrors ++
+	}else {
+		if resp.StatusCode != 200 {
+			gLog.Error.Printf("Status %s - Put page Object %s",resp.StatusCode,pn)
+			perrors ++
+		}
+	}
+
+	return perrors;
+}
+
+func WriteDocPage(request sproxyd.HttpRequest, pn string, pg *documentpb.Page) (int){
+
+	var  perrors = 0
+
+	request.Path = sproxyd.TargetEnv + "/" + pn + "/p" + pg.GetPageId()
+			request.ReqHeader["Usermd"] = pg.GetMetadata()
+			request.ReqHeader["Content-Type"] = "application/octet-stream"  // Content type
+			if resp,err := sproxyd.Putobject(&request,pg.GetObject()); err != nil  {
+				gLog.Error.Printf("Error %v - Put Page object %s",err,pn)
+				perrors++
+			} else {
+				if resp.StatusCode != 200 {
+					gLog.Error.Printf("Status %s - Put page Object %s",resp.StatusCode,pn)
+					perrors++
+				}
+			}
+
+	return perrors;
 }

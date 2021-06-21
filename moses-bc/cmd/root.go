@@ -178,6 +178,12 @@ func initConfig() {
 	if driver := viper.GetString("sproxyd.target.driver"); len(driver) == 0 {
 		sproxyd.TargetDriver= driver
 	}
+
+	/*
+	Set  new source and target  sproxyd
+		sproxyd.HP
+	    sproxyd.TargetHP
+	 */
 	sproxyd.SetNewProxydHost()
 	sproxyd.SetNewTargetProxydHost()
 

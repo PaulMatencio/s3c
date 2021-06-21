@@ -27,6 +27,7 @@ import (
 	clone "github.com/paulmatencio/s3c/moses-bc/lib"
 	"os"
 	"path/filepath"
+	"strings"
 	// "strconv"
 	"sync"
 
@@ -154,6 +155,7 @@ func RestoreBlobs(marker string, bucket string) (string, error) {
 		N                     int
 		tdocs, tpages, tsizes int64
 		terrors               int
+		re                    sync.Mutex
 	)
 
 	req := datatype.ListObjRequest{
@@ -205,22 +207,37 @@ func RestoreBlobs(marker string, bucket string) (string, error) {
 									gLog.Warning.Printf("Error: [%v]  Error: [%v]", s3.ErrCodeNoSuchKey, aerr.Error())
 								default:
 									gLog.Error.Printf("Error: %v", aerr.Error())
+									re.Lock()
+									gerrors += 1
+									re.Unlock()
+
 								}
 							} else {
 								gLog.Error.Printf("Error:%v", err.Error())
+								re.Lock()
+								gerrors += 1
+								re.Unlock()
 							}
 						} else {
 							if usermd, err = utils.GetUserMeta(result.Metadata); err == nil {
 								userm := UserMd{}
 								json.Unmarshal([]byte(usermd), &userm)
 							} else {
-								gLog.Error.Printf("Error %v - invalid user metadata %s",err,result.Metadata)
+								gLog.Error.Printf("Error %v - invalid user metadata %s", err, result.Metadata)
 							}
-							if body, err := utils.ReadObject(result.Body) ; err == nil {
+							if body, err := utils.ReadObject(result.Body); err == nil {
 								document, err = clone.GetDocument(body.Bytes())
-								writeDocument(document,request.Key,outDir)
+								// WriteDocumentToFile(document,request.Key,outDir)
+								if nerr := clone.RestoreBlob1(document); nerr > 0 {
+									re.Lock()
+									gerrors += nerr
+									re.Unlock()
+								}
 							} else {
-								gLog.Error.Printf("Error %v reading body",err)
+								gLog.Error.Printf("Error %v reading body", err)
+								re.Lock()
+								gerrors += 1
+								re.Unlock()
 							}
 						}
 
@@ -254,7 +271,7 @@ func RestoreBlobs(marker string, bucket string) (string, error) {
 	return nextmarker, nil
 }
 
-func writeDocument(document *documentpb.Document,pn string,outDir string) {
+func WriteDocumentToFile(document *documentpb.Document, pn string, outDir string) {
 
 	var (
 		err    error
@@ -286,26 +303,27 @@ func writeDocument(document *documentpb.Document,pn string,outDir string) {
 	}
 
 	pages := document.GetPage()
-	gLog.Info.Printf("Number of pages %d",len(pages))
+	gLog.Info.Printf("Number of pages %d", len(pages))
 	if len(pages) != int(document.NumberOfPages) {
 		gLog.Error.Printf("Backup of document is inconsistent %s  %d - %d ", pn, len(pages), document.NumberOfPages)
 		return
 	}
 	for _, page := range pages {
+
 		//object := page.GetObject()
 		// pn = strings.Replace(pn,"/","_",-1)
-		pfn := filepath.Join(outDir,pn + "_" + fmt.Sprintf("%04d", page.GetPageNumber()))
-		if fi, err := os.OpenFile(pfn, os.O_WRONLY|os.O_CREATE, 0600); err == nil {
+		pfd := strings.Replace(pn, "/", "_", -1) + "_" + fmt.Sprintf("%04d", page.GetPageNumber())
+		if fi, err := os.OpenFile(filepath.Join(outDir, pfd), os.O_WRONLY|os.O_CREATE, 0600); err == nil {
 			defer fi.Close()
 			bytes := page.GetObject()
 			if _, err := fi.Write(bytes); err != nil {
-				fmt.Printf("Error %v writing file %s", err, pfn)
+				fmt.Printf("Error %v writing file %s to output directory %s", err, pfd, outDir)
 			}
 		} else {
-			gLog.Error.Println("Error opening file %s",pfn)
+			gLog.Error.Println("Error opening file %s/%s", outDir, pfd)
 		}
 
-		pfm := pfn + ".md"
+		pfm := pfd + ".md"
 		if fm, err := os.OpenFile(filepath.Join(outDir, pfm), os.O_WRONLY|os.O_CREATE, 0600); err == nil {
 			defer fm.Close()
 			// meta:= page.GetMetadata()
@@ -320,9 +338,5 @@ func writeDocument(document *documentpb.Document,pn string,outDir string) {
 			gLog.Error.Println(err)
 		}
 	}
-
-	gLog.Info.Println(document.NumberOfPages)
-	gLog.Info.Println(document.Metadata)
-	gLog.Info.Println(document.LastUpdated)
 
 }
