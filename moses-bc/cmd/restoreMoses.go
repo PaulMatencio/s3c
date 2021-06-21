@@ -287,6 +287,7 @@ func writeDocument(document *documentpb.Document,pn string,outDir string) {
 	}
 
 	pages := document.GetPage()
+	gLog.Info.Printf("Number of pages %d",pages)
 	if len(pages) != int(document.NumberOfPages) {
 		gLog.Error.Printf("Backup of document is inconsistent %s  %d - %d ", pn, len(pages), document.NumberOfPages)
 		return
@@ -305,7 +306,6 @@ func writeDocument(document *documentpb.Document,pn string,outDir string) {
 			gLog.Error.Println(err)
 		}
 
-
 		pfm := pfn + ".md"
 		if fm, err := os.OpenFile(filepath.Join(outDir, pfm), os.O_WRONLY|os.O_CREATE, 0600); err == nil {
 			defer fm.Close()
@@ -321,8 +321,9 @@ func writeDocument(document *documentpb.Document,pn string,outDir string) {
 			gLog.Error.Println(err)
 		}
 	}
-	fmt.Println(document.NumberOfPages)
-	fmt.Println(document.Metadata)
-	fmt.Println(document.LastUpdated)
+
+	gLog.Info.Println(document.NumberOfPages)
+	gLog.Info.Println(document.Metadata)
+	gLog.Info.Println(document.LastUpdated)
 
 }
