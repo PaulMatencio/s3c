@@ -27,7 +27,6 @@ import (
 	clone "github.com/paulmatencio/s3c/moses-bc/lib"
 	"os"
 	"path/filepath"
-	"strings"
 	// "strconv"
 	"sync"
 
@@ -287,23 +286,23 @@ func writeDocument(document *documentpb.Document,pn string,outDir string) {
 	}
 
 	pages := document.GetPage()
-	gLog.Info.Printf("Number of pages %d",pages)
+	gLog.Info.Printf("Number of pages %d",len(pages))
 	if len(pages) != int(document.NumberOfPages) {
 		gLog.Error.Printf("Backup of document is inconsistent %s  %d - %d ", pn, len(pages), document.NumberOfPages)
 		return
 	}
 	for _, page := range pages {
 		//object := page.GetObject()
-		pn = strings.Replace(pn,"/","_",-1)
-		pfn := pn + "_" + fmt.Sprintf("%04d", page.GetPageNumber())
-		if fi, err := os.OpenFile(filepath.Join(outDir, pfn), os.O_WRONLY|os.O_CREATE, 0600); err == nil {
+		// pn = strings.Replace(pn,"/","_",-1)
+		pfn := filepath.Join(outDir,pn + "_" + fmt.Sprintf("%04d", page.GetPageNumber()))
+		if fi, err := os.OpenFile(pfn, os.O_WRONLY|os.O_CREATE, 0600); err == nil {
 			defer fi.Close()
 			bytes := page.GetObject()
 			if _, err := fi.Write(bytes); err != nil {
-				fmt.Printf("Error %v writing page %s", err, pfn)
+				fmt.Printf("Error %v writing file %s", err, pfn)
 			}
 		} else {
-			gLog.Error.Println(err)
+			gLog.Error.Println("Error opening file %s",pfn)
 		}
 
 		pfm := pfn + ".md"
