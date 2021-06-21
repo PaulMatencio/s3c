@@ -17,6 +17,7 @@ func RestoreBlob1(document *documentpb.Document) int {
 				Timeout:   sproxyd.ReadTimeout,
 				Transport: sproxyd.Transport,
 			},
+			ReqHeader: map[string]string{},
 		}
 		perrors int
 		pu      sync.Mutex
