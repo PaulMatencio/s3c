@@ -58,7 +58,7 @@ func Putobject(sproxydRequest *HttpRequest, object []byte) (*http.Response, erro
 
 	// Test is a global sproxyd variable
 	if !Test {
-		return DoRequestTest(sproxydRequest.Hspool, sproxydRequest.Client, req, object)
+		return DoRequest(sproxydRequest.Hspool, sproxydRequest.Client, req, object)
 	} else {
 		return DoRequestTest(sproxydRequest.Hspool, sproxydRequest.Client, req, object)
 	}
