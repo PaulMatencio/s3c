@@ -5,6 +5,7 @@ import (
 	"github.com/paulmatencio/s3c/gLog"
 	"github.com/paulmatencio/s3c/sproxyd/lib"
 	"net/http"
+	"strconv"
 	"sync"
 )
 
@@ -28,23 +29,16 @@ func RestoreBlob1(document *documentpb.Document) int {
 	perrors += WriteDocMetadata(&request, document)
 	pn := document.GetDocId()
 	pages := document.GetPage()
-	for k, pg := range pages {
+	for _, pg := range pages {
 		wg1.Add(1)
-		go func(request *sproxyd.HttpRequest, k int, pn string, pg *documentpb.Page) {
-			p := (int)(pg.GetPageNumber())
-			if k != p {
-				gLog.Error.Printf("Document %s - Invalid page number: %d/%d ", pn, p, k)
-				pu.Lock()
-				perrors += 1
-				pu.Unlock()
-			}
+		go func(request *sproxyd.HttpRequest, pn string, pg *documentpb.Page) {
 			if perr := WriteDocPage(*request, pn, pg); perr > 0 {
 				pu.Lock()
 				perrors += perr
 				pu.Unlock()
 			}
 			wg1.Done()
-		}(&request, k, pn, pg)
+		}(&request, pn, pg)
 	}
 	wg1.Wait()
 	return perrors
@@ -70,19 +64,19 @@ func WriteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Documen
 			gLog.Error.Printf("Status %s - Put page Object %s", resp.StatusCode, pn)
 			perrors++
 		}
-	}
+	}strconv.Itoa(k)
+
 	*/
 
 
 	return perrors
 }
 
-// write a page af an document pn ( publication number0
+// write a page af a document pn ( publication number)
+
 func WriteDocPage(request sproxyd.HttpRequest, pn string, pg *documentpb.Page) int {
-
 	var perrors = 0
-
-	request.Path = sproxyd.TargetEnv + "/" + pn + "/p" + pg.GetPageId()
+	request.Path = sproxyd.TargetEnv + "/" + pn + "/p" + strconv.Itoa((int)(pg.PageNumber))
 	request.ReqHeader["Usermd"] = pg.GetMetadata()
 	request.ReqHeader["Content-Type"] = "application/octet-stream" // Content type
 	gLog.Info.Printf("writing pn %s - Path  %s",pn,request.Path)
