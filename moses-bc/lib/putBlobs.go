@@ -99,6 +99,9 @@ func putPart1(document *documentpb.Document,start int,end int) (int) {
 		pu      sync.Mutex
 		wg1 sync.WaitGroup
 	)
+	/*
+		loading
+	 */
 	for k := start; k <= end; k++ {
 		pg := *pages[k-1]
 		wg1.Add(1)
@@ -137,9 +140,12 @@ func WriteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Documen
 		gLog.Error.Printf("Error %v - Put Document object %s", err, pn)
 		perrors++
 	} else {
-		if resp !=  nil && resp.StatusCode != 200 {
-			gLog.Error.Printf("Status %s - Put page Object %s", resp.StatusCode, pn)
-			perrors++
+		if resp !=  nil {
+			// defer resp.Body.Close()
+			if resp.StatusCode != 200 {
+				gLog.Error.Printf("Status %s - Put page Object %s", resp.StatusCode, pn)
+				perrors++
+			}
 		}
 	}
 	return perrors
@@ -160,9 +166,12 @@ func WriteDocPage(request sproxyd.HttpRequest, pg *documentpb.Page) int {
 		gLog.Error.Printf("Error %v - Put Page object %s", err, pn)
 		perrors++
 	} else {
-		if resp != nil && resp.StatusCode != 200 {
-			gLog.Error.Printf("Status Code; %d - Put page Object: %s", resp.StatusCode, pn)
-			perrors++
+		if resp != nil {
+			// defer resp.Body.Close()
+			if resp.StatusCode != 200 {
+				gLog.Error.Printf("Status Code; %d - Put page Object: %s", resp.StatusCode, pn)
+				perrors++
+			}
 		}
 	}
 	return perrors

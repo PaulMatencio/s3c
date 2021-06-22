@@ -11,6 +11,9 @@ import (
 	"strings"
 )
 
+/*
+	Read Document from file
+ */
 func ReadDocument(pn string, inDir string) (*documentpb.Document,error) {
 	var (
 		bytes    []byte
@@ -36,7 +39,9 @@ func ReadDocument(pn string, inDir string) (*documentpb.Document,error) {
 	return &document,err
 }
 
-
+/*
+	Extract the document for the  backup
+ */
 func GetDocument(bytes  []byte) (*documentpb.Document,error){
 	var (
 		document= documentpb.Document{}

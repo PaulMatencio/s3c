@@ -13,8 +13,10 @@ import (
 	"path/filepath"
 	"strings"
 )
-
-func WriteDirectory(pn string, document *documentpb.Document, outdir string) (int){
+/*
+	Wrote document to file
+ */
+func WriteDirectory(pn string, document *documentpb.Document, outdir string) (error, int){
 	var (
 		err error
 		bytes []byte
@@ -27,21 +29,18 @@ func WriteDirectory(pn string, document *documentpb.Document, outdir string) (in
 			if err := doc.Write(f, bytes); err == nil {
 				gLog.Info.Printf("%d bytes have be written to %s\n", len(bytes), ofn)
 			}
-		} else {
-			gLog.Info.Println(err)
 		}
-	} else {
-		gLog.Error.Println(err)
 	}
-	return  len(bytes)
+	return  err,len(bytes)
 }
 
+/*
+	Wrote document to S3
+ */
 func WriteS3 (service *s3.S3,bucket string,  document *documentpb.Document)(*s3.PutObjectOutput,error){
-
 	if data, err := proto.Marshal(document); err == nil{
 		meta := document.GetS3Meta()
 		req:= datatype.PutObjRequest{
-			//Service : s3.New(api.CreateSession()),
 			Service: service,
 			Bucket: bucket,
 			Key: document.DocId,

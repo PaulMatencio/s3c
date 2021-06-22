@@ -41,6 +41,9 @@ import (
 )
 
 // restoreMosesCmd represents the restoreMoses command
+
+const CHUNKSIZE =262144
+
 var (
 	pn, iDir   string
 	restoreCmd = &cobra.Command{
@@ -159,7 +162,6 @@ func RestoreBlobs(marker string, bucket string) (string, error) {
 	)
 
 	req := datatype.ListObjRequest{
-		// Service:   s3.New(api.CreateSession()),
 		Service:   svcb,
 		Bucket:    bucket,
 		Prefix:    prefix,
@@ -167,7 +169,7 @@ func RestoreBlobs(marker string, bucket string) (string, error) {
 		Marker:    marker,
 		Delimiter: delimiter,
 	}
-
+	start0 := time.Now()
 	for {
 		var (
 			result   *s3.ListObjectsOutput
@@ -179,13 +181,13 @@ func RestoreBlobs(marker string, bucket string) (string, error) {
 		)
 		N++ // number of loop
 		if result, err = api.ListObject(req); err == nil {
-			gLog.Info.Println(bucket, len(result.Contents))
+			gLog.Info.Printf("Backup bucket %s - target metadata bucket %s - number of documents: %d", bbucket, mbucket, len(result.Contents))
 			if l := len(result.Contents); l > 0 {
 				ndocs += int(l)
 				var wg1 sync.WaitGroup
 				wg1.Add(len(result.Contents))
+				start := time.Now()
 				for _, v := range result.Contents {
-					gLog.Trace.Printf("Key: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size, v.LastModified)
 					svc := req.Service
 					request := datatype.GetObjRequest{
 						Service: svc,
@@ -199,6 +201,7 @@ func RestoreBlobs(marker string, bucket string) (string, error) {
 							result   *s3.GetObjectOutput
 							document *documentpb.Document
 						)
+						gLog.Info.Printf("Restoring document: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size, v.LastModified)
 						defer wg1.Done()
 						if result, err = api.GetObject(request); err != nil {
 							if aerr, ok := err.(awserr.Error); ok {
@@ -225,25 +228,47 @@ func RestoreBlobs(marker string, bucket string) (string, error) {
 							} else {
 								gLog.Error.Printf("Error %v - invalid user metadata %s", err, result.Metadata)
 							}
-							if body, err := utils.ReadObject(result.Body); err == nil {
-								document, err = clone.GetDocument(body.Bytes())
-								// WriteDocumentToFile(document,request.Key,outDir)
-								if document.NumberOfPages <= int32(maxPage) {
-									if nerr := clone.PutBlob1(document); nerr > 0 {
-										re.Lock()
-										gerrors += nerr
-										re.Unlock()
-									}
-								} else {
-									if nerr := clone.PutBig1(document,maxPage); nerr > 0 {
-										re.Lock()
-										gerrors += nerr
-										re.Unlock()
-									}
 
+							/*
+								retrieve the backup document
+							 */
+
+							if body, err := utils.ReadObjectv(result.Body,CHUNKSIZE); err == nil {
+
+								document, err = clone.GetDocument(body.Bytes())
+								/*
+									Loading the document
+								 */
+								nerr := 0
+								if document.NumberOfPages <= int32(maxPage) {
+									nerr = clone.PutBlob1(document)
+								} else {
+									nerr = clone.PutBig1(document, maxPage)
+								}
+								/*
+									if loading error, increment the general error counter
+								 */
+								if nerr > 0 {
+									gLog.Error.Printf("Document id %s is restored with some errors",document.DocId)
+									re.Lock()
+									gerrors += nerr
+									re.Unlock()
+								} else {
+									gLog.Error.Printf("Document id %s is fully restored",document.DocId)
+								}
+								/*
+								indexing the document
+								 */
+								if _,err = indexDocument(document, mbucket, svcm); err != nil {
+									gLog.Error.Printf("Error %v indexing  document id %s",err,document.DocId)
+									re.Lock()
+									gerrors += 1
+									re.Unlock()
+								} else {
+									gLog.Info.Printf("Metadata of document id %s is added to bucket %s",document.DocId,mbucket)
 								}
 							} else {
-								gLog.Error.Printf("Error %v reading body", err)
+								gLog.Error.Printf("Error %v reading document body", err)
 								re.Lock()
 								gerrors += 1
 								re.Unlock()
@@ -253,13 +278,12 @@ func RestoreBlobs(marker string, bucket string) (string, error) {
 					}(request)
 				}
 				wg1.Wait()
-
 				if *result.IsTruncated {
 					nextmarker = *result.Contents[l-1].Key
 					gLog.Warning.Printf("Truncated %v - Next marker: %s ", *result.IsTruncated, nextmarker)
 
 				}
-				gLog.Info.Printf("Total number of documents returned: %d  - total number of pages: %d  - Total document size: %d - Total number of errors: %d", ndocs, npages, docsizes, gerrors)
+				gLog.Info.Printf("Number of documents restored: %d  - Number of pages: %d  - Documents size: %d - Number of errors: %d -  Elapsed time: %v", ndocs, npages, docsizes, gerrors,time.Since(start))
 				tdocs += int64(ndocs)
 				tpages += int64(npages)
 				tsizes += int64(docsizes)
@@ -273,13 +297,26 @@ func RestoreBlobs(marker string, bucket string) (string, error) {
 		if *result.IsTruncated && (maxLoop == 0 || N <= maxLoop) {
 			req.Marker = nextmarker
 		} else {
-			gLog.Info.Printf("Total number of documents returned: %d  - total number of pages: %d  - Total document size: %d - Total number of errors: %d", tdocs, tpages, tsizes, terrors)
+			gLog.Info.Printf("Total number of documents restored: %d  - total number of pages: %d  - Total document size: %d - Total number of errors: %d - Total elapsed time: %v", tdocs, tpages, tsizes, terrors,time.Since(start0))
 			break
 		}
 	}
 	return nextmarker, nil
 }
 
+func indexDocument(document *documentpb.Document, bucket string, svc *s3.S3) (*s3.PutObjectOutput,error) {
+	var (
+		putReq     = datatype.PutObjRequest{
+			Service: svc,
+			Bucket:  bucket,
+			Key:     document.GetDocId(),
+		}
+	)
+	return  api.PutObject(putReq);
+}
+/*
+	Write the document to a file
+ */
 func WriteDocumentToFile(document *documentpb.Document, pn string, outDir string) {
 
 	var (
@@ -318,9 +355,6 @@ func WriteDocumentToFile(document *documentpb.Document, pn string, outDir string
 		return
 	}
 	for _, page := range pages {
-
-		//object := page.GetObject()
-		// pn = strings.Replace(pn,"/","_",-1)
 		pfd := strings.Replace(pn, "/", "_", -1) + "_" + fmt.Sprintf("%04d", page.GetPageNumber())
 		if fi, err := os.OpenFile(filepath.Join(outDir, pfd), os.O_WRONLY|os.O_CREATE, 0600); err == nil {
 			defer fi.Close()
@@ -329,24 +363,22 @@ func WriteDocumentToFile(document *documentpb.Document, pn string, outDir string
 				fmt.Printf("Error %v writing file %s to output directory %s", err, pfd, outDir)
 			}
 		} else {
-			gLog.Error.Println("Error opening file %s/%s", outDir, pfd)
+			gLog.Error.Printf("Error opening file %s/%s", outDir, pfd)
 		}
 
 		pfm := pfd + ".md"
 		if fm, err := os.OpenFile(filepath.Join(outDir, pfm), os.O_WRONLY|os.O_CREATE, 0600); err == nil {
 			defer fm.Close()
-			// meta:= page.GetMetadata()
 			if usermd, err := base64.Decode64(page.GetMetadata()); err == nil {
 				if _, err := fm.Write(usermd); err != nil {
 					fmt.Printf("Error %v writing page %s", err, pfm)
 				}
 			} else {
-				gLog.Error.Println(err)
+				gLog.Error.Printf("Error %v decoding user metadata",err)
 			}
 		} else {
-			gLog.Error.Println(err)
+			gLog.Error.Printf("Error opening file %s/%s", outDir, pfm)
 		}
 	}
 
 }
-

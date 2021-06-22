@@ -25,6 +25,7 @@ func GetPageNumber(key string) (int, error, int) {
 
 	metadata := moses.DocumentMetadata{}
 	if resp, err = sproxyd.GetMetadata(&sproxydRequest); err == nil {
+		defer resp.Body.Close()
 		switch resp.StatusCode {
 		case 200:
 			encoded_usermd := resp.Header["X-Scal-Usermd"]

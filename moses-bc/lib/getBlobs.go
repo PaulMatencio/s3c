@@ -158,6 +158,7 @@ func GetParts(pn string, np int, start int, end int, document *documentpb.Docume
 
 	// document := &documentpb.Document{}
 	gLog.Info.Printf("Getpart of pn %s - start-page %d - end-page %d ", pn, start, end)
+
 	for k := start; k <= end; k++ {
 		wg2.Add(1)
 		if k > 0 {

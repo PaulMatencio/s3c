@@ -9,9 +9,30 @@ import (
 	"os"
 )
 
-//  object is  io reader
+/*
+		object is  io reader
+ */
 func ReadObject( object io.Reader)  (*bytes.Buffer, error){
 	buffer:= make([]byte,32768)
+	buf := new(bytes.Buffer)
+	for {
+
+		n, err := object.Read(buffer)
+		if err == nil || err == io.EOF {
+			buf.Write(buffer[:n])
+			if err == io.EOF {
+				buffer = buffer[:0] // clear the buffer fot the GC
+				return buf,nil
+			}
+		} else {
+			buffer = buffer[:0] // clear the buffer for the GC
+			return buf,err
+		}
+	}
+}
+
+func ReadObjectv( object io.Reader, bufsize int)  (*bytes.Buffer, error){
+	buffer:= make([]byte,bufsize)
 	buf := new(bytes.Buffer)
 	for {
 

@@ -1,4 +1,3 @@
-
 // Copyright © 2021 NAME HERE <EMAIL ADDRESS>
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -73,7 +72,7 @@ func initBkFlags(cmd *cobra.Command) {
 }
 
 func init() {
- 	rootCmd.AddCommand(backupCmd)
+	rootCmd.AddCommand(backupCmd)
 	initBkFlags(backupCmd)
 }
 
@@ -221,17 +220,23 @@ func BackupBlobs(marker string, bucket string) (string, error) {
 								if errs, document := clone.GetBlob1(pn, np, maxPage); len(errs) == 0 {
 									document.S3Meta = usermd
 									if bMedia != "S3" {
-										docsize = clone.WriteDirectory(pn, document, outDir)
-										docsize = (int)(document.Size)
+										if err, docsize = clone.WriteDirectory(pn, document, outDir); err != nil {
+											gLog.Error.Printf("Error:%v writing document: %s to  directory %s", err, document.DocId, outDir)
+											mt.Lock()
+											gerrors += 1
+											mt.Unlock()
+										} else {
+											docsize = (int)(document.Size)
+										}
 									} else {
-										if so, err := clone.WriteS3(svcb, bbucket, document); err != nil {
+										if _, err := clone.WriteS3(svcb, bbucket, document); err != nil {
 											gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
 											mt.Lock()
 											gerrors += 1
 											mt.Unlock()
 										} else {
 											docsize = (int)(document.Size)
-											gLog.Trace.Printf("Etag %v", so.ETag)
+											// gLog.Trace.Printf("Etag %v", so.ETag)
 										}
 									}
 									gLog.Trace.Printf("Docid: %s - number of pages: %d - Document metadata: %s", document.DocId, document.NumberOfPages, document.Metadata)
@@ -245,24 +250,36 @@ func BackupBlobs(marker string, bucket string) (string, error) {
 								gLog.Error.Printf("Document %s - Invalid number of pages in %s ", pn, usermd)
 								if np, err, status = clone.GetPageNumber(pn); err == nil {
 									if errs, document := clone.GetBlob1(pn, np, maxPage); len(errs) == 0 {
-										//  Add  s3 moses meta to the document even if it may be  invalid
+										/*
+										Add  s3 moses metadata to the document even if it may be  invalid from the source
+										the purpose of the backup is not to fix  data
+										 */
 										document.S3Meta = usermd
 										if bMedia != "S3" {
-											docsize = clone.WriteDirectory(pn, document, outDir)
-											docsize = (int)(document.Size)
+											if err, docsize = clone.WriteDirectory(pn, document, outDir); err != nil {
+												gLog.Error.Printf("Error:%v writing document: %s to  directory %s", err, document.DocId, outDir)
+												mt.Lock()
+												gerrors += 1
+												mt.Unlock()
+											} else {
+												docsize = (int)(document.Size)
+											}
 										} else {
-											if so, err := clone.WriteS3(svcb, bbucket, document); err != nil {
+											if _, err := clone.WriteS3(svcb, bbucket, document); err != nil {
 												gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
 												mt.Lock()
 												gerrors += 1
 												mt.Unlock()
 											} else {
 												docsize = (int)(document.Size)
-												gLog.Trace.Printf("Docid: %s - Etag %v", document.DocId,so.ETag)
+												// gLog.Trace.Printf("Docid: %s - Etag %v", document.DocId, so.ETag)
 											}
 										}
 
 									} else {
+										/*
+											some errors have been found by getBlob1
+										 */
 										printErr(errs)
 										mt.Lock()
 										gerrors += len(errs)
