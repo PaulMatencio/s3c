@@ -186,7 +186,7 @@ func RestoreBlobs(marker string, bucket string) (string, error) {
 			if l := len(result.Contents); l > 0 {
 				ndocs += int(l)
 				var wg1 sync.WaitGroup
-				wg1.Add(len(result.Contents))
+				//wg1.Add(len(result.Contents))
 				start := time.Now()
 				for _, v := range result.Contents {
 					svc := req.Service
@@ -195,6 +195,7 @@ func RestoreBlobs(marker string, bucket string) (string, error) {
 						Bucket:  req.Bucket,
 						Key:     *v.Key,
 					}
+					wg1.Add(1)
 					go func(request datatype.GetObjRequest) {
 						var (
 							err      error
@@ -202,7 +203,7 @@ func RestoreBlobs(marker string, bucket string) (string, error) {
 							result   *s3.GetObjectOutput
 							document *documentpb.Document
 						)
-						gLog.Info.Printf("Restoring document: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size, v.LastModified)
+						gLog.Info.Printf("Restoring document: %s from bucket %s ", request.Key,request.Bucket)
 						defer wg1.Done()
 						if result, err = api.GetObject(request); err != nil {
 							if aerr, ok := err.(awserr.Error); ok {
@@ -255,13 +256,13 @@ func RestoreBlobs(marker string, bucket string) (string, error) {
 									gerrors += nerr
 									re.Unlock()
 								} else {
-									gLog.Error.Printf("Document id %s is fully restored",document.DocId)
+									gLog.Info.Printf("Document id %s is fully restored",document.DocId)
 								}
 								/*
 								indexing the document
 								 */
 								if _,err = indexDocument(document, mbucket, svcm); err != nil {
-									gLog.Error.Printf("Error %v indexing  document id %s",err,document.DocId)
+									gLog.Error.Printf("Error %v adding document id %s to bucket %s",err,document.DocId,mbucket)
 									re.Lock()
 									gerrors += 1
 									re.Unlock()
