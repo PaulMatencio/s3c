@@ -159,7 +159,7 @@ func RestoreBlobs(marker string, bucket string) (string, error) {
 		N                     int
 		tdocs, tpages, tsizes int64
 		terrors               int
-		re                    sync.Mutex
+		re,si                    sync.Mutex
 	)
 
 	req := datatype.ListObjRequest{
@@ -247,6 +247,10 @@ func RestoreBlobs(marker string, bucket string) (string, error) {
 								} else {
 									nerr = clone.PutBig1(document, maxPage)
 								}
+								si.Lock()
+									npages += (int)(document.NumberOfPages)
+									docsizes += int (document.Size)
+								si.Unlock()
 								/*
 									if loading error, increment the general error counter
 								 */

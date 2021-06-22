@@ -122,7 +122,7 @@ func putPart1(document *documentpb.Document,start int,end int) (int) {
 		}(request, &pg)
 	}
 	wg1.Wait()
-	gLog.Info.Printf("Writedoc document %s  starting slot: %d - endingslot: %d  completed",document.DocId,start,end)
+	gLog.Trace.Printf("Writedoc document %s  starting slot: %d - endingslot: %d  completed",document.DocId,start,end)
 	return perrors
 
 }
