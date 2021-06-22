@@ -256,7 +256,7 @@ func RestoreBlobs(marker string, bucket string) (string, error) {
 									gerrors += nerr
 									re.Unlock()
 								} else {
-									gLog.Info.Printf("Document id %s is fully restored",document.DocId)
+									gLog.Info.Printf("Document id %s is fully restored -Number of pages %d - Size %d",document.DocId,document.NumberOfPages,document.Size)
 								}
 								/*
 								indexing the document
