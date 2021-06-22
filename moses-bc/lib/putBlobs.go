@@ -118,7 +118,9 @@ func putPart1(document *documentpb.Document,start int,end int) (int) {
 			wg1.Done()
 		}(request, &pg)
 	}
+	gLog.Info.Println("Waiting write docs")
 	wg1.Wait()
+	gLog.Info.Printf("Writedoc completed")
 	return perrors
 
 }
