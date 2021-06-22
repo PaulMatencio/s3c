@@ -79,9 +79,7 @@ func PutBig1(document *documentpb.Document,maxPage int) int {
 
 	}
 	if r > 0 {
-
-		perrors = putPart1(document,q*maxPage+1)
-
+		perrors = putPart1(document,q*maxPage+1 , np)
 	}
 	return perrors
 }
@@ -98,7 +96,7 @@ func putPart1(document *documentpb.Document,start int,end int) (int) {
 			},
 		}
 		perrors int
-		np int
+
 		// num   =  end -start +1
 		pages = document.GetPage()
 		//pu      sync.Mutex
