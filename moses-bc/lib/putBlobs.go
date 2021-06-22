@@ -96,7 +96,6 @@ func putPart1(document *documentpb.Document,start int,end int) (int) {
 				Timeout:   sproxyd.ReadTimeout,
 				Transport: sproxyd.Transport,
 			},
-			ReqHeader: map[string]string{},
 		}
 		perrors int
 		// num   =  end -start +1
@@ -142,6 +141,7 @@ func WriteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Documen
 		perrors = 0
 	)
 	request.Path = sproxyd.TargetEnv + "/" + pn
+	request.ReqHeader =  map[string]string{}
 	request.ReqHeader["Content-Type"] = "application/octet-stream"
 	request.ReqHeader["Usermd"] = document.GetMetadata()
 	gLog.Trace.Printf("writing pn %s - Path %s ",pn,request.Path)
