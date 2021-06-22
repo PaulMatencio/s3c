@@ -80,8 +80,9 @@ func PutBig1(document *documentpb.Document,maxPage int) int {
 		wg0.Wait()
 	}
 	if r > 0 {
-		perrors = putPart1(document,q*maxPage+1 , np)
-
+		wg0.Add(1)
+		perrors = putPart1(document,q*maxPage+1 , np,wg0)
+		wg0.Wait()
 	}
 	return perrors
 }
