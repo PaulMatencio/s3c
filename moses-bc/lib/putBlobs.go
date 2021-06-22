@@ -106,7 +106,7 @@ func putPart1(document *documentpb.Document,start int,end int) (int) {
 	/*
 		loading
 	 */
-	gLog.Info.Println("Docid: %s - Start %d - End %d - Number of pages %d  - Length of pages array: %d ",document.DocId,start,end,document.NumberOfPages,len(pages))
+	gLog.Info.Printf("Docid: %s - Start %d - End %d - Number of pages %d  - Length of pages array: %d ",document.DocId,start,end,document.NumberOfPages,len(pages))
 	for k := start; k <= end; k++ {
 		pg := *pages[k-1]
 		wg1.Add(1)
