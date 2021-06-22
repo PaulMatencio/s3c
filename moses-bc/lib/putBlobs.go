@@ -64,31 +64,30 @@ func PutBig1(document *documentpb.Document,maxPage int) int {
 			ReqHeader: map[string]string{},
 		}
 	)
-	wg0 := sync.WaitGroup{}
+
 	perrors += WriteDocMetadata(&request, document)
 	gLog.Warning.Printf("Big document %s  - number of pages %d ",document.GetDocId(),np)
 	// gLog.Trace.Printf("Docid: %s - number of pages: %d - document metadata: %s",document.DocId,document.NumberOfPages,document.Metadata)
 
 	for s := 1; s <= q; s++ {
-		wg0.Add(1)
-		perrors = putPart1(document,start, end,wg0)
+		perrors = putPart1(document,start, end)
 		start = end + 1
 		end += maxPage
 		if end > np {
 			end = np
 		}
-		wg0.Wait()
+
 	}
 	if r > 0 {
-		wg0.Add(1)
-		perrors = putPart1(document,q*maxPage+1 , np,wg0)
-		wg0.Wait()
+
+		perrors = putPart1(document,q*maxPage+1 , np)
+
 	}
 	return perrors
 }
 
 
-func putPart1(document *documentpb.Document,start int,end int,wg sync.WaitGroup) (int) {
+func putPart1(document *documentpb.Document,start int,end int) (int) {
 
 	var (
 		request = sproxyd.HttpRequest{
@@ -126,7 +125,6 @@ func putPart1(document *documentpb.Document,start int,end int,wg sync.WaitGroup)
 	}
 	wg1.Wait()
 	gLog.Info.Printf("Writedoc completed")
-	wg.Done()
 	return perrors
 
 }

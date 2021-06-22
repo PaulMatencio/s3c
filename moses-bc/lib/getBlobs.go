@@ -226,6 +226,7 @@ func GetBlob1(pn string, np int, maxPage int) ([]error,*documentpb.Document) {
 }
 
 func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
+
 	var (
 		q     int = np  / maxPage
 		r     int = np  % maxPage
