@@ -236,8 +236,8 @@ func RestoreBlobs(marker string, bucket string) (string, error) {
 								retrieve the backup document
 							 */
 
-							if body, err := utils.ReadObjectv(result.Body,CHUNKSIZE); err == nil {
-
+							// if body, err := utils.ReadObjectv(result.Body,CHUNKSIZE); err == nil {
+							if body, err := utils.ReadObject(result.Body); err == nil {
 								document, err = clone.GetDocument(body.Bytes())
 								/*
 									Loading the document
@@ -272,7 +272,7 @@ func RestoreBlobs(marker string, bucket string) (string, error) {
 									gerrors += 1
 									re.Unlock()
 								} else {
-									gLog.Info.Printf("Metadata of document id %s is added to bucket %s",document.DocId,mbucket)
+									gLog.Info.Printf("Document id %s is indexed - bucket %s",document.DocId,mbucket)
 								}
 							} else {
 								gLog.Error.Printf("Error %v reading document body", err)

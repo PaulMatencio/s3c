@@ -244,7 +244,7 @@ func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 			},
 		}
 	)
-	
+
 	// gLog.Info.Printf("Backup document if %s  - number of pages %d ",pn,np)
 	start2 := time.Now()
 	if err, usermd = GetMetadata(request, pn); err != nil {

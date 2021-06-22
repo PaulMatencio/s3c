@@ -66,7 +66,7 @@ func PutBig1(document *documentpb.Document,maxPage int) int {
 	)
 
 	perrors += WriteDocMetadata(&request, document)
-	gLog.Warning.Printf("Big document %s  - number of pages %d ",document.GetDocId(),np)
+	// gLog.Warning.Printf("Big document %s  - number of pages %d ",document.GetDocId(),np)
 	// gLog.Trace.Printf("Docid: %s - number of pages: %d - document metadata: %s",document.DocId,document.NumberOfPages,document.Metadata)
 
 	for s := 1; s <= q; s++ {
