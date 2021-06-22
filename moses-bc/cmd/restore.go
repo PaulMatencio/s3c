@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -306,10 +307,13 @@ func RestoreBlobs(marker string, bucket string) (string, error) {
 
 func indexDocument(document *documentpb.Document, bucket string, svc *s3.S3) (*s3.PutObjectOutput,error) {
 	var (
+		data = make([]byte, 0, 0) // empty byte array
 		putReq     = datatype.PutObjRequest{
 			Service: svc,
 			Bucket:  bucket,
 			Key:     document.GetDocId(),
+			Buffer: bytes.NewBuffer(data), // convert []byte into *bytes.Buffer
+			Meta : []byte(document.GetS3Meta()),
 		}
 	)
 	return  api.PutObject(putReq);
