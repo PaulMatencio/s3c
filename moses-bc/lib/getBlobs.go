@@ -375,9 +375,8 @@ func GetPart1(document *documentpb.Document, pn string, np int, start int, end i
 			if r.Err == nil {
 				pg := doc.CreatePage(pn, r.UserMd, r.PageNumber, r.Body)
 				document.Size += int64(pg.Size)
-				gLog.Trace.Printf("Docid: %s - Page Number: %d - Page Id: %s - Page size:%d" ,document.DocId,pg.PageNumber,pg.PageId,r.Size)
 				doc.AddPageToDucument(pg, document)
-
+				gLog.Trace.Printf("Docid: %s - Page Number: %d - Page Id: %s - Page size:%d" ,document.DocId,pg.PageNumber,pg.PageId,r.Size)
 			} else {
 				errs = append(errs, r.Err)
 			}

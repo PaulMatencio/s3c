@@ -106,7 +106,7 @@ func putPart1(document *documentpb.Document,start int,end int) (int) {
 	/*
 		loading
 	 */
-	gLog.Info.Println(start,end,document.NumberOfPages,len(pages))
+	gLog.Info.Println("Docid: %s - Start %d - End %d - Number of pages %d  - Length of pages array: %d ",document.DocId,start,end,document.NumberOfPages,len(pages))
 	for k := start; k <= end; k++ {
 		pg := *pages[k-1]
 		wg1.Add(1)
@@ -123,7 +123,7 @@ func putPart1(document *documentpb.Document,start int,end int) (int) {
 		}(request, &pg)
 	}
 	wg1.Wait()
-	gLog.Info.Printf("Writedoc completed")
+	gLog.Info.Printf("Writedoc document %d  starting: %d - ending: %d  completed",document.DocId,start,end)
 	return perrors
 
 }
@@ -171,7 +171,7 @@ func WriteDocPage(request sproxyd.HttpRequest, pg *documentpb.Page) int {
 	request.ReqHeader =  map[string]string{}
 	request.ReqHeader["Usermd"] = pg.GetMetadata()
 	request.ReqHeader["Content-Type"] = "application/octet-stream" // Content type
-	gLog.Info.Printf("writing %d bytes to path  %s/%s",pg.Size,sproxyd.TargetDriver,request.Path)
+	gLog.Trace.Printf("writing %d bytes to path  %s/%s",pg.Size,sproxyd.TargetDriver,request.Path)
 	if resp, err := sproxyd.PutObj(&request,true, pg.GetObject()); err != nil {
 		gLog.Error.Printf("Error %v - Put Page object %s", err, pn)
 		perrors++
