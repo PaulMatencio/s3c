@@ -205,6 +205,7 @@ func RestoreBlobs(marker string, bucket string) (string, error) {
 						)
 						gLog.Info.Printf("Restoring document: %s from bucket %s ", request.Key,request.Bucket)
 						defer wg1.Done()
+						start2 := time.Now()
 						if result, err = api.GetObject(request); err != nil {
 							if aerr, ok := err.(awserr.Error); ok {
 								switch aerr.Code() {
@@ -260,7 +261,7 @@ func RestoreBlobs(marker string, bucket string) (string, error) {
 									gerrors += nerr
 									re.Unlock()
 								} else {
-									gLog.Info.Printf("Document id %s is fully restored -Number of pages %d - Size %d",document.DocId,document.NumberOfPages,document.Size)
+									gLog.Info.Printf("Document id %s is fully restored - Number of pages %d - Document size %d - Elapsed time %v ",document.DocId,document.NumberOfPages,document.Size,time.Since(start2))
 								}
 								/*
 								indexing the document
