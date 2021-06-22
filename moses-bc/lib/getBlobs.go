@@ -243,9 +243,10 @@ func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 				Transport: sproxyd.Transport,
 			},
 		}
-
 	)
-	gLog.Warning.Printf("Big document %s  - number of pages %d ",pn,np)
+	
+	// gLog.Info.Printf("Backup document if %s  - number of pages %d ",pn,np)
+	start2 := time.Now()
 	if err, usermd = GetMetadata(request, pn); err != nil {
 		errs = append(errs, err)
 		return errs,nil
@@ -265,7 +266,7 @@ func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 	if r > 0 {
 		errs,document = GetPart1(document, pn,np,q*maxPage+1 , np)
 	}
-
+    gLog.Info.Printf("Backup document  %s  - number of pages %d  - Document size %d - Elapsed time %v",document.DocId,document.NumberOfPages,document.Size,time.Since(start2))
 	return errs,document
 }
 
@@ -289,12 +290,14 @@ func getBlob1(pn string, np int) ( []error,*documentpb.Document) {
 	)
 
 	//  get document
+
 	if err, usermd = GetMetadata(request, pn); err != nil {
 		errs = append(errs, err)
 		return errs,nil
 	}
 
 	//  create the document
+	start2:= time.Now()
 	document := doc.CreateDocument(pn, usermd, 0, np, body)
 	gLog.Trace.Printf("Docid: %s - number of pages: %d - document metadata: %s",document.DocId,document.NumberOfPages,document.Metadata)
 	//  add pages to document
@@ -326,12 +329,14 @@ func getBlob1(pn string, np int) ( []error,*documentpb.Document) {
 				errs = append(errs, r.Err)
 			}
 			if r1 == np {
+				gLog.Info.Printf("Backup document  %s  - number of pages %d  - Document size %d - Elapsed time %v",document.DocId,document.NumberOfPages,document.Size,time.Since(start2))
 				return errs,document
 			}
 		case <-time.After(100 * time.Millisecond):
 			fmt.Printf("r")
 		}
 	}
+
 }
 
 func GetPart1(document *documentpb.Document, pn string, np int, start int, end int) ([]error, *documentpb.Document) {
@@ -381,6 +386,7 @@ func GetPart1(document *documentpb.Document, pn string, np int, start int, end i
 				errs = append(errs, r.Err)
 			}
 			if r1 == num {
+				//gLog.Info.Printf("Backup document  %s  - number of pages %d  - Document size %d - Elapsed time %v",document.DocId,document.NumberOfPages,document.Size,time.Since(start2))
 				return errs, document
 			}
 		case <-time.After(200 * time.Millisecond):
