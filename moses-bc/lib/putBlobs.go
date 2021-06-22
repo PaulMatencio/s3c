@@ -80,7 +80,7 @@ func PutBig1(document *documentpb.Document,maxPage int) int {
 	}
 	if r > 0 {
 
-		perrors = putPart1(document,q*maxPage+1 , np)
+		perrors = putPart1(document,q*maxPage+1)
 
 	}
 	return perrors
@@ -98,6 +98,7 @@ func putPart1(document *documentpb.Document,start int,end int) (int) {
 			},
 		}
 		perrors int
+		np int
 		// num   =  end -start +1
 		pages = document.GetPage()
 		//pu      sync.Mutex
@@ -106,7 +107,7 @@ func putPart1(document *documentpb.Document,start int,end int) (int) {
 	/*
 		loading
 	 */
-	gLog.Info.Printf("Docid: %s - Start %d - End %d - Number of pages %d  - Length of pages array: %d ",document.DocId,start,end,document.NumberOfPages,len(pages))
+	gLog.Info.Printf("Docid: %s - Starting slot %d - Ending slot  %d - Number of pages %d  - Length of pages array: %d ",document.DocId,start,end,document.NumberOfPages,len(pages))
 	for k := start; k <= end; k++ {
 		pg := *pages[k-1]
 		wg1.Add(1)
@@ -123,7 +124,7 @@ func putPart1(document *documentpb.Document,start int,end int) (int) {
 		}(request, &pg)
 	}
 	wg1.Wait()
-	gLog.Info.Printf("Writedoc document %d  starting: %d - ending: %d  completed",document.DocId,start,end)
+	gLog.Info.Printf("Writedoc document %s  starting slot: %d - endingslot: %d  completed",document.DocId,start,end)
 	return perrors
 
 }
