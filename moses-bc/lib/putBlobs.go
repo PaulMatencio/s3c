@@ -96,7 +96,7 @@ func putPart1(document *documentpb.Document,start int,end int) (int) {
 		perrors int
 		// num   =  end -start +1
 		pages = document.GetPage()
-		pu      sync.Mutex
+		//pu      sync.Mutex
 		wg1 sync.WaitGroup
 	)
 	/*
@@ -109,9 +109,11 @@ func putPart1(document *documentpb.Document,start int,end int) (int) {
 		request.Path = sproxyd.TargetEnv + "/" + pg.PageId + "/p" + strconv.Itoa(int(pg.PageNumber))
 		go func(request sproxyd.HttpRequest, pg *documentpb.Page) {
 			if perr := WriteDocPage(request,  pg); perr > 0 {
+				/*
 				pu.Lock()
 				perrors += perr
 				pu.Unlock()
+				 */
 			}
 			wg1.Done()
 		}(request, &pg)
@@ -162,7 +164,7 @@ func WriteDocPage(request sproxyd.HttpRequest, pg *documentpb.Page) int {
 	request.Path = sproxyd.TargetEnv + "/" + pn + "/p" + strconv.Itoa((int)(pg.PageNumber))
 	request.ReqHeader["Usermd"] = pg.GetMetadata()
 	request.ReqHeader["Content-Type"] = "application/octet-stream" // Content type
-	gLog.Trace.Printf("writing %d bytes to path  %s/%s",pg.Size,sproxyd.TargetDriver,request.Path)
+	gLog.Info.Printf("writing %d bytes to path  %s/%s",pg.Size,sproxyd.TargetDriver,request.Path)
 	if resp, err := sproxyd.PutObj(&request,true, pg.GetObject()); err != nil {
 		gLog.Error.Printf("Error %v - Put Page object %s", err, pn)
 		perrors++
