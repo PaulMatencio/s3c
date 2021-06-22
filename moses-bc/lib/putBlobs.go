@@ -168,6 +168,7 @@ func WriteDocPage(request sproxyd.HttpRequest, pg *documentpb.Page) int {
 		pn = pg.GetPageId()
 	)
 	request.Path = sproxyd.TargetEnv + "/" + pn + "/p" + strconv.Itoa((int)(pg.PageNumber))
+	request.ReqHeader =  map[string]string{}
 	request.ReqHeader["Usermd"] = pg.GetMetadata()
 	request.ReqHeader["Content-Type"] = "application/octet-stream" // Content type
 	gLog.Info.Printf("writing %d bytes to path  %s/%s",pg.Size,sproxyd.TargetDriver,request.Path)
