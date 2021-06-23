@@ -232,7 +232,7 @@ func BackupBlobs(marker string, bucket string) (string, error) {
 											docsize = (int)(document.Size)
 										}
 									} else {
-										if _, err := writeS3(svcb, bbucket, document); err != nil {
+										if _, err := writeS3(svcb, bbucket, maxPartSize,document); err != nil {
 											gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
 											mt.Lock()
 											gerrors += 1
@@ -268,7 +268,7 @@ func BackupBlobs(marker string, bucket string) (string, error) {
 												docsize = (int)(document.Size)
 											}
 										} else {
-											if _, err := writeS3(svcb, bbucket, document); err != nil {
+											if _, err := writeS3(svcb, bbucket, maxPartSize,document); err != nil {
 												gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
 												mt.Lock()
 												gerrors += 1
@@ -337,9 +337,9 @@ func printErr(errs []error) {
 	}
 }
 
-func writeS3(service *s3.S3, bucket string , document *documentpb.Document) (interface{},error){
+func writeS3(service *s3.S3, bucket string , maxPartSize int64, document *documentpb.Document) (interface{},error){
 
-	if document.Size > maxPartSize {
+	if maxPartSize >0 && document.Size > maxPartSize {
 		gLog.Warning.Printf("Multipart upload %s - size %d - max part size %d",document.DocId,document.Size,maxPartSize)
 		return mosesbc.WriteS3Multipart(service,bucket,maxPartSize,document)
 	} else {
