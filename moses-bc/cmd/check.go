@@ -15,7 +15,7 @@
 package cmd
 
 import (
-	goLog "github.com/paulmatencio/s3c/gLog"
+	gLog "github.com/paulmatencio/s3c/gLog"
 	mosesbc "github.com/paulmatencio/s3c/moses-bc/lib"
 	sproxyd "github.com/paulmatencio/s3c/sproxyd/lib"
 
@@ -58,26 +58,35 @@ func check(cmd *cobra.Command, args []string) {
 	if len(source) > 0 {
 		sproxyd.Url = source
 	} else {
-		goLog.Error.Printf("Source URL is missing")
+		gLog.Error.Printf("Source URL is missing")
 		return
 	}
 	if len(driver) > 0 {
 		sproxyd.Driver = driver
 	} else {
-		goLog.Error.Printf("Source driver is missing")
+		gLog.Error.Printf("Source driver is missing")
 		return
 	}
 
 	if len(targetDriver) > 0 {
 		sproxyd.TargetDriver = targetDriver
 	} else {
-		goLog.Error.Printf("Target URL is missing")
+		gLog.Error.Printf("Target URL is missing")
 		return
 	}
 
 	sproxyd.SetNewProxydHost()
 	sproxyd.SetNewTargetProxydHost()
-	if _, err, status := mosesbc.GetPageNumber(pn); err != nil && status == 200 {
-		mosesbc.CheckBlob1(pn, np, maxPage)
+
+	gLog.Info.Println(sproxyd.TargetUrl,sproxyd.TargetHP.Hosts(),sproxyd.TargetEnv,sproxyd.Url,sproxyd.TargetUrl,sproxyd.HP.Hosts())
+
+	if np, err, status := mosesbc.GetPageNumber(pn); err == nil && status == 200 {
+		if np > 0 {
+			mosesbc.CheckBlob1(pn, np, maxPage)
+		} else {
+			gLog.Error.Printf("The number of pages is %d ",np)
+		}
+	}  else {
+		gLog.Error.Printf("Error %v getting  the number of pages ",err)
 	}
 }
