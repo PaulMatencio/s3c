@@ -340,6 +340,7 @@ func printErr(errs []error) {
 func writeS3(service *s3.S3, bucket string , document *documentpb.Document) (interface{},error){
 
 	if document.Size > maxPartSize {
+		gLog.Warning.Printf("Multipart upload %s - size %d - max part size %d",document.DocId,document.Size,maxPartSize)
 		return mosesbc.WriteS3Multipart(service,bucket,maxPartSize,document)
 	} else {
 		return mosesbc.WriteS3(service,bucket,document)
