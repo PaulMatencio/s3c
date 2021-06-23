@@ -36,7 +36,7 @@ const (
 	DefaultDownloadConcurrency = 5
 	Dummy                      = "/dev/null"
 	WaitTime	= 200
-	//MaxPartSize					= MinPartSize * 4
+	MaxPartSize					= MinPartSize *  20
 )
 
 var (

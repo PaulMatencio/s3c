@@ -69,14 +69,14 @@ func initBkFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&outDir, "outDir", "O", "", "output directory for --backupMedia = File")
 	cmd.Flags().IntVarP(&maxPage, "maxPage", "", 50, "maximum number of concurrent pages")
 	cmd.Flags().IntVarP(&maxLoop, "maxLoop", "", 1, "maximum number of loop, 0 means no upper limit")
-	cmd.Flags().Int64VarP(&maxPartSize, "maxPartSize", "", 0, "Maximum part size(MB)")
+	cmd.Flags().Int64VarP(&maxPartSize, "maxPartSize", "", 50, "Maximum part size(MB)")
 
 }
 
 func init() {
 	rootCmd.AddCommand(backupCmd)
 	initBkFlags(backupCmd)
-	viper.BindPFlag("maxPartSize",rootCmd.PersistentFlags().Lookup("maxParSize"))
+	// viper.BindPFlag("maxPartSize",rootCmd.PersistentFlags().Lookup("maxParSize"))
 }
 
 func backup(cmd *cobra.Command, args []string) {
@@ -108,7 +108,8 @@ func backup(cmd *cobra.Command, args []string) {
 		SecretKey: metaSecretKey,
 	}
 	svcm = s3.New(api.CreateSession2(meta))
-
+	maxPartSize= maxPartSize * 024 * 1024
+	
 	if bMedia == "S3" {
 
 		if len(bbucket) == 0 {
