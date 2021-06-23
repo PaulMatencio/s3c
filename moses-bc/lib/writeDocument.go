@@ -124,8 +124,6 @@ func WriteS3Multipart(service *s3.S3, bucket string, maxPartSize int64,document 
 		}
 		partSize = maxPartSize
 		remaining = document.Size
-		gLog.Info.Println(len(buffer),remaining,partSize)
-
 		ch := make(chan *Resp)
 		start := time.Now()
 		for curr = 0; remaining != 0; curr += partSize {

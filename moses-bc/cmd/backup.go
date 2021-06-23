@@ -69,7 +69,7 @@ func initBkFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&outDir, "outDir", "O", "", "output directory for --backupMedia = File")
 	cmd.Flags().IntVarP(&maxPage, "maxPage", "", 50, "maximum number of concurrent pages")
 	cmd.Flags().IntVarP(&maxLoop, "maxLoop", "", 1, "maximum number of loop, 0 means no upper limit")
-	cmd.Flags().Int64VarP(&maxPartSize, "maxPartSize", "", 50, "Maximum part size(MB)")
+	cmd.Flags().Int64VarP(&maxPartSize, "maxPartSize", "", 40, "Maximum part size(MB)")
 
 }
 
