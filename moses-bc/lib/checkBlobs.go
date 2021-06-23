@@ -54,7 +54,7 @@ func checkBlob1(pn string, np int) int {
 			)
 			if err == nil {
 				body, _ = ioutil.ReadAll(resp.Body)
-				if body != nil {
+				if len(body) > 0 {
 					if _, ok := resp.Header["X-Scal-Usermd"]; ok {
 						usermd = resp.Header["X-Scal-Usermd"][0]
 						if md, err = base64.Decode64(usermd); err != nil {
@@ -63,11 +63,12 @@ func checkBlob1(pn string, np int) int {
 							gLog.Trace.Printf("User metadata %s", string(md))
 						}
 					}
-				} else {
-					compareObj(pn, k, &body, usermd)
+					if err,ok := compareObj(pn, k, &body, usermd);err == nil {
+						gLog.Info.Printf("%v",ok)
+					} else {
+						gLog.Error.Println(err)
+					}
 				}
-				//  check the object with the restored one
-
 			} else {
 				gLog.Error.Printf("error %v getting object %s", err, pn)
 				resp.Body.Close()
