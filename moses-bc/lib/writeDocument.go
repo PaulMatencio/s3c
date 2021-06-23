@@ -119,6 +119,7 @@ func WriteS3Multipart(service *s3.S3, bucket string, maxPartSize int64,document 
 			Service: service,
 			Resp:    resp,
 		}
+		partSize = maxPartSize
 		remaining = int64(len(buffer))
 
 		ch := make(chan *Resp)
