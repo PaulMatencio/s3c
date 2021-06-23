@@ -165,7 +165,7 @@ func compareObj(pn string, pagen int, body *[]byte, usermd string) (error, bool)
 		body1 *[]byte
 		usermd1 string
 	)
-	request.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(pagen)
+	request.Path = sproxyd.TargetEnv + "/" + pn + "/p" + strconv.Itoa(pagen)
 	if err, usermd1, body1 = GetObject(request, pn); err == nil {
 		/*  vheck */
 		if usermd1 == usermd  && len(*body1) == len(*body) {
