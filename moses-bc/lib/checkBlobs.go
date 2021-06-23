@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"time"
 )
 
 /*
@@ -18,10 +19,16 @@ import (
 	Not used for the moment
 */
 func CheckBlob1(pn string, np int, maxPage int) int {
+	
+	start := time.Now()
 	if np <= maxPage {
-		return checkBlob1(pn, np)
+		r:=  checkBlob1(pn, np)
+		gLog.Info.Printf("Elapsed time %v",time.Since(start))
+		return r
 	} else {
-		return checkBig1(pn, np, maxPage)
+		r:= checkBig1(pn, np, maxPage)
+		gLog.Info.Printf("Elapsed time %v",time.Since(start))
+		return r
 	}
 }
 
@@ -126,14 +133,12 @@ func checkPart1(pn string, np int, start int, end int) int {
 				Transport: sproxyd.Transport,
 			},
 		}
-
 		nerrors int = 0
 		wg2     sync.WaitGroup
 	)
 
 	// document := &documentpb.Document{}
 	gLog.Info.Printf("Getpart of pn %s - start-page %d - end-page %d ", pn, start, end)
-
 	for k := start; k <= end; k++ {
 		wg2.Add(1)
 		request.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
