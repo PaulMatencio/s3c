@@ -89,10 +89,10 @@ func checkBlob1(pn string, np int) int {
 
 func checkBig1(pn string, np int, maxPage int) (int) {
 	var (
-		q        int = (np + 1) / maxPage
-		r        int = (np + 1) / maxPage
-		start    int = 0
-		end      int = start + maxPage
+		q        int = np / maxPage
+		r        int = np % maxPage
+		start    int = 1
+		end   int = start + maxPage-1
 		nerrors  int = 0
 		terrors  int = 0
 	)
@@ -108,7 +108,9 @@ func checkBig1(pn string, np int, maxPage int) (int) {
 	}
 	if r > 0 {
 		nerrors = checkPart1(pn, np, q*maxPage+1, np)
-		terrors += nerrors
+		if nerrors > 0 {
+			terrors += nerrors
+		}
 	}
 	return terrors
 	// return WriteDocument(pn, document, outdir)
@@ -134,11 +136,7 @@ func checkPart1(pn string, np int, start int, end int) int {
 
 	for k := start; k <= end; k++ {
 		wg2.Add(1)
-		if k > 0 {
-			request.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
-		} else {
-			request.Path = sproxyd.Env + "/" + pn
-		}
+		request.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
 		go func(request1 sproxyd.HttpRequest, pn string, np int, k int) {
 			gLog.Trace.Printf("Getpart of pn: %s - url:%s", pn, request1.Path)
 			defer wg2.Done()
