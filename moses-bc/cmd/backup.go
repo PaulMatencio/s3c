@@ -17,9 +17,10 @@ package cmd
 import (
 	"encoding/json"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/paulmatencio/protobuf-doc/src/document/documentpb"
 	"github.com/paulmatencio/s3c/api"
 	"github.com/paulmatencio/s3c/datatype"
-	clone "github.com/paulmatencio/s3c/moses-bc/lib"
+	 mosesbc "github.com/paulmatencio/s3c/moses-bc/lib"
 	"github.com/spf13/viper"
 
 	"errors"
@@ -41,7 +42,7 @@ var (
 		Run:   backup,
 	}
 	prefix, outDir, delimiter string
-	maxKey                    int64
+	maxKey ,maxPartSize       int64
 	marker, mbucket, bbucket  string
 	maxLoop, maxPage          int
 	missingoDir               = "Missing backup output directory"
@@ -68,12 +69,14 @@ func initBkFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&outDir, "outDir", "O", "", "output directory for --backupMedia = File")
 	cmd.Flags().IntVarP(&maxPage, "maxPage", "", 50, "maximum number of concurrent pages")
 	cmd.Flags().IntVarP(&maxLoop, "maxLoop", "", 1, "maximum number of loop, 0 means no upper limit")
+	cmd.Flags().Int64VarP(&maxPartSize, "maxPartSize", "m", 0, "Maximum part size(MB)")
 
 }
 
 func init() {
 	rootCmd.AddCommand(backupCmd)
 	initBkFlags(backupCmd)
+	viper.BindPFlag("maxPartSize",rootCmd.PersistentFlags().Lookup("maxParSize"))
 }
 
 func backup(cmd *cobra.Command, args []string) {
@@ -217,10 +220,10 @@ func BackupBlobs(marker string, bucket string) (string, error) {
 							json.Unmarshal([]byte(usermd), &userm)
 							pn := rh.Key
 							if np, err = strconv.Atoi(userm.TotalPages); err == nil {
-								if errs, document := clone.GetBlob1(pn, np, maxPage); len(errs) == 0 {
+								if errs, document := mosesbc.GetBlob1(pn, np, maxPage); len(errs) == 0 {
 									document.S3Meta = usermd
 									if bMedia != "S3" {
-										if err, docsize = clone.WriteDirectory(pn, document, outDir); err != nil {
+										if err, docsize = mosesbc.WriteDirectory(pn, document, outDir); err != nil {
 											gLog.Error.Printf("Error:%v writing document: %s to  directory %s", err, document.DocId, outDir)
 											mt.Lock()
 											gerrors += 1
@@ -229,7 +232,7 @@ func BackupBlobs(marker string, bucket string) (string, error) {
 											docsize = (int)(document.Size)
 										}
 									} else {
-										if _, err := clone.WriteS3(svcb, bbucket, document); err != nil {
+										if _, err := writeS3(svcb, bbucket, document); err != nil {
 											gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
 											mt.Lock()
 											gerrors += 1
@@ -248,15 +251,15 @@ func BackupBlobs(marker string, bucket string) (string, error) {
 								}
 							} else {
 								gLog.Error.Printf("Document %s - Invalid number of pages in %s ", pn, usermd)
-								if np, err, status = clone.GetPageNumber(pn); err == nil {
-									if errs, document := clone.GetBlob1(pn, np, maxPage); len(errs) == 0 {
+								if np, err, status = mosesbc.GetPageNumber(pn); err == nil {
+									if errs, document := mosesbc.GetBlob1(pn, np, maxPage); len(errs) == 0 {
 										/*
 										Add  s3 moses metadata to the document even if it may be  invalid from the source
 										the purpose of the backup is not to fix  data
 										 */
 										document.S3Meta = usermd
 										if bMedia != "S3" {
-											if err, docsize = clone.WriteDirectory(pn, document, outDir); err != nil {
+											if err, docsize = mosesbc.WriteDirectory(pn, document, outDir); err != nil {
 												gLog.Error.Printf("Error:%v writing document: %s to  directory %s", err, document.DocId, outDir)
 												mt.Lock()
 												gerrors += 1
@@ -265,7 +268,7 @@ func BackupBlobs(marker string, bucket string) (string, error) {
 												docsize = (int)(document.Size)
 											}
 										} else {
-											if _, err := clone.WriteS3(svcb, bbucket, document); err != nil {
+											if _, err := writeS3(svcb, bbucket, document); err != nil {
 												gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
 												mt.Lock()
 												gerrors += 1
@@ -332,4 +335,14 @@ func printErr(errs []error) {
 	for _, e := range errs {
 		gLog.Error.Println(e)
 	}
+}
+
+func writeS3(service *s3.S3, bucket string , document *documentpb.Document) (interface{},error){
+
+	if document.Size > maxPartSize {
+		return mosesbc.WriteS3Multipart(service,bucket,maxPartSize,document)
+	} else {
+		return mosesbc.WriteS3(service,bucket,document)
+	}
+
 }

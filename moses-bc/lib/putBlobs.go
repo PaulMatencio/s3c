@@ -61,7 +61,7 @@ func PutBig1(document *documentpb.Document,maxPage int) int {
 				Timeout:   sproxyd.ReadTimeout,
 				Transport: sproxyd.Transport,
 			},
-			ReqHeader: map[string]string{},
+			// ReqHeader: map[string]string{},
 		}
 	)
 

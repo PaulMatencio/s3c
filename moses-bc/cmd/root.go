@@ -31,7 +31,14 @@ import (
 const (
 
 	RETRY = 5
+	MinPartSize                = 5 * 1024 * 1024     // 5 MB
+	MaxFileSize                = MinPartSize * 409.6 // 2 GB
+	DefaultDownloadConcurrency = 5
+	Dummy                      = "/dev/null"
+	WaitTime	= 200
+	//MaxPartSize					= MinPartSize * 4
 )
+
 var (
 	config string
 	bucket,levelDBUrl	 string
@@ -88,8 +95,6 @@ func init() {
 	viper.BindPFlag("profiling",rootCmd.PersistentFlags().Lookup("profiling"))
 	viper.BindPFlag("backupMedia",rootCmd.PersistentFlags().Lookup("backupMedia"))
 	cobra.OnInitialize(initConfig)
-
-
 }
 
 // initConfig reads in config file and ENV variables if set.
