@@ -17,7 +17,7 @@ import (
 	Get Blob for cloning
 	Not used for the moment
 */
-func CheckBlob1(pn string, np int, maxPage int) (int) {
+func CheckBlob1(pn string, np int, maxPage int) int {
 	if np <= maxPage {
 		return checkBlob1(pn, np)
 	} else {
@@ -63,8 +63,8 @@ func checkBlob1(pn string, np int) int {
 							gLog.Trace.Printf("User metadata %s", string(md))
 						}
 					}
-					if err,ok := compareObj(pn, k, &body, usermd); err == nil {
-						gLog.Info.Printf("Comparing source and restored Docid:%s / Page:%d - Equal ? %v",pn,k,ok)
+					if err, ok := compareObj(pn, k, &body, usermd); err == nil {
+						gLog.Info.Printf("Comparing source and restored Docid:%s / Page:%d - Equal ? %v", pn, k, ok)
 					} else {
 						gLog.Error.Println(err)
 					}
@@ -87,14 +87,14 @@ func checkBlob1(pn string, np int) int {
 
 //  document with bigger  pages number than maxPage
 
-func checkBig1(pn string, np int, maxPage int) (int) {
+func checkBig1(pn string, np int, maxPage int) int {
 	var (
-		q        int = np / maxPage
-		r        int = np % maxPage
-		start    int = 1
-		end   int = start + maxPage-1
-		nerrors  int = 0
-		terrors  int = 0
+		q       int = np / maxPage
+		r       int = np % maxPage
+		start   int = 1
+		end     int = start + maxPage - 1
+		nerrors int = 0
+		terrors int = 0
 	)
 	gLog.Warning.Printf("Big document %s  - number of pages %d ", pn, np)
 	for s := 1; s <= q; s++ {
@@ -140,8 +140,12 @@ func checkPart1(pn string, np int, start int, end int) int {
 		go func(request1 sproxyd.HttpRequest, pn string, np int, k int) {
 			gLog.Trace.Printf("Getpart of pn: %s - url:%s", pn, request1.Path)
 			defer wg2.Done()
-			if err, usermd, body := GetObject(request1, pn); err != nil {
-				compareObj(pn, k, body, usermd)
+			if err, usermd, body := GetObject(request1, pn); err == nil {
+				if err, ok := compareObj(pn, k, body, usermd); err == nil {
+					gLog.Info.Printf("Comparing source and restored Docid:%s / Page:%d - Equal ? %v", pn, k, ok)
+				} else {
+					gLog.Error.Println(err)
+				}
 			}
 		}(request, pn, np, k)
 	}
@@ -159,21 +163,21 @@ func compareObj(pn string, pagen int, body *[]byte, usermd string) (error, bool)
 				Transport: sproxyd.Transport,
 			},
 		}
-		err error
-		body1 *[]byte
+		err     error
+		body1   *[]byte
 		usermd1 string
 	)
 	request.Path = sproxyd.TargetEnv + "/" + pn + "/p" + strconv.Itoa(pagen)
 	if err, usermd1, body1 = GetObject(request, pn); err == nil {
 		/*  vheck */
-		if usermd1 == usermd  && len(*body1) == len(*body) {
+		if usermd1 == usermd && len(*body1) == len(*body) {
 			return err, true
 		} else {
-			err= errors.New(fmt.Sprintf("usermd1=%s usermd=%% / length body1= %d length body = %d ",len(usermd1),len(usermd),len(*body1),len(*body)))
+			err = errors.New(fmt.Sprintf("usermd1=%s usermd=%% / length body1= %d length body = %d ", len(usermd1), len(usermd), len(*body1), len(*body)))
 			return err, false
 		}
 	} else {
-		gLog.Error.Printf("Error %v Getting  %s",err,request.Path)
+		gLog.Error.Printf("Error %v Getting  %s", err, request.Path)
 	}
 	return err, false
 }
