@@ -112,7 +112,7 @@ func WriteS3Multipart(service *s3.S3, bucket string, maxPartSize int64,document 
 	}
 
 	if resp, err = api.CreateMultipartUpload(create); err == nil {
-		gLog.Trace.Println("Hourra!")
+
 		partNumber = 1 //  start with 1
 		// maxCon = 0  /* maximum //  upload */
 		upload := datatype.UploadPartRequest{
@@ -121,7 +121,7 @@ func WriteS3Multipart(service *s3.S3, bucket string, maxPartSize int64,document 
 		}
 		partSize = maxPartSize
 		remaining = int64(len(buffer))
-
+		gLog.Trace.Println(partSize,remaining)
 		ch := make(chan *Resp)
 		start := time.Now()
 		for curr = 0; remaining != 0; curr += partSize {
