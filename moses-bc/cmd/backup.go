@@ -108,8 +108,8 @@ func backup(cmd *cobra.Command, args []string) {
 		SecretKey: metaSecretKey,
 	}
 	svcm = s3.New(api.CreateSession2(meta))
-	maxPartSize= maxPartSize * 024 * 1024
-	
+	maxPartSize= maxPartSize * 1024 * 1024
+
 	if bMedia == "S3" {
 
 		if len(bbucket) == 0 {
