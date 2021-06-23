@@ -31,7 +31,7 @@ func GetPageNumber(key string) (int, error, int) {
 		case 200:
 			encoded_usermd := resp.Header["X-Scal-Usermd"]
 			if usermd, err := base64.Decode64(encoded_usermd[0]); err == nil {
-				gLog.Info.Println(string(usermd)) 
+				gLog.Info.Println(string(usermd))
 				if err = metadata.UsermdToStruct(string(usermd)); err == nil {
 
 					if pgn, err = metadata.GetPageNumber(); err == nil {
@@ -40,6 +40,8 @@ func GetPageNumber(key string) (int, error, int) {
 					} else {
 						gLog.Error.Printf("Error getting page number %d",pgn)
 					}
+				}else {
+					gLog.Error.Println(err)
 				}
 			}
 		default:
