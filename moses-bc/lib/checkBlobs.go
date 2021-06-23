@@ -64,7 +64,7 @@ func checkBlob1(pn string, np int) int {
 						}
 					}
 					if err,ok := compareObj(pn, k, &body, usermd);err == nil {
-						gLog.Info.Printf("%v",ok)
+						gLog.Info.Printf("Check Docid %d - Page %d - %v",pn,k,ok)
 					} else {
 						gLog.Error.Println(err)
 					}
