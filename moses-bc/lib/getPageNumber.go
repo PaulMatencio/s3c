@@ -18,7 +18,7 @@ func GetPageNumber(key string) (int, error, int) {
 				Timeout:   sproxyd.ReadTimeout,
 				Transport: sproxyd.Transport,
 			},
-			Path: sproxyd.Env + "/" + key + "/p0",
+			Path: sproxyd.Env + "/" + key ,
 		}
 		resp *http.Response
 	)

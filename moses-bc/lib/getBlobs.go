@@ -29,15 +29,15 @@ type GetBlobResponse struct {
 		Get Blob for cloning
 		Not used for the moment
 */
-func GetBlobs(pn string, np int, maxPage int) (*documentpb.Document, int) {
+func CloneBlobs(pn string, np int, maxPage int) (*documentpb.Document, int) {
 	if np <= maxPage {
-		return getBlobs(pn, np)
+		return cloneBlobs(pn, np)
 	} else {
-		return getBig(pn, np, maxPage)
+		return cloneBig(pn, np, maxPage)
 	}
 }
 //  document with  smaller pages number than --maxPage
-func getBlobs(pn string, np int) (*documentpb.Document, int) {
+func cloneBlobs(pn string, np int) (*documentpb.Document, int) {
 	var (
 		sproxydRequest = sproxyd.HttpRequest{
 			Hspool: sproxyd.HP,
@@ -81,16 +81,8 @@ func getBlobs(pn string, np int) (*documentpb.Document, int) {
 						}
 					}
 				}
-				//  Create  the document
-				if k == 0 {
-					doc.CreateDocument1(document, pn, usermd, k, np, &body)
-					gLog.Trace.Printf("DocId:%s - Number of Pages:%d - Page number:%d", document.DocId, document.NumberOfPages, document.PageNumber)
-				} else {
-					// Create a page and add it to the document
-					pg := doc.CreatePage(pn, usermd, k, &body)
-					doc.AddPageToDucument(pg, document)
-					gLog.Trace.Printf("DocId:%s - Number of Pages:%d - Page number:%d", document.DocId, document.NumberOfPages, document.PageNumber)
-				}
+				//  todo clone the object
+
 			} else {
 				gLog.Error.Printf("error %v getting object %s", err, pn)
 				resp.Body.Close()
@@ -109,9 +101,7 @@ func getBlobs(pn string, np int) (*documentpb.Document, int) {
 
 //  document with bigger  pages number than maxPage
 
-//  document with bigger  pages number than maxPage
-
-func getBig(pn string, np int, maxPage int) (*documentpb.Document,int){
+func cloneBig(pn string, np int, maxPage int) (*documentpb.Document,int){
 	var (
 		document = &documentpb.Document {}
 		q     int = (np + 1) / maxPage
@@ -123,7 +113,7 @@ func getBig(pn string, np int, maxPage int) (*documentpb.Document,int){
 	)
 	gLog.Warning.Printf("Big document %s  - number of pages %d ",pn,np)
 	for s := 1; s <= q; s++ {
-		nerrors = GetParts(pn, np,start, end, document)
+		nerrors = cloneParts(pn, np,start, end, document)
 		start = end + 1
 		end += maxPage
 		if end > np {
@@ -132,7 +122,7 @@ func getBig(pn string, np int, maxPage int) (*documentpb.Document,int){
 		terrors += nerrors
 	}
 	if r > 0 {
-		nerrors = GetParts(pn, np,q*maxPage+1, np, document)
+		nerrors = cloneParts(pn, np,q*maxPage+1, np, document)
 		terrors += nerrors
 	}
 	return document,terrors
@@ -140,7 +130,7 @@ func getBig(pn string, np int, maxPage int) (*documentpb.Document,int){
 }
 
 
-func GetParts(pn string, np int, start int, end int, document *documentpb.Document) int {
+func cloneParts(pn string, np int, start int, end int, document *documentpb.Document) int {
 
 	var (
 		sproxydRequest = sproxyd.HttpRequest{
@@ -187,14 +177,7 @@ func GetParts(pn string, np int, start int, end int, document *documentpb.Docume
 						}
 					}
 				}
-				if k == 0 {
-					doc.CreateDocument1(document, pn, usermd, k, np, &body)
-					gLog.Trace.Printf("DocId:%s - Number of Pages:%d - Page number:%d", document.DocId, document.NumberOfPages, document.PageNumber)
-				} else {
-					pg := doc.CreatePage(pn, usermd, k, &body)
-					doc.AddPageToDucument(pg, document)
-					gLog.Trace.Printf("DocId:%s - Number of Pages:%d - Page number:%d", document.DocId, document.NumberOfPages, document.PageNumber)
-				}
+				//  Todo Clone the object
 			} else {
 				gLog.Error.Printf("error %v getting object %s", err, pn)
 				resp.Body.Close()
@@ -225,7 +208,6 @@ func GetBlob1(pn string, np int, maxPage int) ([]error,*documentpb.Document) {
 }
 
 func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
-
 	var (
 		q     int = np  / maxPage
 		r     int = np  % maxPage
@@ -243,7 +225,6 @@ func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 			},
 		}
 	)
-
 	// gLog.Info.Printf("Backup document if %s  - number of pages %d ",pn,np)
 	start2 := time.Now()
 	if err, usermd = GetMetadata(request, pn); err != nil {
@@ -254,21 +235,19 @@ func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 	document := doc.CreateDocument(pn, usermd, 0, np, body)
 	// gLog.Trace.Printf("Docid: %s - number of pages: %d - document metadata: %s",document.DocId,document.NumberOfPages,document.Metadata)
 	for s := 1; s <= q; s++ {
-		errs,document = GetPart1(document, pn, np,start, end)
+		errs,document = getPart1(document, pn, np,start, end)
 		start = end + 1
 		end += maxPage
 		if end > np {
 			end = np
 		}
 	}
-
 	if r > 0 {
-		errs,document = GetPart1(document, pn,np,q*maxPage+1 , np)
+		errs,document = getPart1(document, pn,np,q*maxPage+1 , np)
 	}
     gLog.Info.Printf("Backup document  %s  - number of pages %d  - Document size %d - Elapsed time %v",document.DocId,document.NumberOfPages,document.Size,time.Since(start2))
 	return errs,document
 }
-
 
 //  document with  smaller pages number than maxPage
 func getBlob1(pn string, np int) ( []error,*documentpb.Document) {
@@ -338,7 +317,7 @@ func getBlob1(pn string, np int) ( []error,*documentpb.Document) {
 
 }
 
-func GetPart1(document *documentpb.Document, pn string, np int, start int, end int) ([]error, *documentpb.Document) {
+func getPart1(document *documentpb.Document, pn string, np int, start int, end int) ([]error, *documentpb.Document) {
 
 	var (
 		request = sproxyd.HttpRequest{

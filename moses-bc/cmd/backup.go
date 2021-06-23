@@ -149,7 +149,7 @@ func backup(cmd *cobra.Command, args []string) {
 	}
 	utils.MakeDir(outDir)
 	// start backing up
-	if nextmarker, err = BackupBlobs(marker, mbucket); err != nil {
+	if nextmarker, err = backupBlobs(marker, mbucket); err != nil {
 		gLog.Error.Printf("error %v - Next marker %s", err, nextmarker)
 	} else {
 		gLog.Info.Printf("Next Marker %s", nextmarker)
@@ -160,7 +160,7 @@ func backup(cmd *cobra.Command, args []string) {
 
 /* S3 API list user metadata  function */
 
-func BackupBlobs(marker string, bucket string) (string, error) {
+func backupBlobs(marker string, bucket string) (string, error) {
 
 	var (
 		nextmarker            string
