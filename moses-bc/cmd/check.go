@@ -45,7 +45,6 @@ func initCkFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&targetDriver, "target-driver", "", "bparc", "target driver [bpchord|bparc]")
 	cmd.Flags().StringVarP(&target, "target-url", "t", "http://10.12.210.170:81", "target URL http://xx.xx.xx.xx:81")
 	cmd.Flags().Int64VarP(&maxPartSize, "maxPartSize", "M", 20, "Maximum part size (MB)")
-
 }
 
 func init() {
@@ -78,7 +77,7 @@ func check(cmd *cobra.Command, args []string) {
 	sproxyd.SetNewProxydHost()
 	sproxyd.SetNewTargetProxydHost()
 
-	gLog.Info.Println(sproxyd.TargetUrl,sproxyd.TargetHP.Hosts(),sproxyd.TargetEnv,sproxyd.Url,sproxyd.TargetUrl,sproxyd.HP.Hosts())
+	//gLog.Info.Println(sproxyd.TargetUrl,sproxyd.TargetHP.Hosts(),sproxyd.TargetEnv,sproxyd.Url,sproxyd.TargetUrl,sproxyd.HP.Hosts())
 
 	if np, err, status := mosesbc.GetPageNumber(pn); err == nil && status == 200 {
 		if np > 0 {
