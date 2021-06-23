@@ -86,9 +86,9 @@ func WriteS3Multipart(service *s3.S3, bucket string, maxPartSize int64,document 
 		curr, remaining, partSize int64
 		partNumber                             int
 		completedParts                         []*s3.CompletedPart
-		buffer                                 = document.GetObject()
+		// buffer                                 = document.GetObject()
 		key                                    = document.GetDocId()
-		fType                                  = http.DetectContentType(buffer)
+		buffer				[]byte
 		err										error
 		resp									*s3.CreateMultipartUploadOutput
 		errs								[]error
@@ -102,8 +102,11 @@ func WriteS3Multipart(service *s3.S3, bucket string, maxPartSize int64,document 
 	 	waitTime = mosesbc.WaitTime
 	}
 	*/
+	if buffer, err = proto.Marshal(document); err != nil {
+		return errs, err
+	}
 
-
+	fType  := http.DetectContentType(buffer)
 	create := datatype.CreateMultipartUploadRequest{
 		Service:     service,
 		Bucket:      bucket,
@@ -121,7 +124,6 @@ func WriteS3Multipart(service *s3.S3, bucket string, maxPartSize int64,document 
 		}
 		partSize = maxPartSize
 		remaining = document.Size
-		buffer := document.Object
 		gLog.Info.Println(len(buffer),remaining,partSize)
 
 		ch := make(chan *Resp)
