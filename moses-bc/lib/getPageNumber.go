@@ -3,6 +3,7 @@ package lib
 import (
 	"errors"
 	base64 "github.com/paulmatencio/ring/user/base64j"
+	"github.com/paulmatencio/s3c/gLog"
 	moses "github.com/paulmatencio/s3c/moses/lib"
 	sproxyd "github.com/paulmatencio/s3c/sproxyd/lib"
 	"net/http"
@@ -31,8 +32,12 @@ func GetPageNumber(key string) (int, error, int) {
 			encoded_usermd := resp.Header["X-Scal-Usermd"]
 			if usermd, err := base64.Decode64(encoded_usermd[0]); err == nil {
 				if err = metadata.UsermdToStruct(string(usermd)); err == nil {
+
 					if pgn, err = metadata.GetPageNumber(); err == nil {
+						gLog.Trace.Printf("Key %s  - Number of pages %d",key,pgn)
 						return pgn, err, resp.StatusCode
+					} else {
+						gLog.Error.Printf("Error getting page number %d",pgn)
 					}
 				}
 			}
@@ -40,5 +45,5 @@ func GetPageNumber(key string) (int, error, int) {
 			err = errors.New("Check the status Code for the reason")
 		}
 	}
-	return 0, err, resp.StatusCode
+	return pgn, err, resp.StatusCode
 }
