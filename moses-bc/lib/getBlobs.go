@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+
 )
 
 type GetBlobResponse struct {
@@ -147,7 +148,6 @@ func cloneParts(pn string, np int, start int, end int, document *documentpb.Docu
 
 	// document := &documentpb.Document{}
 	gLog.Info.Printf("Getpart of pn %s - start-page %d - end-page %d ", pn, start, end)
-
 	for k := start; k <= end; k++ {
 		wg2.Add(1)
 		if k > 0 {
@@ -231,11 +231,14 @@ func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 		errs = append(errs, err)
 		return errs,nil
 	}
+	gLog.Info.Printf("Get metadata of %s - Elapsed time %v ",pn,time.Since(start2))
 	//  create the document
 	document := doc.CreateDocument(pn, usermd, 0, np, body)
-	// gLog.Trace.Printf("Docid: %s - number of pages: %d - document metadata: %s",document.DocId,document.NumberOfPages,document.Metadata)
+	gLog.Trace.Printf("Docid: %s - number of pages: %d - document metadata: %s",document.DocId,document.NumberOfPages,document.Metadata)
 	for s := 1; s <= q; s++ {
+		start3 := time.Now()
 		errs,document = getPart1(document, pn, np,start, end)
+		gLog.Info.Printf("Add pages range  %d:%d to %s - Elapsed time %v ",pn,start,end,time.Since(start3))
 		start = end + 1
 		end += maxPage
 		if end > np {
@@ -243,7 +246,10 @@ func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 		}
 	}
 	if r > 0 {
-		errs,document = getPart1(document, pn,np,q*maxPage+1 , np)
+		start4 := time.Now()
+		startp:= q*maxPage+1
+		errs,document = getPart1(document, pn,np,startp, np)
+		gLog.Info.Printf("Adding pages range  %d:%d to %s - Elapsed time %v ",pn,startp,np,time.Since(start4))
 	}
     gLog.Info.Printf("Backup document  %s  - number of pages %d  - Document size %d - Elapsed time %v",document.DocId,document.NumberOfPages,document.Size,time.Since(start2))
 	return errs,document
@@ -279,6 +285,7 @@ func getBlob1(pn string, np int) ( []error,*documentpb.Document) {
 	document := doc.CreateDocument(pn, usermd, 0, np, body)
 	gLog.Trace.Printf("Docid: %s - number of pages: %d - document metadata: %s",document.DocId,document.NumberOfPages,document.Metadata)
 	//  add pages to document
+	start3 := time.Now()
 	for k := 1; k <= np; k++ {
 		request.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
 		go func(request sproxyd.HttpRequest, k int) {
@@ -307,7 +314,8 @@ func getBlob1(pn string, np int) ( []error,*documentpb.Document) {
 				errs = append(errs, r.Err)
 			}
 			if r1 == np {
-				gLog.Info.Printf("Backup document  %s  - number of pages %d  - Document size %d - Elapsed time %v",document.DocId,document.NumberOfPages,document.Size,time.Since(start2))
+				gLog.Info.Printf("Add pages range  %d:%d to %s - Elapsed time %v ",pn,1,np,time.Since(start3))
+				gLog.Info.Printf("Backup document  %s  - number of pages %d  - Document size %d - Total elapsed time %v",document.DocId,document.NumberOfPages,document.Size,time.Since(start2))
 				return errs,document
 			}
 		case <-time.After(100 * time.Millisecond):
