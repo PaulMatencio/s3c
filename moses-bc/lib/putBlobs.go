@@ -19,7 +19,7 @@ func PutBlob1(document *documentpb.Document,replace bool) int {
 				Timeout:   sproxyd.ReadTimeout,
 				Transport: sproxyd.Transport,
 			},
-			ReqHeader: map[string]string{},
+			//  ReqHeader: map[string]string{},
 		}
 		perrors int
 		pu      sync.Mutex
