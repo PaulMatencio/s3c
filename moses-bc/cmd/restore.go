@@ -181,6 +181,7 @@ func restoreBlobs(marker string, bucket string, replace bool) (string, error) {
 			npages   int = 0
 			docsizes int = 0
 			gerrors  int = 0
+
 		)
 		N++ // number of loop
 		if result, err = api.ListObject(req); err == nil {
@@ -258,24 +259,26 @@ func restoreBlobs(marker string, bucket string, replace bool) (string, error) {
 								 */
 
 								if nerr > 0 {
-									gLog.Info.Printf("Document id %s is restored with %d errors - Number of pages %d - Document size %d - Elapsed time %v ",document.DocId,nerr,document.NumberOfPages,document.Size,time.Since(start2))
+									gLog.Info.Printf("Document id %s is not fully restored  because of %d errors - Number of pages %d - Document size %d - Elapsed time %v ",document.DocId,nerr,document.NumberOfPages,document.Size,time.Since(start2))
 									re.Lock()
 									gerrors += nerr
 									re.Unlock()
 								} else {
 									gLog.Info.Printf("Document id %s is fully restored - Number of pages %d - Document size %d - Elapsed time %v ",document.DocId,document.NumberOfPages,document.Size,time.Since(start2))
+									/* start  indexing */
+									if _,err = indexDocument(document, mbucket, svcm); err != nil {
+										gLog.Error.Printf("Error %v adding document id %s to bucket %s",err,document.DocId,mbucket)
+										re.Lock()
+										gerrors += 1
+										re.Unlock()
+									} else {
+										gLog.Info.Printf("Document id %s is indexed - bucket %s",document.DocId,mbucket)
+									}
 								}
 								/*
 								indexing the document
 								 */
-								if _,err = indexDocument(document, mbucket, svcm); err != nil {
-									gLog.Error.Printf("Error %v adding document id %s to bucket %s",err,document.DocId,mbucket)
-									re.Lock()
-									gerrors += 1
-									re.Unlock()
-								} else {
-									gLog.Info.Printf("Document id %s is indexed - bucket %s",document.DocId,mbucket)
-								}
+
 							} else {
 								gLog.Error.Printf("Error %v reading document body", err)
 								re.Lock()
