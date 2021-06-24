@@ -314,7 +314,7 @@ func getBlob1(pn string, np int) ( []error,*documentpb.Document) {
 				errs = append(errs, r.Err)
 			}
 			if r1 == np {
-				gLog.Info.Printf("Prepare backup pages  %d:%d for %s - Elapsed time %v ",pn,1,np,time.Since(start3))
+				gLog.Info.Printf("Prepare backup pages %d:%d for %s - Elapsed time %v ",1,np,pn,time.Since(start3))
 				gLog.Info.Printf("Backup document %s - number of pages %d - Document size %d - Total elapsed time %v",document.DocId,document.NumberOfPages,document.Size,time.Since(start2))
 				return errs,document
 			}
