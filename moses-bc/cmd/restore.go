@@ -53,6 +53,7 @@ var (
 		Long:  ``,
 		Run:   restore,
 	}
+	replace bool
 )
 
 func initResFlags(cmd *cobra.Command) {
@@ -67,6 +68,8 @@ func initResFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&pn, "pn", "k", "", "publication number to be restored")
 	cmd.Flags().IntVarP(&maxPage, "maxPage", "", 50, "maximum number of concurrent pages ")
 	cmd.Flags().IntVarP(&maxLoop, "maxLoop", "", 1, "maximum number of loop, 0 means no upper limit")
+	cmd.Flags().BoolVarP(&replace, "replace", "r", false, "replace existing pages")
+	cmd.Flags().Int64VarP(&maxPartSize, "maxPartSize", "", 40, "Maximum partsize (MB) for multipart download")
 }
 
 func init() {
@@ -143,7 +146,7 @@ func restore(cmd *cobra.Command, args []string) {
 	//  create the output directory if it does not exist
 	utils.MakeDir(outDir)
 
-	if nextMarker, err = RestoreBlobs(marker, bbucket); err != nil {
+	if nextMarker, err = restoreBlobs(marker, bbucket,replace); err != nil {
 		gLog.Error.Printf("error %v - Next marker %s", err, nextMarker)
 	} else {
 		gLog.Info.Printf("Next Marker %s", nextMarker)
@@ -151,7 +154,7 @@ func restore(cmd *cobra.Command, args []string) {
 	gLog.Info.Printf("Total Elapsed time: %v", time.Since(start))
 }
 
-func RestoreBlobs(marker string, bucket string) (string, error) {
+func restoreBlobs(marker string, bucket string, replace bool) (string, error) {
 
 	var (
 		nextmarker            string
@@ -195,7 +198,7 @@ func RestoreBlobs(marker string, bucket string) (string, error) {
 						Key:     *v.Key,
 					}
 					wg1.Add(1)
-					go func(request datatype.GetObjRequest) {
+					go func(request datatype.GetObjRequest,replace bool) {
 						var (
 							err      error
 							usermd   string
@@ -241,17 +244,19 @@ func RestoreBlobs(marker string, bucket string) (string, error) {
 								 */
 								nerr := 0
 								if document.NumberOfPages <= int32(maxPage) {
-									nerr = mosesbc.PutBlob1(document)
+									nerr = mosesbc.PutBlob1(document,replace)
 								} else {
-									nerr = mosesbc.PutBig1(document, maxPage)
+									nerr = mosesbc.PutBig1(document, maxPage,replace)
 								}
 								si.Lock()
 									npages += (int)(document.NumberOfPages)
 									docsizes += int (document.Size)
 								si.Unlock()
+
 								/*
 									if loading error, increment the general error counter
 								 */
+
 								if nerr > 0 {
 									gLog.Info.Printf("Document id %s is restored with %d errors - Number of pages %d - Document size %d - Elapsed time %v ",document.DocId,nerr,document.NumberOfPages,document.Size,time.Since(start2))
 									re.Lock()
@@ -278,7 +283,7 @@ func RestoreBlobs(marker string, bucket string) (string, error) {
 								re.Unlock()
 							}
 						}
-					}(request)
+					}(request,replace)
 				}
 				wg1.Wait()
 				if *result.IsTruncated {

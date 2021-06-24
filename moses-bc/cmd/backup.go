@@ -63,13 +63,13 @@ func initBkFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&mbucket, "mbucket", "b", "", "the name of the metadata bucket")
 	cmd.Flags().StringVarP(&bbucket, "bbucket", "t", "", "the name of the backup bucket")
 	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "key prefix")
-	cmd.Flags().Int64VarP(&maxKey, "maxKey", "m", 40, "maximum number of documents (keys) to be backed up concurrently")
-	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key")
+	cmd.Flags().Int64VarP(&maxKey, "maxKey", "m", 40, "maximum number of documents (keys) to be backed up concurrently -Check --maxpage for maximum number of concurrent pages")
+	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key - Useful for rerun")
 	cmd.Flags().StringVarP(&delimiter, "delimiter", "d", "", "prefix  delimiter")
 	cmd.Flags().StringVarP(&outDir, "outDir", "O", "", "output directory for --backupMedia = File")
-	cmd.Flags().IntVarP(&maxPage, "maxPage", "", 50, "maximum number of concurrent pages")
+	cmd.Flags().IntVarP(&maxPage, "maxPage", "", 50, "maximum number of concurrent pages per document. check  --maxKey  for maximum number of concurrent documents")
 	cmd.Flags().IntVarP(&maxLoop, "maxLoop", "", 1, "maximum number of loop, 0 means no upper limit")
-	cmd.Flags().Int64VarP(&maxPartSize, "maxPartSize", "", 40, "Maximum part size(MB)")
+	cmd.Flags().Int64VarP(&maxPartSize, "maxPartSize", "", 40, "Maximum partsize (MB)  for multipart upload")
 
 }
 
