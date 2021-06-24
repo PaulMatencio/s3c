@@ -238,7 +238,7 @@ func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 	for s := 1; s <= q; s++ {
 		start3 := time.Now()
 		errs,document = getPart1(document, pn, np,start, end)
-		gLog.Info.Printf("Prepare pages range  %d:%d to %s - Elapsed time %v ",start,end,np,time.Since(start3))
+		gLog.Info.Printf("Prepare to backup pages %d:%d for document %s - Elapsed time %v ",start,end,pn,time.Since(start3))
 		start = end + 1
 		end += maxPage
 		if end > np {
@@ -249,7 +249,7 @@ func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 		start4 := time.Now()
 		startp:= q*maxPage+1
 		errs,document = getPart1(document, pn,np,startp, np)
-		gLog.Info.Printf("Prepare pages range  %d:%d to %s - Elapsed time %v ",startp,np,np,time.Since(start4))
+		gLog.Info.Printf("Prepare to backup pages %d:%d for document %s - Elapsed time %v ",startp,np,pn,time.Since(start4))
 	}
     gLog.Info.Printf("Backup document %s - number of pages %d - Document size %d - Elapsed time %v",document.DocId,document.NumberOfPages,document.Size,time.Since(start2))
 	return errs,document
@@ -314,8 +314,8 @@ func getBlob1(pn string, np int) ( []error,*documentpb.Document) {
 				errs = append(errs, r.Err)
 			}
 			if r1 == np {
-				gLog.Info.Printf("Add pages range  %d:%d to %s - Elapsed time %v ",pn,1,np,time.Since(start3))
-				gLog.Info.Printf("Backup document  %s  - number of pages %d  - Document size %d - Total elapsed time %v",document.DocId,document.NumberOfPages,document.Size,time.Since(start2))
+				gLog.Info.Printf("Prepare backup pages  %d:%d for %s - Elapsed time %v ",pn,1,np,time.Since(start3))
+				gLog.Info.Printf("Backup document %s - number of pages %d - Document size %d - Total elapsed time %v",document.DocId,document.NumberOfPages,document.Size,time.Since(start2))
 				return errs,document
 			}
 		case <-time.After(100 * time.Millisecond):
