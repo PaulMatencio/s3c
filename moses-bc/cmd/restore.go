@@ -233,7 +233,7 @@ func restoreBlobs(marker string, bucket string, replace bool) (string, error) {
 							} else {
 								gLog.Error.Printf("Error %v - invalid user metadata %s", err, result.Metadata)
 							}
-
+							gLog.Info.Printf("Get Object key  %s - Elapsed time %v ",*v.Key,time.Since(start2))
 							/*
 								retrieve the backup document
 							 */
@@ -266,7 +266,7 @@ func restoreBlobs(marker string, bucket string, replace bool) (string, error) {
 									gerrors += nerr
 									re.Unlock()
 								} else {
-									gLog.Info.Printf("Document id %s is fully restored - Number of pages %d - Document size %d - Elapsed time %v ",document.DocId,document.NumberOfPages,document.Size,time.Since(start2))
+									gLog.Info.Printf("Document id %s is fully restored - Number of pages %d - Document size %d - Elapsed time %v ",document.DocId,document.NumberOfPages,document.Size,time.Since(start4))
 									/* start  indexing */
 									start5:= time.Now()
 									if _,err = indexDocument(document, mbucket, svcm); err != nil {
