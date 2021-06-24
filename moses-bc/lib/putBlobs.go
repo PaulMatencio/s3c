@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
-	"time"
 )
 
 //  Put  sproxyd blobs
@@ -38,7 +37,7 @@ func PutBlob1(document *documentpb.Document,replace bool) int {
 		}
 	}
 	//  get the number of pages
-	start := time.Now()
+	// start := time.Now()
 	pages := document.GetPage()
 	for _, pg := range pages {
 		wg1.Add(1)
@@ -48,7 +47,7 @@ func PutBlob1(document *documentpb.Document,replace bool) int {
 				perrors += perr
 				pu.Unlock()
 			}
-			gLog.Info.Printf("Time of writing page %s/p%d  Page size %d - %v  ",pg.PageId,pg.PageNumber,pg.Size,time.Since(start))
+			// gLog.Info.Printf("Time of writing page %s/p%d  Page size %d - %v  ",pg.PageId,pg.PageNumber,pg.Size,time.Since(start))
 			wg1.Done()
 		}(request, pg)
 	}
