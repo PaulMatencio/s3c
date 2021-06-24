@@ -239,9 +239,11 @@ func restoreBlobs(marker string, bucket string, replace bool) (string, error) {
 							 */
 
 							if body, err := utils.ReadObjectv(result.Body,CHUNKSIZE); err == nil  {
+								gLog.Info.Printf("Read object elapsed time %v",time.Since(start))
 								document, err = mosesbc.GetDocument(body.Bytes())
+								gLog.Info.Printf("Time of unmarshaling %v",time.Since(start))
 								/*
-									Loading the document
+									restoring the document
 								 */
 								nerr := 0
 								if document.NumberOfPages <= int32(maxPage) {

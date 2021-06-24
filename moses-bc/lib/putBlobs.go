@@ -36,9 +36,7 @@ func PutBlob1(document *documentpb.Document,replace bool) int {
 			return 1
 		}
 	}
-
-
-
+	//  get the number of pages
 	pages := document.GetPage()
 	for _, pg := range pages {
 		wg1.Add(1)
