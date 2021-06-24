@@ -46,7 +46,7 @@ func PutBlob1(document *documentpb.Document,replace bool) int {
 				perrors += perr
 				pu.Unlock()
 			}
-			gLog.Info.Printf("Time of writing page %d",pg)
+			gLog.Info.Printf("Time of writing page %s -  Page size %d ",pg.PageId,pg.Size)
 			wg1.Done()
 		}(request, pg)
 	}
