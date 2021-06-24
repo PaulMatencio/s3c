@@ -48,7 +48,7 @@ func PutBlob1(document *documentpb.Document,replace bool) int {
 				perrors += perr
 				pu.Unlock()
 			}
-			gLog.Info.Printf("Time of writing page %s -  Page size %d - %v  ",pg.PageId,pg.Size,time.Since(start))
+			gLog.Info.Printf("Time of writing page %s/p%d  Page size %d - %v  ",pg.PageId,pg.PageNumber,pg.Size,time.Since(start))
 			wg1.Done()
 		}(request, pg)
 	}
@@ -88,6 +88,7 @@ func PutBig1(document *documentpb.Document,maxPage int,replace bool) int {
 
 	// gLog.Warning.Printf("Big document %s  - number of pages %d ",document.GetDocId(),np)
 	// gLog.Trace.Printf("Docid: %s - number of pages: %d - document metadata: %s",document.DocId,document.NumberOfPages,document.Metadata)
+
 	for s := 1; s <= q; s++ {
 		perrors = putPart1(document,start, end,replace)
 		start = end + 1
