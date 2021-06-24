@@ -238,7 +238,7 @@ func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 	for s := 1; s <= q; s++ {
 		start3 := time.Now()
 		errs,document = getPart1(document, pn, np,start, end)
-		gLog.Info.Printf("Add pages range  %d:%d to %s - Elapsed time %v ",pn,start,end,time.Since(start3))
+		gLog.Info.Printf("Prepare pages range  %d:%d to %s - Elapsed time %v ",start,end,np,time.Since(start3))
 		start = end + 1
 		end += maxPage
 		if end > np {
@@ -249,9 +249,9 @@ func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 		start4 := time.Now()
 		startp:= q*maxPage+1
 		errs,document = getPart1(document, pn,np,startp, np)
-		gLog.Info.Printf("Adding pages range  %d:%d to %s - Elapsed time %v ",pn,startp,np,time.Since(start4))
+		gLog.Info.Printf("Prepare pages range  %d:%d to %s - Elapsed time %v ",startp,np,np,time.Since(start4))
 	}
-    gLog.Info.Printf("Backup document  %s  - number of pages %d  - Document size %d - Elapsed time %v",document.DocId,document.NumberOfPages,document.Size,time.Since(start2))
+    gLog.Info.Printf("Backup document %s - number of pages %d - Document size %d - Elapsed time %v",document.DocId,document.NumberOfPages,document.Size,time.Since(start2))
 	return errs,document
 }
 
