@@ -237,12 +237,14 @@ func restoreBlobs(marker string, bucket string, replace bool) (string, error) {
 							/*
 								retrieve the backup document
 							 */
-
+							start3:= time.Now()
 							if body, err := utils.ReadObjectv(result.Body,CHUNKSIZE); err == nil  {
 								document, err = mosesbc.GetDocument(body.Bytes())
+								gLog.Info.Printf("Document id %s is retrieved - Number of pages %d - Document size %d - Elapsed time %v ",document.DocId,document.NumberOfPages,document.Size,time.Since(start3))
 								/*
 									restoring the document
 								 */
+								start4:= time.Now()
 								nerr := 0
 								if document.NumberOfPages <= int32(maxPage) {
 									nerr = mosesbc.PutBlob1(document,replace)
@@ -259,20 +261,21 @@ func restoreBlobs(marker string, bucket string, replace bool) (string, error) {
 								 */
 
 								if nerr > 0 {
-									gLog.Info.Printf("Document id %s is not fully restored  because of %d errors - Number of pages %d - Document size %d - Elapsed time %v ",document.DocId,nerr,document.NumberOfPages,document.Size,time.Since(start2))
+									gLog.Info.Printf("Document id %s is not fully restored  because of %d errors - Number of pages %d - Document size %d - Elapsed time %v ",document.DocId,nerr,document.NumberOfPages,document.Size,time.Since(start4))
 									re.Lock()
 									gerrors += nerr
 									re.Unlock()
 								} else {
 									gLog.Info.Printf("Document id %s is fully restored - Number of pages %d - Document size %d - Elapsed time %v ",document.DocId,document.NumberOfPages,document.Size,time.Since(start2))
 									/* start  indexing */
+									start5:= time.Now()
 									if _,err = indexDocument(document, mbucket, svcm); err != nil {
 										gLog.Error.Printf("Error %v adding document id %s to bucket %s",err,document.DocId,mbucket)
 										re.Lock()
 										gerrors += 1
 										re.Unlock()
 									} else {
-										gLog.Info.Printf("Document id %s is indexed - bucket %s",document.DocId,mbucket)
+										gLog.Info.Printf("Document id %s is indexed - bucket %s - Elapsed time %v",document.DocId,mbucket,time.Since(start5))
 									}
 								}
 								/*
