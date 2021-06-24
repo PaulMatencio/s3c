@@ -290,6 +290,7 @@ func restoreBlobs(marker string, bucket string, replace bool) (string, error) {
 					nextmarker = *result.Contents[l-1].Key
 					gLog.Warning.Printf("Truncated %v - Next marker: %s ", *result.IsTruncated, nextmarker)
 				}
+				ndocs = ndocs - gerrors
 				gLog.Info.Printf("Number of documents restored: %d  - Number of pages: %d  - Documents size: %d - Number of errors: %d -  Elapsed time: %v", ndocs, npages, docsizes, gerrors,time.Since(start))
 				tdocs += int64(ndocs)
 				tpages += int64(npages)

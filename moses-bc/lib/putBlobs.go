@@ -80,7 +80,7 @@ func PutBig1(document *documentpb.Document,maxPage int,replace bool) int {
 		return perrors
 	} else {
 		if status == 412 {
-			gLog.Warning.Printf("Document %s is not restored - use --replace=true  ou -r=true to replace the existing document")
+			gLog.Warning.Printf("Document %s is not restored - use --replace=true  ou -r=true to replace the existing document",document.DocId)
 			return 1
 		}
 	}
@@ -167,12 +167,12 @@ func WriteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Documen
 	} else {
 		if resp !=  nil {
 			switch resp.StatusCode {
-					case 200:
-						gLog.Warning.Printf("Key %s has been written", resp.Header["X-Scal-Ring-Key"])
+				case 200:
+						gLog.Trace.Printf("Path/Key %s/%s has been written", request.Path, resp.Header["X-Scal-Ring-Key"])
 					case 412:
-						gLog.Warning.Printf("Key %s already existed", resp.Header["X-Scal-Ring-Key"])
+						gLog.Warning.Printf("Path/Key %s/%s already existed", request.Path,resp.Header["X-Scal-Ring-Key"])
 					default:
-						gLog.Trace.Printf("putObj key %s - resp.Status %d",resp.Header["X-Scal-Ring-Key"],resp.Status)
+						gLog.Error.Printf("putObj Path/key %s/%s - resp.Status %d",request.Path, resp.Header["X-Scal-Ring-Key"],resp.Status)
 						perrors++
 			}
 		}
@@ -203,11 +203,11 @@ func WriteDocPage(request sproxyd.HttpRequest, pg *documentpb.Page, replace bool
 			// defer resp.Body.Close()
 			switch resp.StatusCode {
 					case 200:
-						gLog.Warning.Printf("Key %s has been written", resp.Header["X-Scal-Ring-Key"])
+						gLog.Trace.Printf("Path/Key %s/%s has been written", request.Path, resp.Header["X-Scal-Ring-Key"])
 					case 412:
-						gLog.Warning.Printf("Key %s already existed", resp.Header["X-Scal-Ring-Key"])
+						gLog.Warning.Printf("Path/Key %s/%s already existed", request.Path,resp.Header["X-Scal-Ring-Key"])
 					default:
-						gLog.Trace.Printf("putObj key %s - resp.Status %d",resp.Header["X-Scal-Ring-Key"],resp.Status)
+						gLog.Error.Printf("putObj Path/key %s/%s - resp.Status %d",request.Path, resp.Header["X-Scal-Ring-Key"],resp.Status)
 						perrors++
 			}
 		}
