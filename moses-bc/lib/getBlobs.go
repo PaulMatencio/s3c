@@ -254,7 +254,6 @@ func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 	}
 	if p0 {
 		start = 0
-		np ++
 		document.Clip = true   /*  fpCliping is stored in page 0  small image  */
 	} else {
 		start = 1
@@ -328,7 +327,6 @@ func getBlob1(pn string, np int) ( []error,*documentpb.Document) {
 	}
 	if p0 {
 		start = 0
-		np ++
 	} else {
 		start = 1
 		document.Clip = true   /*  fpCliping is stored in page 0  small image  */
