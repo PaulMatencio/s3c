@@ -245,9 +245,9 @@ func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 	pdf,p0 := checkPdfAndP0(pn,usermd)
 	if pdf {
 		request.Path = sproxyd.Env + "/" + pn + "/pdf"
-		if err,usermd,body := GetObject(request, pn); err == nil {
-			document.Pdf = *body
-			gLog.Info.Printf("pdf user meta data %s", usermd)
+		if err,pmeta,body := GetObject(request, pn); err == nil {
+			document.Pdf.Pdf = *body
+			document.Pdf.Metadata= pmeta
 		} else {
 			gLog.Warning.Printf("Error %v getting object %s ",err,request.Path)
 		}
@@ -255,13 +255,13 @@ func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 	if p0 {
 		start = 0
 		np ++
+		document.Clip = true   /*  fpCliping is stored in page 0  small image  */
 	} else {
 		start = 1
-		document.Clip = true   /*  fpCliping is stored in page 0  small image  */
 	}
+	end = maxPage
 	q   = np  / maxPage
 	r   = np  % maxPage
-	end  = start + maxPage-1
 
 	for s := 1; s <= q; s++ {
 		start3 := time.Now()
@@ -319,8 +319,9 @@ func getBlob1(pn string, np int) ( []error,*documentpb.Document) {
 	pdf,p0 := checkPdfAndP0(pn,usermd)
 	if pdf {
 		request.Path = sproxyd.Env + "/" + pn + "/pdf"
-		if err,_,body := GetObject(request, pn); err == nil {
-			document.Pdf = *body
+		if err,pmeta,body := GetObject(request, pn); err == nil {
+			document.Pdf.Pdf = *body
+			document.Pdf.Metadata= pmeta
 		} else {
 
 		}
