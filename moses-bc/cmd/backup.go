@@ -211,7 +211,7 @@ func backupBlobs(marker string, bucket string) (string, error) {
 							rh = datatype.Rh{
 								Key: head.Key,
 							}
-							np, status, docsize int
+							np, status, docsize,npage int
 							err                 error
 							usermd              string
 						)
@@ -232,6 +232,7 @@ func backupBlobs(marker string, bucket string) (string, error) {
 											mt.Unlock()
 										} else {
 											docsize = (int)(document.Size)
+											npage = (int)(document.NumberOfPages)
 										}
 									} else {
 										if _, err := writeS3(svcb, bbucket, maxPartSize,document); err != nil {
@@ -241,6 +242,7 @@ func backupBlobs(marker string, bucket string) (string, error) {
 											mt.Unlock()
 										} else {
 											docsize = (int)(document.Size)
+											npage = (int)(document.NumberOfPages)
 											// gLog.Trace.Printf("Etag %v", so.ETag)
 										}
 									}
@@ -252,7 +254,7 @@ func backupBlobs(marker string, bucket string) (string, error) {
 									mt.Unlock()
 								}
 							} else {
-								gLog.Error.Printf("Document %s - Invalid number of pages in %s ", pn, usermd)
+								gLog.Error.Printf("Document %s - S3 Metadata has invalid number of pages in %s - Try to get it from the document user metadata ", pn, usermd)
 								if np, err, status = mosesbc.GetPageNumber(pn); err == nil {
 									if errs, document := mosesbc.GetBlob1(pn, np, maxPage); len(errs) == 0 {
 										/*
@@ -268,6 +270,7 @@ func backupBlobs(marker string, bucket string) (string, error) {
 												mt.Unlock()
 											} else {
 												docsize = (int)(document.Size)
+												npage = (int)(document.NumberOfPages)
 											}
 										} else {
 											if _, err := writeS3(svcb, bbucket, maxPartSize,document); err != nil {
@@ -277,6 +280,7 @@ func backupBlobs(marker string, bucket string) (string, error) {
 												mt.Unlock()
 											} else {
 												docsize = (int)(document.Size)
+												npage = (int)(document.NumberOfPages)
 												// gLog.Trace.Printf("Docid: %s - Etag %v", document.DocId, so.ETag)
 											}
 										}
@@ -290,7 +294,7 @@ func backupBlobs(marker string, bucket string) (string, error) {
 										mt.Unlock()
 									}
 								} else {
-									gLog.Error.Printf(" Error %v - Status Code: %v  - Getting number of pagess for %s ", err, status, pn)
+									gLog.Error.Printf(" Error %v - Status Code: %v  - Getting number of pages for %s ", err, status, pn)
 									mt.Lock()
 									gerrors += 1
 									mt.Unlock()
@@ -298,7 +302,7 @@ func backupBlobs(marker string, bucket string) (string, error) {
 							}
 						}
 						mu.Lock()
-						npages += np
+						npages += npage
 						docsizes += docsize
 						mu.Unlock()
 						// utils.PrintUsermd(rh.Key, rh.Result.Metadata)
