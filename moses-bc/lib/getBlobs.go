@@ -259,13 +259,14 @@ func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 		start = 1
 	}
 	end = maxPage
+
 	q   = np  / maxPage
 	r   = np  % maxPage
 
 	for s := 1; s <= q; s++ {
 		start3 := time.Now()
 		errs,document = getPart1(document, pn, np,start, end)
-		gLog.Info.Printf("Prepare to backup pages %d:%d for document %s - Elapsed time %v ",start,end,pn,time.Since(start3))
+		gLog.Info.Printf("Get pages range %d:%d for document %s - Elapsed time %v ",start,end,pn,time.Since(start3))
 		start = end + 1
 		end += maxPage
 		if end > np {
@@ -276,7 +277,7 @@ func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 		start4 := time.Now()
 		startp:= q*maxPage+1
 		errs,document = getPart1(document, pn,np,startp, np)
-		gLog.Info.Printf("Prepare to backup pages %d:%d for document %s - Elapsed time %v ",startp,np,pn,time.Since(start4))
+		gLog.Info.Printf("Get pages range %d:%d for document %s - Elapsed time %v ",startp,np,pn,time.Since(start4))
 	}
     gLog.Info.Printf("Backup document %s - number of pages %d - Document size %d - Elapsed time %v",document.DocId,document.NumberOfPages,document.Size,time.Since(start2))
 	return errs,document
@@ -296,7 +297,7 @@ func getBlob1(pn string, np int) ( []error,*documentpb.Document) {
 		errs     []error
 		usermd   string
 		body     *[]byte
-		start    int
+		start,end    int
 		ch       = make(chan *GetBlobResponse)
 		// document = &documentpb.Document{}
 	)
@@ -327,9 +328,11 @@ func getBlob1(pn string, np int) ( []error,*documentpb.Document) {
 	}
 	if p0 {
 		start = 0
+		end = np +1
+		document.Clip = true   /*  fpCliping is stored in page 0  small image  */
 	} else {
 		start = 1
-		document.Clip = true   /*  fpCliping is stored in page 0  small image  */
+		end = np
 	}
 
 	//  add pages to document
@@ -361,8 +364,8 @@ func getBlob1(pn string, np int) ( []error,*documentpb.Document) {
 			} else {
 				errs = append(errs, r.Err)
 			}
-			if r1 == np {
-				gLog.Info.Printf("Prepare backup pages %d:%d for %s - Elapsed time %v ",start,np,pn,time.Since(start3))
+			if r1 == end {
+				gLog.Info.Printf("Get pages range %d:%d for %s - Elapsed time %v ",start,np,pn,time.Since(start3))
 				gLog.Info.Printf("Backup document %s - number of pages %d - Document size %d - Total elapsed time %v",document.DocId,document.NumberOfPages,document.Size,time.Since(start2))
 				return errs,document
 			}
