@@ -245,10 +245,11 @@ func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 	pdf,p0 := checkPdfAndP0(pn,usermd)
 	if pdf {
 		request.Path = sproxyd.Env + "/" + pn + "/pdf"
-		if err,_,body := GetObject(request, pn); err == nil {
+		if err,usermd,body := GetObject(request, pn); err == nil {
 			document.Pdf = *body
+			gLog.Info.Printf("pdf user meta data %s", usermd)
 		} else {
-
+			gLog.Warning.Printf("Error %v getting object %s ",err,request.Path)
 		}
 	}
 	if p0 {
@@ -256,6 +257,7 @@ func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 		np ++
 	} else {
 		start = 1
+		document.Clip = true   /*  fpCliping is stored in page 0  small image  */
 	}
 	q   = np  / maxPage
 	r   = np  % maxPage
@@ -327,6 +329,7 @@ func getBlob1(pn string, np int) ( []error,*documentpb.Document) {
 		start = 0
 	} else {
 		start = 1
+		document.Clip = true   /*  fpCliping is stored in page 0  small image  */
 	}
 
 	//  add pages to document
