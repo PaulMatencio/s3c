@@ -328,6 +328,7 @@ func getBlob1(pn string, np int) ( []error,*documentpb.Document) {
 	}
 	if p0 {
 		start = 0
+		np ++
 	} else {
 		start = 1
 		document.Clip = true   /*  fpCliping is stored in page 0  small image  */
@@ -363,7 +364,7 @@ func getBlob1(pn string, np int) ( []error,*documentpb.Document) {
 				errs = append(errs, r.Err)
 			}
 			if r1 == np {
-				gLog.Info.Printf("Prepare backup pages %d:%d for %s - Elapsed time %v ",1,np,pn,time.Since(start3))
+				gLog.Info.Printf("Prepare backup pages %d:%d for %s - Elapsed time %v ",start,np,pn,time.Since(start3))
 				gLog.Info.Printf("Backup document %s - number of pages %d - Document size %d - Total elapsed time %v",document.DocId,document.NumberOfPages,document.Size,time.Since(start2))
 				return errs,document
 			}
