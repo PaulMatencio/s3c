@@ -244,7 +244,7 @@ func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 	 */
 	pdf,p0 := checkPdfAndP0(pn,usermd)
 	if pdf {
-		request.Path = sproxyd.Env + "/" + pn + ".pdf"
+		request.Path = sproxyd.Env + "/" + pn + "/pdf"
 		if err,_,body := GetObject(request, pn); err == nil {
 			document.Pdf = *body
 		} else {
@@ -316,7 +316,7 @@ func getBlob1(pn string, np int) ( []error,*documentpb.Document) {
 	 */
 	pdf,p0 := checkPdfAndP0(pn,usermd)
 	if pdf {
-		request.Path = sproxyd.Env + "/" + pn + ".pdf"
+		request.Path = sproxyd.Env + "/" + pn + "/pdf"
 		if err,_,body := GetObject(request, pn); err == nil {
 			document.Pdf = *body
 		} else {
