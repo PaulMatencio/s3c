@@ -199,7 +199,7 @@ func cloneParts(pn string, np int, start int, end int, document *documentpb.Docu
 */
 
 
-func GetBlob1(pn string, np int, maxPage int) ([]error,*documentpb.Document,int){
+func GetBlob1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 	if np <= maxPage {
 		return getBlob1(pn,np)
 	} else {
@@ -208,7 +208,7 @@ func GetBlob1(pn string, np int, maxPage int) ([]error,*documentpb.Document,int)
 }
 
 //  document with  smaller pages number than maxPage
-func getBlob1(pn string, np int) ( []error,*documentpb.Document,int){
+func getBlob1(pn string, np int) ( []error,*documentpb.Document){
 	var (
 		request = sproxyd.HttpRequest{
 			Hspool: sproxyd.HP,
@@ -230,7 +230,7 @@ func getBlob1(pn string, np int) ( []error,*documentpb.Document,int){
 
 	if err, usermd = GetMetadata(request, pn); err != nil {
 		errs = append(errs, err)
-		return errs,nil,0
+		return errs,nil
 	}
 
 	//  create the document
@@ -255,11 +255,12 @@ func getBlob1(pn string, np int) ( []error,*documentpb.Document,int){
 		start = 0
 		end = np +1
 		document.Clip = true   /*  fpCliping is stored in page 0  small image  */
+		document.NumberOfPages += 1
 	} else {
 		start = 1
 		end = np
 	}
-	npages:= end -start +1
+
 	//  add pages to document
 	start3 := time.Now()
 	for k := start; k <= np; k++ {
@@ -292,8 +293,8 @@ func getBlob1(pn string, np int) ( []error,*documentpb.Document,int){
 			}
 			if r1 == end {
 				gLog.Info.Printf("Get pages range %d:%d for %s - Elapsed time %v ",start,np,pn,time.Since(start3))
-				gLog.Info.Printf("Backup document %s - number of pages %d - Document size %d - Total elapsed time %v",document.DocId,npages,document.Size,time.Since(start2))
-				return errs,document,npages
+				gLog.Info.Printf("Backup document %s - number of pages %d - Document size %d - Total elapsed time %v",document.DocId,document.NumberOfPages,document.Size,time.Since(start2))
+				return errs,document
 			}
 		case <-time.After(100 * time.Millisecond):
 			fmt.Printf("r")
@@ -306,7 +307,7 @@ func getBlob1(pn string, np int) ( []error,*documentpb.Document,int){
 	get document of which  the number of pages > maxPages
 
  */
-func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document,int){
+func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 	var (
 
 		start,q,r,end ,npages int
@@ -328,7 +329,7 @@ func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document,int){
 	//  Get  document metadata
 	if err, usermd = GetMetadata(request, pn); err != nil {
 		errs = append(errs, err)
-		return errs,nil,0
+		return errs,nil
 	}
 	gLog.Info.Printf("Get metadata of %s - Elapsed time %v ",pn,time.Since(start2))
 
@@ -356,6 +357,7 @@ func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document,int){
 	if p0 {
 		start = 0
 		document.Clip = true   /*  fpCliping is stored in page 0  small image  */
+		document.NumberOfPages += 1
 	} else {
 		start = 1
 	}
@@ -379,12 +381,11 @@ func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document,int){
 	if r > 0 {
 		start4 := time.Now()
 		start:= q*maxPage+1
-		npages += np -start +1
 		errs,document = getPart1(document, pn,np,start, np)
-		gLog.Info.Printf("Get pages range %d:%d for document %s - Elapsed time %v ",startp,np,pn,time.Since(start4))
+		gLog.Info.Printf("Get pages range %d:%d for document %s - Elapsed time %v ",start,np,pn,time.Since(start4))
 	}
     gLog.Info.Printf("Backup document %s - number of pages %d - Document size %d - Elapsed time %v",document.DocId,npages,document.Size,time.Since(start2))
-	return errs,document,npages
+	return errs,document
 }
 
 
