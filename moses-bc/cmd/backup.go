@@ -52,6 +52,7 @@ var (
 )
 
 type UserMd struct {
+	FpClipping string `json:"fpClipping,omitempty"`
 	DocID      string `json:"docId"`
 	PubDate    string `json:"pubDate"`
 	SubPartFP  string `json:"subPartFP"`
@@ -225,7 +226,7 @@ func backupBlobs(marker string, bucket string) (string, error) {
 									document.S3Meta = usermd
 									if bMedia != "S3" {
 										if err, docsize = mosesbc.WriteDirectory(pn, document, outDir); err != nil {
-											gLog.Error.Printf("Error:%v writing document: %s to  directory %s", err, document.DocId, outDir)
+											gLog.Error.Printf("Error:%v writing document: %s to directory %s", err, document.DocId, outDir)
 											mt.Lock()
 											gerrors += 1
 											mt.Unlock()
@@ -279,7 +280,6 @@ func backupBlobs(marker string, bucket string) (string, error) {
 												// gLog.Trace.Printf("Docid: %s - Etag %v", document.DocId, so.ETag)
 											}
 										}
-
 									} else {
 										/*
 											some errors have been found by getBlob1

@@ -6,6 +6,7 @@ import (
 	doc "github.com/paulmatencio/protobuf-doc/lib"
 	"github.com/paulmatencio/protobuf-doc/src/document/documentpb"
 	base64 "github.com/paulmatencio/ring/user/base64j"
+	moses "github.com/paulmatencio/s3c/moses/lib"
 	"time"
 	// "github.com/golang/protobuf/proto"
 	"github.com/paulmatencio/s3c/gLog"
@@ -14,7 +15,6 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
-
 )
 
 type GetBlobResponse struct {
@@ -209,14 +209,13 @@ func GetBlob1(pn string, np int, maxPage int) ([]error,*documentpb.Document) {
 
 func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 	var (
-		q     int = np  / maxPage
-		r     int = np  % maxPage
-		start int = 1
+
+		start,q,r,end  int
 		usermd string
 		err error
 		body     *[]byte
-		end   int = start + maxPage-1
 		errs []error
+
 		request = sproxyd.HttpRequest{
 			Hspool: sproxyd.HP,
 			Client: &http.Client{
@@ -227,14 +226,41 @@ func getBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 	)
 	// gLog.Info.Printf("Backup document if %s  - number of pages %d ",pn,np)
 	start2 := time.Now()
+	//  Get  document metadata
 	if err, usermd = GetMetadata(request, pn); err != nil {
 		errs = append(errs, err)
 		return errs,nil
 	}
 	gLog.Info.Printf("Get metadata of %s - Elapsed time %v ",pn,time.Since(start2))
+
 	//  create the document
-	document := doc.CreateDocument(pn, usermd, 0, np, body)
+	document := doc.CreateDocument(pn, usermd, -1, np, body)
 	gLog.Trace.Printf("Docid: %s - number of pages: %d - document metadata: %s",document.DocId,document.NumberOfPages,document.Metadata)
+
+	/*
+		if document has a pdf
+		retrieve the pdf and add it to  the document
+
+	 */
+	pdf,p0 := checkPdfAndP0(pn,usermd)
+	if pdf {
+		request.Path = sproxyd.Env + "/" + pn + ".pdf"
+		if err,_,body := GetObject(request, pn); err == nil {
+			document.Pdf = *body
+		} else {
+
+		}
+	}
+	if p0 {
+		start = 0
+		np ++
+	} else {
+		start = 1
+	}
+	q   = np  / maxPage
+	r   = np  % maxPage
+	end  = start + maxPage-1
+
 	for s := 1; s <= q; s++ {
 		start3 := time.Now()
 		errs,document = getPart1(document, pn, np,start, end)
@@ -269,6 +295,7 @@ func getBlob1(pn string, np int) ( []error,*documentpb.Document) {
 		errs     []error
 		usermd   string
 		body     *[]byte
+		start    int
 		ch       = make(chan *GetBlobResponse)
 		// document = &documentpb.Document{}
 	)
@@ -282,11 +309,29 @@ func getBlob1(pn string, np int) ( []error,*documentpb.Document) {
 
 	//  create the document
 	start2:= time.Now()
-	document := doc.CreateDocument(pn, usermd, 0, np, body)
+	document := doc.CreateDocument(pn, usermd, -1, np, body)
 	gLog.Trace.Printf("Docid: %s - number of pages: %d - document metadata: %s",document.DocId,document.NumberOfPages,document.Metadata)
+	/*
+		Check if the document has a pdf and/or  page 0 ( Fclip)
+	 */
+	pdf,p0 := checkPdfAndP0(pn,usermd)
+	if pdf {
+		request.Path = sproxyd.Env + "/" + pn + ".pdf"
+		if err,_,body := GetObject(request, pn); err == nil {
+			document.Pdf = *body
+		} else {
+
+		}
+	}
+	if p0 {
+		start = 0
+	} else {
+		start = 1
+	}
+
 	//  add pages to document
 	start3 := time.Now()
-	for k := 1; k <= np; k++ {
+	for k := start; k <= np; k++ {
 		request.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
 		go func(request sproxyd.HttpRequest, k int) {
 			err, usermd, body = GetObject(request, pn)
@@ -386,7 +431,7 @@ func getPart1(document *documentpb.Document, pn string, np int, start int, end i
 func GetMetadata(request sproxyd.HttpRequest, pn string) (error, string) {
 	var (
 		usermd string
-		md     []byte
+		// md     []byte
 		resp   *http.Response
 		err    error
 	)
@@ -401,11 +446,16 @@ func GetMetadata(request sproxyd.HttpRequest, pn string) (error, string) {
 	}
 	if _, ok := resp.Header["X-Scal-Usermd"]; ok {
 		usermd = resp.Header["X-Scal-Usermd"][0]
+
+		/*
 		if md, err = base64.Decode64(usermd); err != nil {
 			gLog.Warning.Printf("Invalid user metadata %s", usermd)
 		} else {
 			gLog.Trace.Printf("User metadata %s", string(md))
 		}
+		*/
+	} else {
+		err = errors.New(fmt.Sprintf("Docid %d does not have user metadata ",pn))
 	}
 	return err, usermd
 }
@@ -440,3 +490,23 @@ func GetObject(request sproxyd.HttpRequest, pn string) (error, string, *[]byte) 
 	return err, usermd, &body
 }
 
+func checkPdfAndP0(pn string, usermd string ) (bool,bool){
+
+	var (
+		docmeta = moses.DocumentMetadata{}
+		pdf bool = false
+		p0  bool =  false
+
+	)
+	if err:= docmeta.UsermdToStruct(usermd); err != nil  {
+		gLog.Warning.Printf("Error %v - Document %s has invalid user metadata",pn,err)
+	} else {
+		if docmeta.MultiMedia.Pdf {
+			pdf = true
+		}
+		if len(docmeta.FpClipping.CountryCode) > 0 {
+			p0 = true
+		}
+	}
+	return pdf,p0
+}

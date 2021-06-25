@@ -46,6 +46,12 @@ type DocumentMetadata struct {
 		Video bool `json:"video"`
 	} `json:"multiMedia"`
 
+	FpClipping struct {
+		CountryCode string `json:"countryCode"`
+		PubNumber   string `json:"pubNumber"`
+		KindCode    string `json:"kindCode"`
+	} `json:"fpClipping,omitempty"`
+
 	AbsRangePageNumber []struct {
 		Start int `json:"start"`
 		End   int `json:"end"`
@@ -261,4 +267,17 @@ func (docmeta *DocumentMetadata) GetMetadata(bnsRequest *HttpRequest, pathname s
 	}
 	return err
 
+}
+
+
+func (docmeta *DocumentMetadata) HasPDF(usermd string) (error,bool) {
+		if err := docmeta.UsermdToStruct(usermd); err == nil {
+				if docmeta.MultiMedia.Pdf {
+					return nil,true
+				} else {
+					return nil,false
+				}
+			} else {
+				return err,false
+			}
 }
