@@ -62,7 +62,7 @@ func checkBlob1(pn string, np int) int {
 
 		Check document has a pdf and/or Clipping page
 	 */
-	if err,pdf,p0 = checkPdfP0(usermd); err !=nil {
+	if err,pdf,p0 = checkPdfP0(pn); err !=nil {
 		return 1
 	}
 
@@ -129,7 +129,6 @@ func checkBig1(pn string, np int, maxPage int) int {
 	var (
 		q,r,start,end       int
 		nerrors,terrors int = 0,0
-		usermd 	string
 		p0,pdf  bool
 		err error
 	)
@@ -137,7 +136,7 @@ func checkBig1(pn string, np int, maxPage int) int {
 		Get the document meta data
 	 */
 
-	if err,pdf,p0 = checkPdfP0(usermd); err !=nil {
+	if err,pdf,p0 = checkPdfP0(pn); err !=nil {
 		return 1
 	}
 	if p0 {
@@ -154,7 +153,7 @@ func checkBig1(pn string, np int, maxPage int) int {
 	end = maxPage
 	q   = np  / maxPage
 	r   = np  % maxPage
-	
+
 	gLog.Warning.Printf("Big document %s  - number of pages %d ", pn, np)
 
 	for s := 1; s <= q; s++ {
