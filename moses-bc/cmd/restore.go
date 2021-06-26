@@ -240,6 +240,19 @@ func restoreBlobs(marker string, bucket string, replace bool) (string, error) {
 							start3:= time.Now()
 							if body, err := utils.ReadObjectv(result.Body,CHUNKSIZE); err == nil  {
 								document, err = mosesbc.GetDocument(body.Bytes())
+								pd := document.Pdf
+								if len(pd.Pdf) > 0 {
+									/*   restore the pdf first document first     */
+									if nerr,status := mosesbc.WriteDocPdf(pd,replace); nerr == 0 {
+										if status == 200 {
+											gLog.Info.Printf("Document pdf %s  has been restored - Size %d",pd.PdfId,pd.Size)
+										} else {
+											gLog.Info.Printf("Document pdf %s  is not restored - Status %d",pd.PdfId,status)
+										}
+									} else {
+										gLog.Info.Printf("Document pdf %s is not restored - Check the error within WriteDocPdf ",pd.PdfId)
+									}
+								}
 								gLog.Info.Printf("Document id %s is retrieved - Number of pages %d - Document size %d - Elapsed time %v ",document.DocId,document.NumberOfPages,document.Size,time.Since(start3))
 								/*
 									restoring the document
@@ -397,5 +410,4 @@ func WriteDocumentToFile(document *documentpb.Document, pn string, outDir string
 			gLog.Error.Printf("Error opening file %s/%s", outDir, pfm)
 		}
 	}
-
 }

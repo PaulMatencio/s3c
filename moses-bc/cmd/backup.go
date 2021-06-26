@@ -16,14 +16,15 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/paulmatencio/protobuf-doc/src/document/documentpb"
 	"github.com/paulmatencio/s3c/api"
 	"github.com/paulmatencio/s3c/datatype"
-	 mosesbc "github.com/paulmatencio/s3c/moses-bc/lib"
+	mosesbc "github.com/paulmatencio/s3c/moses-bc/lib"
 	"github.com/spf13/viper"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"errors"
 	// "github.com/golang/protobuf/proto"
 	"github.com/paulmatencio/s3c/gLog"
 	"github.com/paulmatencio/s3c/utils"
@@ -207,6 +208,7 @@ func backupBlobs(marker string, bucket string) (string, error) {
 						Key:     *v.Key,
 					}
 					go func(request datatype.StatObjRequest) {
+
 						var (
 							rh = datatype.Rh{
 								Key: head.Key,
@@ -215,7 +217,9 @@ func backupBlobs(marker string, bucket string) (string, error) {
 							err                 error
 							usermd              string
 						)
+
 						defer wg1.Done()
+
 						rh.Result, rh.Err = api.StatObject(head)
 						if usermd, err = utils.GetUserMeta(rh.Result.Metadata); err == nil {
 							userm := UserMd{}
@@ -262,6 +266,33 @@ func backupBlobs(marker string, bucket string) (string, error) {
 										the purpose of the backup is not to fix  data
 										 */
 										document.S3Meta = usermd
+										document.LastUpdated = timestamppb.Now()
+										switch (bMedia) {
+										case "S3":
+											if _, err := writeS3(svcb, bbucket, maxPartSize,document); err != nil {
+												gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
+												mt.Lock()
+												gerrors += 1
+												mt.Unlock()
+											} else {
+												docsize = (int)(document.Size)
+												npage = (int)(document.NumberOfPages)
+												// gLog.Trace.Printf("Docid: %s - Etag %v", document.DocId, so.ETag)
+											}
+										case "File":
+											if err, docsize = mosesbc.WriteDirectory(pn, document, outDir); err != nil {
+												gLog.Error.Printf("Error:%v writing document: %s to  directory %s", err, document.DocId, outDir)
+												mt.Lock()
+												gerrors += 1
+												mt.Unlock()
+											} else {
+												docsize = (int)(document.Size)
+												npage = (int)(document.NumberOfPages)
+											}
+										default:
+
+										}
+										/*
 										if bMedia != "S3" {
 											if err, docsize = mosesbc.WriteDirectory(pn, document, outDir); err != nil {
 												gLog.Error.Printf("Error:%v writing document: %s to  directory %s", err, document.DocId, outDir)
@@ -284,6 +315,7 @@ func backupBlobs(marker string, bucket string) (string, error) {
 												// gLog.Trace.Printf("Docid: %s - Etag %v", document.DocId, so.ETag)
 											}
 										}
+										 */
 									} else {
 										/*
 											some errors have been found by getBlob1

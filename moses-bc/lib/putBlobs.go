@@ -215,3 +215,55 @@ func WriteDocPage(request sproxyd.HttpRequest, pg *documentpb.Page, replace bool
 	}
 	return perrors,resp.StatusCode
 }
+
+func WriteDocPdf( pd *documentpb.Pdf, replace bool) (int,int) {
+
+	var (
+		pn = pd.GetPdfId()
+		request = sproxyd.HttpRequest{
+			Hspool: sproxyd.TargetHP,
+			Client: &http.Client{
+				Timeout:   sproxyd.ReadTimeout,
+				Transport: sproxyd.Transport,
+
+			},
+			Path : sproxyd.TargetEnv + "/" + pn,
+			ReqHeader :  map[string]string{
+				"Usermd" : pd.GetMetadata(),
+				"Content-Type" : "application/octet-stream",
+			},
+		}
+		perrors = 0
+		resp *http.Response
+		err error
+
+	)
+	/*
+		request.Path = sproxyd.TargetEnv + "/" + pn
+		request.ReqHeader =  map[string]string{}
+		request.ReqHeader["Usermd"] = pd.GetMetadata()
+		request.ReqHeader["Content-Type"] = "application/octet-stream" // Content type
+	*/
+
+	gLog.Trace.Printf("writing %d bytes to path  %s/%s",pd.Size,sproxyd.TargetDriver,request.Path)
+
+	if resp, err = sproxyd.PutObj(&request,replace, pd.GetPdf()); err != nil {
+		gLog.Error.Printf("Error %v - Put Pdf object %s", err, pn)
+		perrors++
+	} else {
+		if resp != nil   {
+			// defer resp.Body.Close()
+			switch resp.StatusCode {
+					case 200:
+						gLog.Trace.Printf("Path/Key %s/%s has been written", request.Path, resp.Header["X-Scal-Ring-Key"])
+					case 412:
+						gLog.Warning.Printf("Path/Key %s/%s already existed", request.Path,resp.Header["X-Scal-Ring-Key"])
+					default:
+						gLog.Error.Printf("putObj Path/key %s/%s - resp.Status %d",request.Path, resp.Header["X-Scal-Ring-Key"],resp.Status)
+						perrors++
+			}
+		}
+	}
+	return perrors,resp.StatusCode
+}
+
