@@ -68,6 +68,12 @@ func checkBlob1(pn string, np int) int {
 		/*
 			Compare source vs restored pdf
 		*/
+		pdfId := pn + "/pdf"
+		if err,ok :=comparePdf(pdfId);err == nil {
+			gLog.Info.Printf("Comparing source and restored pdf document %s - isEqual ? %v", pdfId, ok)
+		}  else {
+			gLog.Error.Printf("Error %v comparing pdf document %s",err,pdfId)
+		}
 
 	}
 
@@ -284,8 +290,10 @@ func comparePdf(pn string) (error, bool) {
 				return err, false
 			}
 		} else {
-			gLog.Error.Printf("Error %v Getting  %s", err, request.Path)
+			gLog.Error.Printf("Error %v Getting restored document  %s", err, request.Path)
 		}
+	} else {
+		gLog.Error.Printf("Error %v Getting  source document %s", err, request.Path)
 	}
 	return err, false
 }
