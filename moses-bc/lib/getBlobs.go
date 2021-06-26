@@ -242,11 +242,17 @@ func getBlob1(pn string, np int) ( []error,*documentpb.Document){
 	 */
 	pdf,p0 := checkPdfAndP0(pn,usermd)
 	if pdf {
-		request.Path = sproxyd.Env + "/" + pn + "/pdf"
+		pdfId := pn + "/pdf"
+		request.Path = sproxyd.Env + "/" + pdfId
 		if err,pmeta,body := GetObject(request, pn); err == nil {
 			gLog.Info.Printf("Document %s has a PDF object - size %d",request.Path,len(*body))
-			document.Pdf.Pdf = *body
-			document.Pdf.Metadata= pmeta
+
+			document.Pdf = &documentpb.Pdf {
+				Pdf : *body,
+				Size: int64(len(*body)),
+				Metadata:  pmeta,
+				PdfId : pdfId,
+			}
 		} else {
 			gLog.Warning.Printf("Error %v getting object %s ",err,request.Path)
 		}
