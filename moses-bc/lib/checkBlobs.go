@@ -70,9 +70,9 @@ func checkBlob1(pn string, np int) int {
 		*/
 		pdfId := pn + "/pdf"
 		if err, ok := comparePdf(pdfId); err == nil {
-			gLog.Info.Printf("Comparing source and restored Docid: %s - isEqual ? %v", pdfId, ok)
+			gLog.Info.Printf("Comparing source and restored PDF: %s - isEqual ? %v", pdfId, ok)
 		} else {
-			gLog.Error.Printf("Error %v comparing  DocId %s", err, pdfId)
+			gLog.Error.Printf("Error %v comparing  PDF %s", err, pdfId)
 		}
 
 	}
@@ -101,7 +101,7 @@ func checkBlob1(pn string, np int) int {
 						}
 					}
 					if err, ok := compareObj(pn, k, &body, usermd); err == nil {
-						gLog.Info.Printf("Comparing source and restored DocId: %s / Page:%d - isEqual ? %v", pn, k, ok)
+						gLog.Info.Printf("Comparing source and restored Page : %s / Page:%d - isEqual ? %v", pn, k, ok)
 					} else {
 						gLog.Error.Println(err)
 					}
@@ -151,9 +151,9 @@ func checkBig1(pn string, np int, maxPage int) int {
 		/*   compare source  with  restored pdf   */
 		pdfId := pn + "/pdf"
 		if err, ok := comparePdf(pdfId); err == nil {
-			gLog.Info.Printf("Comparing source and restored pdf document %s - isEqual ? %v", pdfId, ok)
+			gLog.Info.Printf("Comparing source and restored PDF:  %s - isEqual ? %v", pdfId, ok)
 		} else {
-			gLog.Error.Printf("Error %v comparing pdf document %s", err, pdfId)
+			gLog.Error.Printf("Error %v comparing PDF %s", err, pdfId)
 		}
 	}
 	end = maxPage
@@ -205,7 +205,7 @@ func checkPart1(pn string, np int, start int, end int) int {
 			defer wg2.Done()
 			if err, usermd, body := GetObject(request1, pn); err == nil {
 				if err, ok := compareObj(pn, k, body, usermd); err == nil {
-					gLog.Info.Printf("Comparing source and restored Docid:%s / Page:%d - isEqual ? %v", pn, k, ok)
+					gLog.Info.Printf("Comparing source and restored Page: %s / Page:%d - isEqual ? %v", pn, k, ok)
 				} else {
 					gLog.Error.Println(err)
 				}
