@@ -144,8 +144,10 @@ func checkBig1(pn string, np int, maxPage int) int {
 		gLog.Info.Printf("Document %s contains a pdf", pn)
 		/*   compare source  with  restored pdf   */
 		pdfId := pn + "/pdf"
-		if err,ok :=comparePdf(pdfId);err != nil {
-			gLog.Info.Printf("Comparing source and restored pdf document %s / Page:%d - isEqual ? %v", pdfId, ok)
+		if err,ok :=comparePdf(pdfId);err == nil {
+			gLog.Info.Printf("Comparing source and restored pdf document %s - isEqual ? %v", pdfId, ok)
+		}  else {
+			gLog.Error.Printf("Error %v comparing pdf document %s",err,pdfId)
 		}
 	}
 	end = maxPage
