@@ -46,20 +46,12 @@ func checkBlob1(pn string, np int) int {
 		nerrors = 0
 		me      = sync.Mutex{}
 		err 	error
-		usermd string
+		// usermd string
 		start int
 		pdf,p0 bool
 
 	)
 	/*
-		Get the document meta data
-	 */
-	if err, usermd = GetMetadata(request1, pn); err != nil {
-		gLog.Error.Printf("Error %v  getting usermeta of %s",err,pn)
-		return 1
-	}
-	/*
-
 		Check document has a pdf and/or Clipping page
 	 */
 	if err,pdf,p0 = checkPdfP0(pn); err !=nil {
@@ -126,6 +118,7 @@ func checkBlob1(pn string, np int) int {
 //  document with bigger  pages number than maxPage
 
 func checkBig1(pn string, np int, maxPage int) int {
+
 	var (
 		q,r,start,end       int
 		nerrors,terrors int = 0,0
