@@ -58,21 +58,21 @@ func checkBlob1(pn string, np int) int {
 	}
 	if p0 {
 		start = 0
-		gLog.Info.Printf("Document %s contains a page 0", pn)
+		gLog.Info.Printf("DocId %s contains a page 0", pn)
 	} else {
 		start = 1
 	}
 
 	if pdf {
-		gLog.Info.Printf("Document %s contains a pdf", pn)
+		gLog.Info.Printf("DocId %s contains a pdf", pn)
 		/*
 			Compare source vs restored pdf
 		*/
 		pdfId := pn + "/pdf"
 		if err, ok := comparePdf(pdfId); err == nil {
-			gLog.Info.Printf("Comparing source and restored pdf document %s - isEqual ? %v", pdfId, ok)
+			gLog.Info.Printf("Comparing source and restored Docid: %s - isEqual ? %v", pdfId, ok)
 		} else {
-			gLog.Error.Printf("Error %v comparing pdf document %s", err, pdfId)
+			gLog.Error.Printf("Error %v comparing  DocId %s", err, pdfId)
 		}
 
 	}
@@ -101,7 +101,7 @@ func checkBlob1(pn string, np int) int {
 						}
 					}
 					if err, ok := compareObj(pn, k, &body, usermd); err == nil {
-						gLog.Info.Printf("Comparing source and restored Docid:%s / Page:%d - isEqual ? %v", pn, k, ok)
+						gLog.Info.Printf("Comparing source and restored DocId: %s / Page:%d - isEqual ? %v", pn, k, ok)
 					} else {
 						gLog.Error.Println(err)
 					}
