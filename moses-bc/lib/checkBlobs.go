@@ -60,14 +60,13 @@ func checkBlob1(pn string, np int) int {
 
 	if p0 {
 		start = 0
+		gLog.Info.Printf("Document %s contains a page 0",pn)
 	} else {
 		start = 1
 	}
 
 	if pdf {
-		/*
-			Todo
-		 */
+		gLog.Info.Printf("Document %s contains a pdf" ,pn)
 	}
 
 	for k := start; k <= np; k++ {
@@ -134,14 +133,13 @@ func checkBig1(pn string, np int, maxPage int) int {
 	}
 	if p0 {
 		start = 0
+		gLog.Info.Printf("Document %s contains a page 0",pn)
 	} else {
 		start = 1
 	}
 
 	if pdf {
-	 /*
-		TODO
-	 */
+		gLog.Info.Printf("Document %s contains a pdf" ,pn)
 	}
 	end = maxPage
 	q   = np  / maxPage
