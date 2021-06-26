@@ -69,10 +69,10 @@ func checkBlob1(pn string, np int) int {
 			Compare source vs restored pdf
 		*/
 		pdfId := pn + "/pdf"
-		if err,ok :=comparePdf(pdfId);err == nil {
+		if err, ok := comparePdf(pdfId); err == nil {
 			gLog.Info.Printf("Comparing source and restored pdf document %s - isEqual ? %v", pdfId, ok)
-		}  else {
-			gLog.Error.Printf("Error %v comparing pdf document %s",err,pdfId)
+		} else {
+			gLog.Error.Printf("Error %v comparing pdf document %s", err, pdfId)
 		}
 
 	}
@@ -150,10 +150,10 @@ func checkBig1(pn string, np int, maxPage int) int {
 		gLog.Info.Printf("Document %s contains a pdf", pn)
 		/*   compare source  with  restored pdf   */
 		pdfId := pn + "/pdf"
-		if err,ok :=comparePdf(pdfId);err == nil {
+		if err, ok := comparePdf(pdfId); err == nil {
 			gLog.Info.Printf("Comparing source and restored pdf document %s - isEqual ? %v", pdfId, ok)
-		}  else {
-			gLog.Error.Printf("Error %v comparing pdf document %s",err,pdfId)
+		} else {
+			gLog.Error.Printf("Error %v comparing pdf document %s", err, pdfId)
 		}
 	}
 	end = maxPage
@@ -225,14 +225,13 @@ func compareObj(pn string, pagen int, body *[]byte, usermd string) (error, bool)
 				Timeout:   sproxyd.ReadTimeout,
 				Transport: sproxyd.Transport,
 			},
+			Path : sproxyd.TargetEnv + "/" + pn + "/p" + strconv.Itoa(pagen),
 		}
 		err     error
 		body1   *[]byte
 		usermd1 string
 	)
-	request.Path = sproxyd.TargetEnv + "/" + pn + "/p" + strconv.Itoa(pagen)
 	if err, usermd1, body1 = GetObject(request, pn); err == nil {
-		/*  vheck */
 		if usermd1 == usermd && len(*body1) == len(*body) {
 			return err, true
 		} else {
@@ -267,21 +266,28 @@ func comparePdf(pn string) (error, bool) {
 
 	var (
 		request = sproxyd.HttpRequest{
-			Hspool: sproxyd.TargetHP,
+			Hspool: sproxyd.HP,
 			Client: &http.Client{
 				Timeout:   sproxyd.ReadTimeout,
 				Transport: sproxyd.Transport,
 			},
+			Path : sproxyd.Env + "/" + pn,
 		}
 		err             error
 		body, body1     *[]byte
 		usermd, usermd1 string
 	)
 
-	request.Path = sproxyd.Env + "/" + pn
 	if err, usermd, body = GetObject(request, pn); err == nil {
-		request.Path = sproxyd.TargetEnv + "/" + pn
-		if err, usermd1, body1 = GetObject(request, pn); err == nil {
+		request1 := sproxyd.HttpRequest{
+			Hspool: sproxyd.TargetHP,
+			Client: &http.Client{
+				Timeout:   sproxyd.ReadTimeout,
+				Transport: sproxyd.Transport,
+			},
+			Path : sproxyd.TargetEnv + "/" + pn,
+		}
+		if err, usermd1, body1 = GetObject(request1, pn); err == nil {
 			/*  vheck */
 			if usermd1 == usermd && len(*body1) == len(*body) {
 				return err, true
