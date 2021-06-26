@@ -45,9 +45,40 @@ func checkBlob1(pn string, np int) int {
 		wg2     sync.WaitGroup
 		nerrors = 0
 		me      = sync.Mutex{}
-	)
+		err 	error
+		usermd string
+		start int
+		pdf,p0 bool
 
-	for k := 1; k <= np; k++ {
+	)
+	/*
+		Get the document meta data
+	 */
+	if err, usermd = GetMetadata(request1, pn); err != nil {
+		gLog.Error.Printf("Error %v  getting usermeta of %s",err,pn)
+		return 1
+	}
+	/*
+
+		Check document has a pdf and/or Clipping page
+	 */
+	if err,pdf,p0 = checkPdfP0(usermd); err !=nil {
+		return 1
+	}
+
+	if p0 {
+		start = 0
+	} else {
+		start = 1
+	}
+
+	if pdf {
+		/*
+			Todo
+		 */
+	}
+
+	for k := start; k <= np; k++ {
 		request1.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
 		wg2.Add(1)
 		go func(request1 sproxyd.HttpRequest, pn string, k int) {
@@ -96,14 +127,36 @@ func checkBlob1(pn string, np int) int {
 
 func checkBig1(pn string, np int, maxPage int) int {
 	var (
-		q       int = np / maxPage
-		r       int = np % maxPage
-		start   int = 1
-		end     int = start + maxPage - 1
-		nerrors int = 0
-		terrors int = 0
+		q,r,start,end       int
+		nerrors,terrors int = 0,0
+		usermd 	string
+		p0,pdf  bool
+		err error
 	)
+	/*
+		Get the document meta data
+	 */
+
+	if err,pdf,p0 = checkPdfP0(usermd); err !=nil {
+		return 1
+	}
+	if p0 {
+		start = 0
+	} else {
+		start = 1
+	}
+
+	if pdf {
+	 /*
+		TODO
+	 */
+	}
+	end = maxPage
+	q   = np  / maxPage
+	r   = np  % maxPage
+	
 	gLog.Warning.Printf("Big document %s  - number of pages %d ", pn, np)
+
 	for s := 1; s <= q; s++ {
 		nerrors = checkPart1(pn, np, start, end)
 		start = end + 1
@@ -185,4 +238,22 @@ func compareObj(pn string, pagen int, body *[]byte, usermd string) (error, bool)
 		gLog.Error.Printf("Error %v Getting  %s", err, request.Path)
 	}
 	return err, false
+}
+
+func checkPdfP0 (pn string ) (error, bool,bool){
+
+	request1 := sproxyd.HttpRequest{
+			Hspool: sproxyd.HP,
+			Client: &http.Client{
+				Timeout:   sproxyd.ReadTimeout,
+				Transport: sproxyd.Transport,
+			},
+		}
+	if err, usermd := GetMetadata(request1, pn); err != nil {
+		gLog.Error.Printf("Error %v  getting usermeta of %s",err,pn)
+		return err,false,false
+	} else {
+		pdf,p0 := CheckPdfAndP0(pn, usermd);
+		return err,pdf,p0
+	}
 }
