@@ -22,12 +22,12 @@ func CheckBlob1(pn string, np int, maxPage int) int {
 
 	start := time.Now()
 	if np <= maxPage {
-		r:=  checkBlob1(pn, np)
-		gLog.Info.Printf("Elapsed time %v",time.Since(start))
+		r := checkBlob1(pn, np)
+		gLog.Info.Printf("Elapsed time %v", time.Since(start))
 		return r
 	} else {
-		r:= checkBig1(pn, np, maxPage)
-		gLog.Info.Printf("Elapsed time %v",time.Since(start))
+		r := checkBig1(pn, np, maxPage)
+		gLog.Info.Printf("Elapsed time %v", time.Since(start))
 		return r
 	}
 }
@@ -45,28 +45,30 @@ func checkBlob1(pn string, np int) int {
 		wg2     sync.WaitGroup
 		nerrors = 0
 		me      = sync.Mutex{}
-		err 	error
+		err     error
 		// usermd string
-		start int
-		pdf,p0 bool
-
+		start   int
+		pdf, p0 bool
 	)
 	/*
 		Check document has a pdf and/or Clipping page
-	 */
-	if err,pdf,p0 = checkPdfP0(pn); err !=nil {
+	*/
+	if err, pdf, p0 = checkPdfP0(pn); err != nil {
 		return 1
 	}
-
 	if p0 {
 		start = 0
-		gLog.Info.Printf("Document %s contains a page 0",pn)
+		gLog.Info.Printf("Document %s contains a page 0", pn)
 	} else {
 		start = 1
 	}
 
 	if pdf {
-		gLog.Info.Printf("Document %s contains a pdf" ,pn)
+		gLog.Info.Printf("Document %s contains a pdf", pn)
+		/*
+			Compare source vs restored pdf
+		*/
+
 	}
 
 	for k := start; k <= np; k++ {
@@ -119,31 +121,36 @@ func checkBlob1(pn string, np int) int {
 func checkBig1(pn string, np int, maxPage int) int {
 
 	var (
-		q,r,start,end       int
-		nerrors,terrors int = 0,0
-		p0,pdf  bool
-		err error
+		q, r, start, end int
+		nerrors, terrors int = 0, 0
+		p0, pdf          bool
+		err              error
 	)
 	/*
 		Get the document meta data
-	 */
+	*/
 
-	if err,pdf,p0 = checkPdfP0(pn); err !=nil {
+	if err, pdf, p0 = checkPdfP0(pn); err != nil {
 		return 1
 	}
 	if p0 {
 		start = 0
-		gLog.Info.Printf("Document %s contains a page 0",pn)
+		gLog.Info.Printf("Document %s contains a page 0", pn)
 	} else {
 		start = 1
 	}
 
 	if pdf {
-		gLog.Info.Printf("Document %s contains a pdf" ,pn)
+		gLog.Info.Printf("Document %s contains a pdf", pn)
+		/*   compare source  with  restored pdf   */
+		pdfId := pn + "/pdf"
+		if err,ok :=comparePdf(pdfId);err != nil {
+			gLog.Info.Printf("Comparing source and restored pdf document %s / Page:%d - isEqual ? %v", pdfId, ok)
+		}
 	}
 	end = maxPage
-	q   = np  / maxPage
-	r   = np  % maxPage
+	q = np / maxPage
+	r = np % maxPage
 
 	gLog.Warning.Printf("Big document %s  - number of pages %d ", pn, np)
 
@@ -230,20 +237,53 @@ func compareObj(pn string, pagen int, body *[]byte, usermd string) (error, bool)
 	return err, false
 }
 
-func checkPdfP0 (pn string ) (error, bool,bool){
+func checkPdfP0(pn string) (error, bool, bool) {
 
 	request1 := sproxyd.HttpRequest{
-			Hspool: sproxyd.HP,
+		Hspool: sproxyd.HP,
+		Client: &http.Client{
+			Timeout:   sproxyd.ReadTimeout,
+			Transport: sproxyd.Transport,
+		},
+	}
+	if err, usermd := GetMetadata(request1, pn); err != nil {
+		gLog.Error.Printf("Error %v  getting usermeta of %s", err, pn)
+		return err, false, false
+	} else {
+		pdf, p0 := CheckPdfAndP0(pn, usermd)
+		return err, pdf, p0
+	}
+}
+
+func comparePdf(pn string) (error, bool) {
+
+	var (
+		request = sproxyd.HttpRequest{
+			Hspool: sproxyd.TargetHP,
 			Client: &http.Client{
 				Timeout:   sproxyd.ReadTimeout,
 				Transport: sproxyd.Transport,
 			},
 		}
-	if err, usermd := GetMetadata(request1, pn); err != nil {
-		gLog.Error.Printf("Error %v  getting usermeta of %s",err,pn)
-		return err,false,false
-	} else {
-		pdf,p0 := CheckPdfAndP0(pn, usermd);
-		return err,pdf,p0
+		err             error
+		body, body1     *[]byte
+		usermd, usermd1 string
+	)
+
+	request.Path = sproxyd.Env + "/" + pn
+	if err, usermd, body = GetObject(request, pn); err == nil {
+		request.Path = sproxyd.TargetEnv + "/" + pn
+		if err, usermd1, body1 = GetObject(request, pn); err == nil {
+			/*  vheck */
+			if usermd1 == usermd && len(*body1) == len(*body) {
+				return err, true
+			} else {
+				err = errors.New(fmt.Sprintf("usermd1=%s usermd=%% / length body1= %d length body = %d ", len(usermd1), len(usermd), len(*body1), len(*body)))
+				return err, false
+			}
+		} else {
+			gLog.Error.Printf("Error %v Getting  %s", err, request.Path)
+		}
 	}
+	return err, false
 }
