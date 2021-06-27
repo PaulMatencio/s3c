@@ -25,10 +25,18 @@ import (
 var (
 	checkCmd = &cobra.Command{
 		Use:   "check",
-		Short: "Command to check  MOSES backup",
-		Long:  `Check the restored blobs against the current blobs`,
+		Short: "Command to compare Moses objects",
+		Long:  `Check a restored blobs against its source blobs`,
 		Run:   check,
 	}
+
+	checksCmd = &cobra.Command{
+		Use:   "checks",
+		Short: "Command to compare Moses objects",
+		Long:  `Check a restored blobs against its source blobs`,
+		Run:   checks,
+	}
+
 	np,status,srcUrl,targetUrl  string
 	err error
 	driver, targetDriver string
@@ -39,22 +47,51 @@ func initCkFlags(cmd *cobra.Command) {
 
 	cmd.Flags().IntVarP(&maxPage, "maxPage", "m", 50, "maximum number of concurrent pages to be checked")
 	cmd.Flags().StringVarP(&pn, "pn", "k", "", "Publication number(document key)")
-	cmd.Flags().StringVarP(&srcUrl, "source-url", "s", "http://10.12.202.10:81/proxy", "source URL http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
+	cmd.Flags().StringVarP(&srcUrl, "source-url", "s", "http://10.12.202.10:81/proxy,http://10.12.202.20:81/proxy,", "source URL http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
 	cmd.Flags().StringVarP(&driver, "source-driver", "", "bpchord", "source driver [bpchord|bparc]")
 	cmd.Flags().StringVarP(&targetDriver, "target-driver", "", "bparc", "target driver [bpchord|bparc]")
-	cmd.Flags().StringVarP(&targetUrl, "target-url", "t", "http://10.12.210.170:81/proxy", "target URL http://xx.xx.xx.xx:81/proxy,http:// ...")
+	cmd.Flags().StringVarP(&targetUrl, "target-url", "t", "http://10.12.201.170:81/proxy,http://10.12.201.173:81/proxy", "target URL http://xx.xx.xx.xx:81/proxy,http:// ...")
 
-	cmd.Flags().Int64VarP(&maxPartSize, "maxPartSize", "M", 20, "Maximum part size (MB)")
 }
 
+func initCksFlags(cmd *cobra.Command) {
+
+	cmd.Flags().StringVarP(&mbucket, "mbucket", "b", "", "the name of the metadata bucket")
+	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "key prefix")
+	cmd.Flags().Int64VarP(&maxKey, "maxKey", "m", 40, "maximum number of documents (keys) to be backed up concurrently -Check --maxpage for maximum number of concurrent pages")
+	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key - Useful for rerun")
+	cmd.Flags().StringVarP(&delimiter, "delimiter", "d", "", "prefix  delimiter")
+	cmd.Flags().IntVarP(&maxPage, "maxPage", "", 50, "maximum number of concurrent pages per document. check  --maxKey  for maximum number of concurrent documents")
+	cmd.Flags().IntVarP(&maxLoop, "maxLoop", "", 1, "maximum number of loop, 0 means no upper limit")
+	cmd.Flags().StringVarP(&srcUrl, "source-url", "s", "http://10.12.202.10:81/proxy,http://10.12.202.20:81/proxy,", "source URL http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
+	cmd.Flags().StringVarP(&driver, "source-driver", "", "bpchord", "source driver [bpchord|bparc]")
+	cmd.Flags().StringVarP(&targetDriver, "target-driver", "", "bparc", "target driver [bpchord|bparc]")
+	cmd.Flags().StringVarP(&targetUrl, "target-url", "t", "http://10.12.201.170:81/proxy,http://10.12.201.173:81/proxy", "target URL http://xx.xx.xx.xx:81/proxy,http:// ...")
+
+}
 func init() {
 	rootCmd.AddCommand(checkCmd)
+	rootCmd.AddCommand(checksCmd)
 	initCkFlags(checkCmd)
 }
 
 func check(cmd *cobra.Command, args []string) {
 
-	if len(srcUrl) > 0 {
+	chkSproxyd()
+	if np, err, status := mosesbc.GetPageNumber(pn); err == nil && status == 200 {
+		if np > 0 {
+			mosesbc.CheckBlob1(pn, np, maxPage)
+		} else {
+			gLog.Error.Printf("The number of pages is %d ",np)
+		}
+	}  else {
+		gLog.Error.Printf("Error %v getting  the number of pages  run  with  -l 4  (trace)",err)
+	}
+}
+
+
+func chkSproxyd(){
+		if len(srcUrl) > 0 {
 		sproxyd.Url = srcUrl
 	} else {
 		gLog.Error.Printf("Source URL is missing")
@@ -86,14 +123,8 @@ func check(cmd *cobra.Command, args []string) {
 	gLog.Trace.Printf ("Source Host Pool: %v - Source Env: %s - Source Driver: %s",sproxyd.HP.Hosts(),sproxyd.Env,sproxyd.Driver)
 	gLog.Trace.Printf("Target Host Pool: %v -  Source Env: %s - Source Driver: %s",sproxyd.TargetHP.Hosts(),sproxyd.TargetEnv,sproxyd.TargetDriver)
 
+}
+func checks(cmd *cobra.Command, args []string) {
 
-	if np, err, status := mosesbc.GetPageNumber(pn); err == nil && status == 200 {
-		if np > 0 {
-			mosesbc.CheckBlob1(pn, np, maxPage)
-		} else {
-			gLog.Error.Printf("The number of pages is %d ",np)
-		}
-	}  else {
-		gLog.Error.Printf("Error %v getting  the number of pages  run  with  -l 4  (trace)",err)
-	}
+
 }
