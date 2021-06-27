@@ -119,14 +119,16 @@ func checkBlobs(bucket string, marker string,prefix string,maxKey int64,maxPage 
 	}
 
 	svcm = s3.New(api.CreateSession2(meta))
+
 	request := datatype.ListObjRequest{
 		Service : svcm,
 		Bucket:    bucket,
 		Prefix:    prefix,
 		MaxKey:    maxKey,
 		Marker:    marker,
-		Delimiter: delimiter,
+		// Delimiter: delimiter,
 	}
+	gLog.Info.Println(request,maxPage,maxLoop)
 	mosesbc.CheckBlobs(request, maxPage, maxLoop)
 }
 
