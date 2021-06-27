@@ -74,7 +74,7 @@ func check(cmd *cobra.Command, args []string) {
 			return
 		}
 		fmt.Printf("Bucket %s  prefix %s marker %s maxKey %d  maxPage %d maxLoop %d",bucket,prefix,marker,maxKey,maxPage,maxLoop)
-		checkBlobs(bucket,prefix,marker,maxKey,maxLoop)
+		checkBlobs(bucket,prefix,marker,maxKey,maxPage,maxLoop)
 	} else {
 		gLog.Error.Printf("Both publication number (pn)  and  prefix are missing")
 		return
@@ -95,7 +95,7 @@ func chekBlob1(pn string) {
 	}
 }
 
-func checkBlobs(bucket string, marker string,prefix string,maxKey int64,maxPage int) {
+func checkBlobs(bucket string, marker string,prefix string,maxKey int64,maxPage int,maxLoop int) {
 
 	setSproxydHost()
 
