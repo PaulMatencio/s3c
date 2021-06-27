@@ -27,6 +27,7 @@ import (
 )
 
 // listObjectCmd represents the listObject command
+
 var (
 	checkCmd = &cobra.Command{
 		Use:   "check",
@@ -41,6 +42,7 @@ var (
 )
 
 func initCkFlags(cmd *cobra.Command) {
+
 	cmd.Flags().StringVarP(&pn, "pn", "k", "", "Publication number(document key)")
 	cmd.Flags().StringVarP(&mbucket, "bucket", "b", "", "the name of the metadata bucket")
 	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "key prefix")
@@ -64,16 +66,15 @@ func check(cmd *cobra.Command, args []string) {
 	if len(pn) > 0 {
 		chekBlob1(pn)
 	} else if len(prefix) > 0 {
-	checkBlobs(prefix)
+		checkBlobs(bucket,prefix,marker,maxKey,maxLoop)
 	} else {
 		gLog.Error.Printf("Both publication number (pn)  and  prefix are missing")
 		return
 	}
 }
 
-
-
 func chekBlob1(pn string) {
+
 	setSproxydHost()
 	if np, err, status := mosesbc.GetPageNumber(pn); err == nil && status == 200 {
 		if np > 0 {
@@ -86,7 +87,7 @@ func chekBlob1(pn string) {
 	}
 }
 
-func checkBlobs(prefix string) {
+func checkBlobs(bucket string, marker string,prefix string,maxKey int64,maxPage int) {
 
 	setSproxydHost()
 
@@ -126,8 +127,7 @@ func checkBlobs(prefix string) {
 		Marker:    marker,
 		Delimiter: delimiter,
 	}
-	gLog.Info.Println(request)
-	// mosesbc.CheckBlobs(request, maxPage, maxLoop)
+	mosesbc.CheckBlobs(request, maxPage, maxLoop)
 }
 
 func setSproxydHost() {
