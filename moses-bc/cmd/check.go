@@ -64,7 +64,7 @@ func check(cmd *cobra.Command, args []string) {
 	if len(pn) > 0 {
 		chekBlob1(pn)
 	} else if len(prefix) > 0 {
-		checkBlobs(prefix)
+	checkBlobs(prefix)
 	} else {
 		gLog.Error.Printf("Both publication number (pn)  and  prefix are missing")
 		return
@@ -119,14 +119,15 @@ func checkBlobs(prefix string) {
 
 	svcm = s3.New(api.CreateSession2(meta))
 	request := datatype.ListObjRequest{
-		Service:   svcm,
+		Service : svcm,
 		Bucket:    bucket,
 		Prefix:    prefix,
 		MaxKey:    maxKey,
 		Marker:    marker,
 		Delimiter: delimiter,
 	}
-	mosesbc.CheckBlobs(request, maxPage, maxLoop)
+	gLog.Info.Println(request)
+	// mosesbc.CheckBlobs(request, maxPage, maxLoop)
 }
 
 func setSproxydHost() {
