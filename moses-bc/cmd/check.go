@@ -16,7 +16,6 @@ package cmd
 
 import (
 	"errors"
-	"fmt"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/paulmatencio/s3c/api"
 	"github.com/paulmatencio/s3c/datatype"
@@ -53,7 +52,7 @@ func initCkFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&delimiter, "delimiter", "d", "", "prefix  delimiter")
 	cmd.Flags().IntVarP(&maxPage, "maxPage", "", 50, "maximum number of concurrent pages per document. check  --maxKey  for maximum number of concurrent documents")
 	cmd.Flags().IntVarP(&maxLoop, "maxLoop", "", 1, "maximum number of loop, 0 means no upper limit")
-	cmd.Flags().StringVarP(&srcUrl, "source-url", "s", "http://10.12.202.10:81/proxy,http://10.12.202.20:81/proxy,", "source URL http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
+	cmd.Flags().StringVarP(&srcUrl, "source-url", "s", "http://10.12.202.10:81/proxy,http://10.12.202.20:81/proxy", "source URL http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
 	cmd.Flags().StringVarP(&driver, "source-driver", "", "bpchord", "source driver [bpchord|bparc]")
 	cmd.Flags().StringVarP(&targetDriver, "target-driver", "", "bparc", "target driver [bpchord|bparc]")
 	cmd.Flags().StringVarP(&targetUrl, "target-url", "t", "http://10.12.201.170:81/proxy,http://10.12.201.173:81/proxy", "target URL http://xx.xx.xx.xx:81/proxy,http:// ...")
@@ -130,7 +129,6 @@ func checkBlobs(bucket string, marker string,prefix string,maxKey int64,maxPage 
 		Marker:    marker,
 		// Delimiter: delimiter,
 	}
-	fmt.Println(request,maxLoop,maxPage)
 
 	mosesbc.CheckBlobs(request, maxLoop,maxPage)
 
