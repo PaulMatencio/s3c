@@ -131,8 +131,7 @@ func checkBlobs(bucket string, marker string,prefix string,maxKey int64,maxPage 
 		Marker:    marker,
 		// Delimiter: delimiter,
 	}
-	gLog.Info.Println(request,maxPage,maxLoop)
-	mosesbc.CheckBlobs(request, maxPage, maxLoop)
+	mosesbc.CheckBlobs(request, maxLoop,maxPage)
 }
 
 func setSproxydHost() {
