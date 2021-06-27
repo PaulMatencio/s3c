@@ -131,7 +131,11 @@ func checkBlobs(bucket string, marker string,prefix string,maxKey int64,maxPage 
 		Marker:    marker,
 		// Delimiter: delimiter,
 	}
+	fmt.Println(request,maxLoop,maxPage)
+	return
+	/*
 	mosesbc.CheckBlobs(request, maxLoop,maxPage)
+	 */
 }
 
 func setSproxydHost() {
