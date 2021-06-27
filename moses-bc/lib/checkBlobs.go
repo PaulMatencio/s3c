@@ -292,7 +292,7 @@ func comparePdf(pn string) (error, bool) {
 			if usermd1 == usermd && len(*body1) == len(*body) {
 				return err, true
 			} else {
-				err = errors.New(fmt.Sprintf("usermd1=%s usermd=%% / length body1= %d length body = %d ", len(usermd1), len(usermd), len(*body1), len(*body)))
+				err = errors.New(fmt.Sprintf("usermd1 = %s  usermd = %% / length body1 = %d  length body = %d ", len(usermd1), len(usermd), len(*body1), len(*body)))
 				return err, false
 			}
 		} else {

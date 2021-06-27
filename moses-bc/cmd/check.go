@@ -18,7 +18,6 @@ import (
 	gLog "github.com/paulmatencio/s3c/gLog"
 	mosesbc "github.com/paulmatencio/s3c/moses-bc/lib"
 	sproxyd "github.com/paulmatencio/s3c/sproxyd/lib"
-
 	"github.com/spf13/cobra"
 )
 
@@ -30,7 +29,7 @@ var (
 		Long:  `Check the restored blobs against the current blobs`,
 		Run:   check,
 	}
-	np,status int
+	np,status,srcUrl,targetUrl  string
 	err error
 	driver, targetDriver string
 
@@ -40,10 +39,11 @@ func initCkFlags(cmd *cobra.Command) {
 
 	cmd.Flags().IntVarP(&maxPage, "maxPage", "m", 50, "maximum number of concurrent pages to be checked")
 	cmd.Flags().StringVarP(&pn, "pn", "k", "", "Publication number(document key)")
-	cmd.Flags().StringVarP(&source, "source-url", "s", "http://10.12.202.10:81", "source URL http://xx.xx.xx.xx:81")
+	cmd.Flags().StringVarP(&srcUrl, "source-url", "s", "http://10.12.202.10:81", "source URL http://xx.xx.xx.xx:81,http://xx.xx.xx.xx:81")
 	cmd.Flags().StringVarP(&driver, "source-driver", "", "bpchord", "source driver [bpchord|bparc]")
 	cmd.Flags().StringVarP(&targetDriver, "target-driver", "", "bparc", "target driver [bpchord|bparc]")
-	cmd.Flags().StringVarP(&target, "target-url", "t", "http://10.12.210.170:81", "target URL http://xx.xx.xx.xx:81")
+	cmd.Flags().StringVarP(&targetUrl, "target-url", "t", "http://10.12.210.170:81", "target URL http://xx.xx.xx.xx:81,http:// ...")
+
 	cmd.Flags().Int64VarP(&maxPartSize, "maxPartSize", "M", 20, "Maximum part size (MB)")
 }
 
@@ -54,10 +54,16 @@ func init() {
 
 func check(cmd *cobra.Command, args []string) {
 
-	if len(source) > 0 {
-		sproxyd.Url = source
+	if len(srcUrl) > 0 {
+		sproxyd.Url = srcUrl
 	} else {
 		gLog.Error.Printf("Source URL is missing")
+		return
+	}
+	if len(targetUrl) > 0 {
+		sproxyd.TargetUrl = targetUrl
+	} else {
+		gLog.Error.Printf("Target URL is missing")
 		return
 	}
 	if len(driver) > 0 {
@@ -74,10 +80,12 @@ func check(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	sproxyd.SetNewProxydHost()
-	sproxyd.SetNewTargetProxydHost()
+	sproxyd.SetNewProxydHost1(srcUrl)
+	sproxyd.SetNewTargetProxydHost1(targetUrl)
 
-	//gLog.Info.Println(sproxyd.TargetUrl,sproxyd.TargetHP.Hosts(),sproxyd.TargetEnv,sproxyd.Url,sproxyd.TargetUrl,sproxyd.HP.Hosts())
+	gLog.Trace.Printf ("Source Host Pool: %v - Source Env: %s - Source Driver: %s",sproxyd.HP.Hosts(),sproxyd.Env,sproxyd.Driver)
+	gLog.Trace.Printf("Target Host Pool: %v -  Source Env: %s - Source Driver: %s",sproxyd.TargetHP.Hosts(),sproxyd.TargetEnv,sproxyd.TargetDriver)
+	
 
 	if np, err, status := mosesbc.GetPageNumber(pn); err == nil && status == 200 {
 		if np > 0 {
