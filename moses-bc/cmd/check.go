@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/paulmatencio/s3c/api"
 	"github.com/paulmatencio/s3c/datatype"
@@ -38,13 +39,14 @@ var (
 
 	np, status, srcUrl, targetUrl string
 	err                           error
-	driver, targetDriver          string
+	driver, targetDriver         string
+
 )
 
 func initCkFlags(cmd *cobra.Command) {
 
 	cmd.Flags().StringVarP(&pn, "pn", "k", "", "Publication number(document key)")
-	cmd.Flags().StringVarP(&mbucket, "bucket", "b", "", "the name of the metadata bucket")
+	cmd.Flags().StringVarP(&bucket, "bucket", "b", "", "the name of the metadata bucket")
 	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "key prefix")
 	cmd.Flags().Int64VarP(&maxKey, "maxKey", "m", 40, "maximum number of documents (keys) to be backed up concurrently -Check --maxpage for maximum number of concurrent pages")
 	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key - Useful for rerun")
@@ -63,9 +65,15 @@ func init() {
 }
 
 func check(cmd *cobra.Command, args []string) {
+
 	if len(pn) > 0 {
 		chekBlob1(pn)
 	} else if len(prefix) > 0 {
+		if len(bucket) == 0 {
+			gLog.Error.Printf("Metadata bucket is missing")
+			return
+		}
+		fmt.Printf("Bucket %s  prefix %s marker %s maxKey %d  maxPage %d maxLoop %d",bucket,prefix,marker,maxKey,maxPage,maxLoop)
 		checkBlobs(bucket,prefix,marker,maxKey,maxLoop)
 	} else {
 		gLog.Error.Printf("Both publication number (pn)  and  prefix are missing")
@@ -90,12 +98,7 @@ func chekBlob1(pn string) {
 func checkBlobs(bucket string, marker string,prefix string,maxKey int64,maxPage int) {
 
 	setSproxydHost()
-
-	if len(mbucket) == 0 {
-			gLog.Warning.Printf("%s", "Missing S3 metadata bucket ")
-			return
-	}
-
+	
 	if metaUrl = viper.GetString("meta.s3.url"); len(metaUrl) == 0 {
 		gLog.Error.Println(errors.New(missingMetaurl))
 		return
@@ -110,7 +113,7 @@ func checkBlobs(bucket string, marker string,prefix string,maxKey int64,maxPage 
 		gLog.Error.Println(errors.New(missingMetask))
 		return
 	}
-
+	gLog.Info.Println(metaUrl,metaAccessKey,metaSecretKey)
 	meta = datatype.CreateSession{
 		Region:    viper.GetString("meta.s3.region"),
 		EndPoint:  metaUrl,

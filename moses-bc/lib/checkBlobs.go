@@ -320,9 +320,7 @@ func CheckBlobs(request datatype.ListObjRequest,maxPage int,maxLoop int) {
 			err    error
 		)
 		N++ // number of loop
-
 		if result, err = api.ListObject(request); err == nil {
-
 			if l := len(result.Contents); l > 0 {
 				var wg1 sync.WaitGroup
 				for _, v := range result.Contents {
