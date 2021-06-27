@@ -82,12 +82,17 @@ func init() {
 }
 
 func backup(cmd *cobra.Command, args []string) {
+
 	var (
 		nextmarker string
 		err        error
 	)
 	start := time.Now()
 
+	if len(bbucket) == 0 {
+		gLog.Warning.Printf("%s", missingbBucket)
+		return
+	}
 	if metaUrl = viper.GetString("meta.s3.url"); len(metaUrl) == 0 {
 		gLog.Error.Println(errors.New(missingMetaurl))
 		return

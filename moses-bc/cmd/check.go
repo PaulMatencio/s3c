@@ -15,10 +15,15 @@
 package cmd
 
 import (
+	"errors"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/paulmatencio/s3c/api"
+	"github.com/paulmatencio/s3c/datatype"
 	gLog "github.com/paulmatencio/s3c/gLog"
 	mosesbc "github.com/paulmatencio/s3c/moses-bc/lib"
 	sproxyd "github.com/paulmatencio/s3c/sproxyd/lib"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // listObjectCmd represents the listObject command
@@ -30,33 +35,14 @@ var (
 		Run:   check,
 	}
 
-	checksCmd = &cobra.Command{
-		Use:   "checks",
-		Short: "Command to compare Moses objects",
-		Long:  `Check a restored blobs against its source blobs`,
-		Run:   checks,
-	}
-
-	np,status,srcUrl,targetUrl  string
-	err error
-	driver, targetDriver string
-
+	np, status, srcUrl, targetUrl string
+	err                           error
+	driver, targetDriver          string
 )
 
 func initCkFlags(cmd *cobra.Command) {
-
-	cmd.Flags().IntVarP(&maxPage, "maxPage", "m", 50, "maximum number of concurrent pages to be checked")
 	cmd.Flags().StringVarP(&pn, "pn", "k", "", "Publication number(document key)")
-	cmd.Flags().StringVarP(&srcUrl, "source-url", "s", "http://10.12.202.10:81/proxy,http://10.12.202.20:81/proxy,", "source URL http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
-	cmd.Flags().StringVarP(&driver, "source-driver", "", "bpchord", "source driver [bpchord|bparc]")
-	cmd.Flags().StringVarP(&targetDriver, "target-driver", "", "bparc", "target driver [bpchord|bparc]")
-	cmd.Flags().StringVarP(&targetUrl, "target-url", "t", "http://10.12.201.170:81/proxy,http://10.12.201.173:81/proxy", "target URL http://xx.xx.xx.xx:81/proxy,http:// ...")
-
-}
-
-func initCksFlags(cmd *cobra.Command) {
-
-	cmd.Flags().StringVarP(&mbucket, "mbucket", "b", "", "the name of the metadata bucket")
+	cmd.Flags().StringVarP(&mbucket, "bucket", "b", "", "the name of the metadata bucket")
 	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "key prefix")
 	cmd.Flags().Int64VarP(&maxKey, "maxKey", "m", 40, "maximum number of documents (keys) to be backed up concurrently -Check --maxpage for maximum number of concurrent pages")
 	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key - Useful for rerun")
@@ -71,27 +57,83 @@ func initCksFlags(cmd *cobra.Command) {
 }
 func init() {
 	rootCmd.AddCommand(checkCmd)
-	rootCmd.AddCommand(checksCmd)
 	initCkFlags(checkCmd)
 }
 
 func check(cmd *cobra.Command, args []string) {
-
-	chkSproxyd()
-	if np, err, status := mosesbc.GetPageNumber(pn); err == nil && status == 200 {
-		if np > 0 {
-			mosesbc.CheckBlob1(pn, np, maxPage)
-		} else {
-			gLog.Error.Printf("The number of pages is %d ",np)
-		}
-	}  else {
-		gLog.Error.Printf("Error %v getting  the number of pages  run  with  -l 4  (trace)",err)
+	if len(pn) > 0 {
+		chekBlob1(pn)
+	} else if len(prefix) > 0 {
+		checkBlobs(prefix)
+	} else {
+		gLog.Error.Printf("Both publication number (pn)  and  prefix are missing")
+		return
 	}
 }
 
 
-func chkSproxyd(){
-		if len(srcUrl) > 0 {
+
+func chekBlob1(pn string) {
+	setSproxydHost()
+	if np, err, status := mosesbc.GetPageNumber(pn); err == nil && status == 200 {
+		if np > 0 {
+			mosesbc.CheckBlob1(pn, np, maxPage)
+		} else {
+			gLog.Error.Printf("The number of pages is %d ", np)
+		}
+	} else {
+		gLog.Error.Printf("Error %v getting  the number of pages  run  with  -l 4  (trace)", err)
+	}
+}
+
+func checkBlobs(prefix string) {
+
+	setSproxydHost()
+
+	if len(mbucket) == 0 {
+			gLog.Warning.Printf("%s", "Missing S3 metadata bucket ")
+			return
+	}
+
+	if metaUrl = viper.GetString("meta.s3.url"); len(metaUrl) == 0 {
+		gLog.Error.Println(errors.New(missingMetaurl))
+		return
+	}
+
+	if metaAccessKey = viper.GetString("meta.credential.access_key_id"); len(metaAccessKey) == 0 {
+		gLog.Error.Println(errors.New(missingMetaak))
+		return
+	}
+
+	if metaSecretKey = viper.GetString("meta.credential.secret_access_key"); len(metaSecretKey) == 0 {
+		gLog.Error.Println(errors.New(missingMetask))
+		return
+	}
+
+	meta = datatype.CreateSession{
+		Region:    viper.GetString("meta.s3.region"),
+		EndPoint:  metaUrl,
+		AccessKey: metaAccessKey,
+		SecretKey: metaSecretKey,
+	}
+
+	svcm = s3.New(api.CreateSession2(meta))
+	request := datatype.ListObjRequest{
+		Service:   svcm,
+		Bucket:    bucket,
+		Prefix:    prefix,
+		MaxKey:    maxKey,
+		Marker:    marker,
+		Delimiter: delimiter,
+	}
+	mosesbc.CheckBlobs(request, maxPage, maxLoop)
+}
+
+func setSproxydHost() {
+	/*
+
+	 */
+	if len(srcUrl) > 0 {
 		sproxyd.Url = srcUrl
 	} else {
 		gLog.Error.Printf("Source URL is missing")
@@ -117,14 +159,9 @@ func chkSproxyd(){
 		return
 	}
 
-	sproxyd.SetNewProxydHost1(srcUrl,driver)
-	sproxyd.SetNewTargetProxydHost1(targetUrl,targetDriver)
-
-	gLog.Trace.Printf ("Source Host Pool: %v - Source Env: %s - Source Driver: %s",sproxyd.HP.Hosts(),sproxyd.Env,sproxyd.Driver)
-	gLog.Trace.Printf("Target Host Pool: %v -  Source Env: %s - Source Driver: %s",sproxyd.TargetHP.Hosts(),sproxyd.TargetEnv,sproxyd.TargetDriver)
-
-}
-func checks(cmd *cobra.Command, args []string) {
-
+	sproxyd.SetNewProxydHost1(srcUrl, driver)
+	sproxyd.SetNewTargetProxydHost1(targetUrl, targetDriver)
+	gLog.Trace.Printf("Source Host Pool: %v - Source Env: %s - Source Driver: %s", sproxyd.HP.Hosts(), sproxyd.Env, sproxyd.Driver)
+	gLog.Trace.Printf("Target Host Pool: %v -  Source Env: %s - Source Driver: %s", sproxyd.TargetHP.Hosts(), sproxyd.TargetEnv, sproxyd.TargetDriver)
 
 }

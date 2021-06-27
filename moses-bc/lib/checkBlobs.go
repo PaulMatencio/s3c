@@ -3,10 +3,12 @@ package lib
 import (
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go/service/s3"
 	base64 "github.com/paulmatencio/ring/user/base64j"
-	// "github.com/golang/protobuf/proto"
-	"github.com/paulmatencio/s3c/gLog"
-	"github.com/paulmatencio/s3c/sproxyd/lib"
+	"github.com/paulmatencio/s3c/api"
+	"github.com/paulmatencio/s3c/datatype"
+	gLog "github.com/paulmatencio/s3c/gLog"
+	sproxyd "github.com/paulmatencio/s3c/sproxyd/lib"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -18,6 +20,7 @@ import (
 	Get Blob for cloning
 	Not used for the moment
 */
+
 func CheckBlob1(pn string, np int, maxPage int) int {
 
 	start := time.Now()
@@ -122,6 +125,7 @@ func checkBlob1(pn string, np int) int {
 	return nerrors
 }
 
+
 //  document with bigger  pages number than maxPage
 
 func checkBig1(pn string, np int, maxPage int) int {
@@ -132,6 +136,7 @@ func checkBig1(pn string, np int, maxPage int) int {
 		p0, pdf          bool
 		err              error
 	)
+
 	/*
 		Get the document meta data
 	*/
@@ -303,3 +308,56 @@ func comparePdf(pn string) (error, bool) {
 	}
 	return err, false
 }
+
+func CheckBlobs(request datatype.ListObjRequest,maxPage int,maxLoop int) {
+	var (
+		N          int
+		nextmarker string
+	)
+	for {
+		var (
+			result *s3.ListObjectsOutput
+			err    error
+		)
+		N++ // number of loop
+		if result, err = api.ListObject(request); err == nil {
+
+			if l := len(result.Contents); l > 0 {
+				var wg1 sync.WaitGroup
+				for _, v := range result.Contents {
+					pn := *v.Key
+					wg1.Add(1)
+					go func(pn string) {
+						defer wg1.Done()
+						if np, err, status := GetPageNumber(pn); err == nil && status == 200 {
+							if np > 0 {
+								CheckBlob1(pn, np, maxPage)
+							} else {
+								gLog.Error.Printf("The number of pages is %d ", np)
+							}
+						} else {
+							gLog.Error.Printf("Error %v getting  the number of pages  run  with  -l 4  (trace)", err)
+						}
+					}(pn)
+				}
+				wg1.Wait()
+				if *result.IsTruncated {
+					nextmarker = *result.Contents[l-1].Key
+					gLog.Warning.Printf("Truncated %v - Next marker: %s ", *result.IsTruncated, nextmarker)
+				}
+			}
+		} else {
+			gLog.Error.Printf("%v", err)
+			break
+		}
+
+		if *result.IsTruncated && (maxLoop == 0 || N <= maxLoop) {
+			request.Marker = nextmarker
+		} else {
+			break
+		}
+	}
+
+}
+
+
