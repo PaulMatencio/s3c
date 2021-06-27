@@ -309,7 +309,7 @@ func comparePdf(pn string) (error, bool) {
 	return err, false
 }
 
-func CheckBlobs(request datatype.ListObjRequest,maxPage int,maxLoop int) {
+func CheckBlobs(request datatype.ListObjRequest,maxLoop int,maxPage int) {
 	var (
 		N          int = 0
 		nextmarker string
