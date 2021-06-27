@@ -80,8 +80,8 @@ func check(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	sproxyd.SetNewProxydHost1(srcUrl)
-	sproxyd.SetNewTargetProxydHost1(targetUrl)
+	sproxyd.SetNewProxydHost1(srcUrl,driver)
+	sproxyd.SetNewTargetProxydHost1(targetUrl,targetDriver)
 
 	gLog.Trace.Printf ("Source Host Pool: %v - Source Env: %s - Source Driver: %s",sproxyd.HP.Hosts(),sproxyd.Env,sproxyd.Driver)
 	gLog.Trace.Printf("Target Host Pool: %v -  Source Env: %s - Source Driver: %s",sproxyd.TargetHP.Hosts(),sproxyd.TargetEnv,sproxyd.TargetDriver)

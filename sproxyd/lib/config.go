@@ -26,8 +26,11 @@ func SetNewTargetProxydHost() {
 	TargetHost = targetSproxyd
 }
 
-func SetNewProxydHost1(urls string) {
+func SetNewProxydHost1(urls string,driver string) {
 	sproxyd := strings.Split(urls,",")
+	for  i,h := range sproxyd {
+		sproxyd[i] = h+"/"+driver
+	}
 	HP = hostpool.NewEpsilonGreedy(sproxyd, 0, &hostpool.LinearEpsilonValueCalculator{})
 	Driver = Driver
 	Env = Env
@@ -35,9 +38,13 @@ func SetNewProxydHost1(urls string) {
 	Host = sproxyd
 }
 
-func SetNewTargetProxydHost1(urls string) {
+func SetNewTargetProxydHost1(urls string,driver string) {
 	targetSproxyd := strings.Split(urls,",")
+	for  i,h := range targetSproxyd {
+		targetSproxyd[i] = h+"/"+driver
+	}
 	TargetHP = hostpool.NewEpsilonGreedy(targetSproxyd, 0, &hostpool.LinearEpsilonValueCalculator{})
+
 	TargetDriver = TargetDriver
 	TargetEnv = TargetEnv
 	TargetHost = TargetHost[:0] // reset
