@@ -39,10 +39,10 @@ func initCkFlags(cmd *cobra.Command) {
 
 	cmd.Flags().IntVarP(&maxPage, "maxPage", "m", 50, "maximum number of concurrent pages to be checked")
 	cmd.Flags().StringVarP(&pn, "pn", "k", "", "Publication number(document key)")
-	cmd.Flags().StringVarP(&srcUrl, "source-url", "s", "http://10.12.202.10:81", "source URL http://xx.xx.xx.xx:81,http://xx.xx.xx.xx:81")
+	cmd.Flags().StringVarP(&srcUrl, "source-url", "s", "http://10.12.202.10:81/proxy", "source URL http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
 	cmd.Flags().StringVarP(&driver, "source-driver", "", "bpchord", "source driver [bpchord|bparc]")
 	cmd.Flags().StringVarP(&targetDriver, "target-driver", "", "bparc", "target driver [bpchord|bparc]")
-	cmd.Flags().StringVarP(&targetUrl, "target-url", "t", "http://10.12.210.170:81", "target URL http://xx.xx.xx.xx:81,http:// ...")
+	cmd.Flags().StringVarP(&targetUrl, "target-url", "t", "http://10.12.210.170:81/proxy", "target URL http://xx.xx.xx.xx:81/proxy,http:// ...")
 
 	cmd.Flags().Int64VarP(&maxPartSize, "maxPartSize", "M", 20, "Maximum part size (MB)")
 }
@@ -85,7 +85,7 @@ func check(cmd *cobra.Command, args []string) {
 
 	gLog.Trace.Printf ("Source Host Pool: %v - Source Env: %s - Source Driver: %s",sproxyd.HP.Hosts(),sproxyd.Env,sproxyd.Driver)
 	gLog.Trace.Printf("Target Host Pool: %v -  Source Env: %s - Source Driver: %s",sproxyd.TargetHP.Hosts(),sproxyd.TargetEnv,sproxyd.TargetDriver)
-	
+
 
 	if np, err, status := mosesbc.GetPageNumber(pn); err == nil && status == 200 {
 		if np > 0 {
@@ -94,6 +94,6 @@ func check(cmd *cobra.Command, args []string) {
 			gLog.Error.Printf("The number of pages is %d ",np)
 		}
 	}  else {
-		gLog.Error.Printf("Error %v getting  the number of pages ",err)
+		gLog.Error.Printf("Error %v getting  the number of pages  run  with  -l 4  (trace)",err)
 	}
 }
