@@ -250,9 +250,7 @@ func compareObj(pn string, pagen int, body *[]byte, usermd string) (error, bool)
 			err = errors.New(fmt.Sprintf("usermd1=%s usermd=%% / length body1= %d length body = %d ", len(usermd1), len(usermd), len(*body1), len(*body)))
 			return err, false
 		}
-	} else {
-		gLog.Error.Printf("Error %v Getting  %s", err, request.Path)
-	}
+	} 
 	return err, false
 }
 
