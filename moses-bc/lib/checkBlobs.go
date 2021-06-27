@@ -311,7 +311,7 @@ func comparePdf(pn string) (error, bool) {
 
 func CheckBlobs(request datatype.ListObjRequest,maxPage int,maxLoop int) {
 	var (
-		N          int
+		N          int = 0
 		nextmarker string
 	)
 	for {

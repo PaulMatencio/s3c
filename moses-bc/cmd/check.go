@@ -98,7 +98,7 @@ func chekBlob1(pn string) {
 func checkBlobs(bucket string, marker string,prefix string,maxKey int64,maxPage int) {
 
 	setSproxydHost()
-	
+
 	if metaUrl = viper.GetString("meta.s3.url"); len(metaUrl) == 0 {
 		gLog.Error.Println(errors.New(missingMetaurl))
 		return
