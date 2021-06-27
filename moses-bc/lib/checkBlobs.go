@@ -17,26 +17,31 @@ import (
 )
 
 /*
-	Get Blob for cloning
-	Not used for the moment
+
 */
 
 func CheckBlob1(pn string, np int, maxPage int) int {
 
 	start := time.Now()
 	if np <= maxPage {
-		r := checkBlob1(pn, np)
+		r := _CheckBlob1(pn, np)
 		gLog.Info.Printf("Elapsed time %v", time.Since(start))
 		return r
 	} else {
-		r := checkBig1(pn, np, maxPage)
+		r := _CheckBig1(pn, np, maxPage)
 		gLog.Info.Printf("Elapsed time %v", time.Since(start))
 		return r
 	}
 }
 
-//  document with  smaller pages number than --maxPage
-func checkBlob1(pn string, np int) int {
+/*
+
+	document with  smaller number if pages number than --maxPage
+	called bz CheckBlob1
+
+*/
+
+func _CheckBlob1(pn string, np int) int {
 	var (
 		request1 = sproxyd.HttpRequest{
 			Hspool: sproxyd.HP,
@@ -128,7 +133,7 @@ func checkBlob1(pn string, np int) int {
 
 //  document with bigger  pages number than maxPage
 
-func checkBig1(pn string, np int, maxPage int) int {
+func _CheckBig1(pn string, np int, maxPage int) int {
 
 	var (
 		q, r, start, end int
@@ -168,7 +173,7 @@ func checkBig1(pn string, np int, maxPage int) int {
 	gLog.Warning.Printf("Big document %s  - number of pages %d ", pn, np)
 
 	for s := 1; s <= q; s++ {
-		nerrors = checkPart1(pn, np, start, end)
+		nerrors = _CheckPart1(pn, np, start, end)
 		start = end + 1
 		end += maxPage
 		if end > np {
@@ -177,7 +182,7 @@ func checkBig1(pn string, np int, maxPage int) int {
 		terrors += nerrors
 	}
 	if r > 0 {
-		nerrors = checkPart1(pn, np, q*maxPage+1, np)
+		nerrors = _CheckPart1(pn, np, q*maxPage+1, np)
 		if nerrors > 0 {
 			terrors += nerrors
 		}
@@ -185,8 +190,10 @@ func checkBig1(pn string, np int, maxPage int) int {
 	return terrors
 	// return WriteDocument(pn, document, outdir)
 }
-
-func checkPart1(pn string, np int, start int, end int) int {
+/*
+	called by checkBig1
+ */
+func _CheckPart1(pn string, np int, start int, end int) int {
 
 	var (
 		request = sproxyd.HttpRequest{
@@ -309,6 +316,11 @@ func comparePdf(pn string) (error, bool) {
 	return err, false
 }
 
+/*
+
+	Check pn's returned by listObject of the meta bucket
+
+ */
 func CheckBlobs(request datatype.ListObjRequest,maxLoop int,maxPage int) {
 	var (
 		N          int = 0

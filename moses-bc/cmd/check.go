@@ -33,7 +33,7 @@ var (
 		Use:   "check",
 		Short: "Command to compare Moses objects",
 		Long:  `Check a restored blobs against its source blobs`,
-		Run:   check,
+		Run:   Check,
 	}
 
 	np, status, srcUrl, targetUrl string
@@ -63,23 +63,26 @@ func init() {
 	initCkFlags(checkCmd)
 }
 
-func check(cmd *cobra.Command, args []string) {
+func Check(cmd *cobra.Command, args []string) {
 
 	if len(pn) > 0 {
-		chekBlob1(pn)
+		ChekBlob1(pn)
 	} else if len(prefix) > 0 {
 		if len(bucket) == 0 {
 			gLog.Error.Printf("Metadata bucket is missing")
 			return
 		}
-		checkBlobs(bucket,prefix,marker,maxKey,maxPage,maxLoop)
+		CheckBlobs(bucket,marker,prefix,maxKey,maxPage,maxLoop)
 	} else {
 		gLog.Error.Printf("Both publication number (pn)  and  prefix are missing")
 		return
 	}
 }
 
-func chekBlob1(pn string) {
+/*
+	called by Check()
+ */
+func ChekBlob1(pn string) {
 
 	setSproxydHost()
 	if np, err, status := mosesbc.GetPageNumber(pn); err == nil && status == 200 {
@@ -93,7 +96,11 @@ func chekBlob1(pn string) {
 	}
 }
 
-func checkBlobs(bucket string, marker string,prefix string,maxKey int64,maxPage int,maxLoop int) {
+/*
+	called by Check()
+ */
+
+func CheckBlobs(bucket string, marker string,prefix string,maxKey int64,maxPage int,maxLoop int) {
 
 	setSproxydHost()
 
@@ -111,6 +118,7 @@ func checkBlobs(bucket string, marker string,prefix string,maxKey int64,maxPage 
 		gLog.Error.Println(errors.New(missingMetask))
 		return
 	}
+
 	gLog.Info.Println(metaUrl,metaAccessKey,metaSecretKey)
 	meta = datatype.CreateSession{
 		Region:    viper.GetString("meta.s3.region"),
@@ -134,10 +142,10 @@ func checkBlobs(bucket string, marker string,prefix string,maxKey int64,maxPage 
 
 }
 
-func setSproxydHost() {
-	/*
+/*
 
-	 */
+ */
+func setSproxydHost() {
 	if len(srcUrl) > 0 {
 		sproxyd.Url = srcUrl
 	} else {
