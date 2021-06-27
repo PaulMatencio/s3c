@@ -342,8 +342,7 @@ func CheckBlobs(request datatype.ListObjRequest,maxLoop int,maxPage int) {
 						defer wg1.Done()
 						if np, err, status := GetPageNumber(pn); err == nil && status == 200 {
 							if np > 0 {
-								gLog.Info.Println("CheckBlob1",pn,np,maxPage)
-								// CheckBlob1(pn, np, maxPage)
+								CheckBlob1(pn, np, maxPage)
 							} else {
 								gLog.Error.Printf("The number of pages is %d ", np)
 							}
