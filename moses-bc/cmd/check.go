@@ -73,7 +73,6 @@ func check(cmd *cobra.Command, args []string) {
 			gLog.Error.Printf("Metadata bucket is missing")
 			return
 		}
-		fmt.Printf("Bucket %s  prefix %s marker %s maxKey %d  maxPage %d maxLoop %d",bucket,prefix,marker,maxKey,maxPage,maxLoop)
 		checkBlobs(bucket,prefix,marker,maxKey,maxPage,maxLoop)
 	} else {
 		gLog.Error.Printf("Both publication number (pn)  and  prefix are missing")
@@ -132,10 +131,9 @@ func checkBlobs(bucket string, marker string,prefix string,maxKey int64,maxPage 
 		// Delimiter: delimiter,
 	}
 	fmt.Println(request,maxLoop,maxPage)
-	return
-	/*
+
 	mosesbc.CheckBlobs(request, maxLoop,maxPage)
-	 */
+
 }
 
 func setSproxydHost() {
