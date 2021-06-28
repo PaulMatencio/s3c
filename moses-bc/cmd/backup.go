@@ -297,30 +297,6 @@ func backupBlobs(marker string, bucket string) (string, error) {
 										default:
 
 										}
-										/*
-										if bMedia != "S3" {
-											if err, docsize = mosesbc.WriteDirectory(pn, document, outDir); err != nil {
-												gLog.Error.Printf("Error:%v writing document: %s to  directory %s", err, document.DocId, outDir)
-												mt.Lock()
-												gerrors += 1
-												mt.Unlock()
-											} else {
-												docsize = (int)(document.Size)
-												npage = (int)(document.NumberOfPages)
-											}
-										} else {
-											if _, err := writeS3(svcb, bbucket, maxPartSize,document); err != nil {
-												gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
-												mt.Lock()
-												gerrors += 1
-												mt.Unlock()
-											} else {
-												docsize = (int)(document.Size)
-												npage = (int)(document.NumberOfPages)
-												// gLog.Trace.Printf("Docid: %s - Etag %v", document.DocId, so.ETag)
-											}
-										}
-										 */
 									} else {
 										/*
 											some errors have been found by getBlob1

@@ -256,7 +256,7 @@ func WriteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Documen
 		gLog.Error.Printf("Error %v - Put Document object %s", err, pn)
 		perrors++
 	} else {
-		if resp !=  nil {
+		if resp != nil  {
 			switch resp.StatusCode {
 			case 200:
 				gLog.Trace.Printf("Path/Key %s/%s has been written", request.Path, resp.Header["X-Scal-Ring-Key"])
@@ -266,9 +266,10 @@ func WriteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Documen
 				gLog.Error.Printf("putObj Path/key %s/%s - resp.Status %d",request.Path, resp.Header["X-Scal-Ring-Key"],resp.Status)
 				perrors++
 			}
+			return perrors,resp.StatusCode
 		}
 	}
-	return perrors,resp.StatusCode
+	return perrors,-1
 }
 
 // write a page af a document pn ( publication number)
@@ -301,9 +302,10 @@ func WriteDocPage(request sproxyd.HttpRequest, pg *documentpb.Page, replace bool
 				gLog.Error.Printf("putObj Path/key %s/%s - resp.Status %d",request.Path, resp.Header["X-Scal-Ring-Key"],resp.Status)
 				perrors++
 			}
+			return perrors,resp.StatusCode
 		}
 	}
-	return perrors,resp.StatusCode
+	return perrors,-1
 }
 
 func WriteDocPdf( pd *documentpb.Pdf, replace bool) (int,int) {
@@ -352,7 +354,8 @@ func WriteDocPdf( pd *documentpb.Pdf, replace bool) (int,int) {
 				gLog.Error.Printf("putObj Path/key %s/%s - resp.Status %d",request.Path, resp.Header["X-Scal-Ring-Key"],resp.Status)
 				perrors++
 			}
+			return perrors,resp.StatusCode
 		}
 	}
-	return perrors,resp.StatusCode
+	return perrors,-1
 }

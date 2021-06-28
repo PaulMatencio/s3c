@@ -119,7 +119,7 @@ func CheckBlobs(bucket string, marker string,prefix string,maxKey int64,maxPage 
 		return
 	}
 
-	gLog.Info.Println(metaUrl,metaAccessKey,metaSecretKey)
+	// gLog.Info.Println(metaUrl,metaAccessKey,metaSecretKey)
 	meta = datatype.CreateSession{
 		Region:    viper.GetString("meta.s3.region"),
 		EndPoint:  metaUrl,

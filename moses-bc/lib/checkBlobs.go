@@ -80,9 +80,8 @@ func _CheckBlob1(pn string, np int) int {
 		if err, ok := comparePdf(pdfId); err == nil {
 			gLog.Info.Printf("Comparing source and restored PDF: %s - isEqual ? %v", pdfId, ok)
 		} else {
-			gLog.Error.Printf("Error %v when comparing  PDF %s", err, pdfId)
+			gLog.Error.Printf("Error %v when comparing PDF %s", err, pdfId)
 		}
-
 	}
 
 	for k := start; k <= np; k++ {
@@ -250,7 +249,7 @@ func compareObj(pn string, pagen int, body *[]byte, usermd string) (error, bool)
 			err = errors.New(fmt.Sprintf("usermd1=%s usermd=%% / length body1= %d length body = %d ", len(usermd1), len(usermd), len(*body1), len(*body)))
 			return err, false
 		}
-	} 
+	}
 	return err, false
 }
 

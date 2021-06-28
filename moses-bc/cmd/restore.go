@@ -227,22 +227,24 @@ func restoreBlobs(marker string, bucket string, replace bool) (string, error) {
 								re.Unlock()
 							}
 						} else {
+							defer result.Body.Close()
 							if usermd, err = utils.GetUserMeta(result.Metadata); err == nil {
 								userm := UserMd{}
 								json.Unmarshal([]byte(usermd), &userm)
 							} else {
-								gLog.Error.Printf("Error %v - invalid user metadata %s", err, result.Metadata)
+								gLog.Error.Printf("Error %v - The user metadata %s is invalid", err, result.Metadata)
 							}
-							gLog.Info.Printf("Get Object key  %s - Elapsed time %v ",*v.Key,time.Since(start2))
+							gLog.Info.Printf("Get Object key %s - Elapsed time %v ",*v.Key,time.Since(start2))
 							/*
 								retrieve the backup document
 							 */
 							start3:= time.Now()
 							if body, err := utils.ReadObjectv(result.Body,CHUNKSIZE); err == nil  {
+								defer result.Body.Close()
 								document, err = mosesbc.GetDocument(body.Bytes())
 								pd := document.Pdf
 								if len(pd.Pdf) > 0 {
-									/*   restore the pdf first document first     */
+									/*   restore the pdf document first   - Check the number of errors returned by WriteDocPdf  */
 									if nerr,status := mosesbc.WriteDocPdf(pd,replace); nerr == 0 {
 										if status == 200 {
 											gLog.Info.Printf("Document pdf %s  has been restored - Size %d",pd.PdfId,pd.Size)
@@ -250,12 +252,14 @@ func restoreBlobs(marker string, bucket string, replace bool) (string, error) {
 											gLog.Info.Printf("Document pdf %s  is not restored - Status %d",pd.PdfId,status)
 										}
 									} else {
-										gLog.Info.Printf("Document pdf %s is not restored - Check the error within WriteDocPdf ",pd.PdfId)
+										gLog.Info.Printf("Document pdf %s is not restored - Check the error within WriteDocPdf routine",pd.PdfId)
 									}
 								}
 								gLog.Info.Printf("Document id %s is retrieved - Number of pages %d - Document size %d - Elapsed time %v ",document.DocId,document.NumberOfPages,document.Size,time.Since(start3))
 								/*
-									restoring the document
+									restore all th pages of the dcoument
+								    if the number of pages >  maxPage -> PutBlob1
+								    else -> PutBig1
 								 */
 								start4:= time.Now()
 								nerr := 0
@@ -264,13 +268,15 @@ func restoreBlobs(marker string, bucket string, replace bool) (string, error) {
 								} else {
 									nerr = mosesbc.PutBig1(document, maxPage,replace)
 								}
+								//  add the number of restored pages
 								si.Lock()
 									npages += (int)(document.NumberOfPages)
 									docsizes += int (document.Size)
 								si.Unlock()
 
 								/*
-									if loading error, increment the general error counter
+									Check the number of returned errors
+									if the number = 0  ->  index the document
 								 */
 
 								if nerr > 0 {
@@ -283,12 +289,12 @@ func restoreBlobs(marker string, bucket string, replace bool) (string, error) {
 									/* start  indexing */
 									start5:= time.Now()
 									if _,err = indexDocument(document, mbucket, svcm); err != nil {
-										gLog.Error.Printf("Error %v adding document id %s to bucket %s",err,document.DocId,mbucket)
+										gLog.Error.Printf("Error %v while indexing the  document id %s into  bucket %s",err,document.DocId,mbucket)
 										re.Lock()
 										gerrors += 1
 										re.Unlock()
 									} else {
-										gLog.Info.Printf("Document id %s is indexed - bucket %s - Elapsed time %v",document.DocId,mbucket,time.Since(start5))
+										gLog.Info.Printf("Document id %s is now indexed in the bucket %s - Elapsed time %v",document.DocId,mbucket,time.Since(start5))
 									}
 								}
 								/*
@@ -296,7 +302,7 @@ func restoreBlobs(marker string, bucket string, replace bool) (string, error) {
 								 */
 
 							} else {
-								gLog.Error.Printf("Error %v reading document body", err)
+								gLog.Error.Printf("Error %v when retrieving the document %s", err,request.Key)
 								re.Lock()
 								gerrors += 1
 								re.Unlock()
@@ -330,7 +336,9 @@ func restoreBlobs(marker string, bucket string, replace bool) (string, error) {
 	}
 	return nextmarker, nil
 }
-
+/*
+	Index the document in a S3 bucket
+ */
 func indexDocument(document *documentpb.Document, bucket string, svc *s3.S3) (*s3.PutObjectOutput,error) {
 	var (
 		data = make([]byte, 0, 0) // empty byte array
@@ -344,8 +352,10 @@ func indexDocument(document *documentpb.Document, bucket string, svc *s3.S3) (*s
 	)
 	return  api.PutObject(putReq);
 }
+
 /*
-	Write the document to a file
+	Write the document to file( pages + meta dada)
+	To be completed ( page 0 and pdf are not yet taken into account
  */
 func WriteDocumentToFile(document *documentpb.Document, pn string, outDir string) {
 
