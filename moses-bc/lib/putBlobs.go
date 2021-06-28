@@ -32,7 +32,7 @@ func PutBlob1(document *documentpb.Document,replace bool) int {
 		return perrors
 	} else {
 		if status == 412 {
-			gLog.Warning.Printf("Document %s is not restored - use --replace=true  ou -r=true to replace the existing document")
+			gLog.Warning.Printf("Document %s is not restored - use --replace=true  ou -r=true to replace the existing document",document.DocId)
 			return 1
 		}
 	}
