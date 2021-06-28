@@ -245,6 +245,7 @@ func restoreBlobs(marker string, bucket string, replace bool) (string, error) {
 								pd := document.Pdf
 								if len(pd.Pdf) > 0 {
 									/*   restore the pdf document first   - Check the number of errors returned by WriteDocPdf  */
+
 									if nerr,status := mosesbc.WriteDocPdf(pd,replace); nerr == 0 {
 										if status == 200 {
 											gLog.Info.Printf("Document pdf %s  has been restored - Size %d",pd.PdfId,pd.Size)

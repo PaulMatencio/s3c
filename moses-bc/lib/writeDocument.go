@@ -273,7 +273,9 @@ func WriteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Documen
 	return perrors,-1
 }
 
-// write a page af a document pn ( publication number)
+/*
+	write a page af a document pn ( publication number)
+ */
 
 func WriteDocPage(request sproxyd.HttpRequest, pg *documentpb.Page, replace bool) (int,int) {
 
@@ -293,7 +295,7 @@ func WriteDocPage(request sproxyd.HttpRequest, pg *documentpb.Page, replace bool
 		perrors++
 	} else {
 		if resp != nil   {
-			// defer resp.Body.Close()
+			defer resp.Body.Close()
 			switch resp.StatusCode {
 			case 200:
 				gLog.Trace.Printf("Path/Key %s/%s has been written", request.Path, resp.Header["X-Scal-Ring-Key"])
@@ -309,7 +311,7 @@ func WriteDocPage(request sproxyd.HttpRequest, pg *documentpb.Page, replace bool
 	return perrors,-1
 }
 
-func WriteDocPdf( pd *documentpb.Pdf, replace bool) (int,int) {
+func WriteDocPdf( /*request *sproxyd.HttpRequest,*/ pd *documentpb.Pdf, replace bool) (int,int) {
 
 	var (
 		pn = pd.GetPdfId()
@@ -318,7 +320,6 @@ func WriteDocPdf( pd *documentpb.Pdf, replace bool) (int,int) {
 			Client: &http.Client{
 				Timeout:   sproxyd.ReadTimeout,
 				Transport: sproxyd.Transport,
-
 			},
 			Path : sproxyd.TargetEnv + "/" + pn,
 			ReqHeader :  map[string]string{
@@ -329,14 +330,16 @@ func WriteDocPdf( pd *documentpb.Pdf, replace bool) (int,int) {
 		perrors = 0
 		resp *http.Response
 		err error
-
 	)
+
 	/*
-		request.Path = sproxyd.TargetEnv + "/" + pn
-		request.ReqHeader =  map[string]string{}
-		request.ReqHeader["Usermd"] = pd.GetMetadata()
-		request.ReqHeader["Content-Type"] = "application/octet-stream" // Content type
+	request.Path = sproxyd.TargetEnv + "/" + pn
+	request.ReqHeader = map[string]string{
+				"Usermd" : pd.GetMetadata(),
+				"Content-Type" : "application/octet-stream",
+			}
 	*/
+
 
 	gLog.Trace.Printf("writing %d bytes to path  %s/%s",pd.Size,sproxyd.TargetDriver,request.Path)
 
@@ -345,7 +348,7 @@ func WriteDocPdf( pd *documentpb.Pdf, replace bool) (int,int) {
 		perrors++
 	} else {
 		if resp != nil   {
-			// defer resp.Body.Close()
+			defer resp.Body.Close()
 			switch resp.StatusCode {
 			case 200:
 				gLog.Trace.Printf("Path/Key %s/%s has been written", request.Path, resp.Header["X-Scal-Ring-Key"])
