@@ -256,6 +256,7 @@ func WriteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Documen
 		gLog.Error.Printf("Error %v - Put Document object %s", err, pn)
 		perrors++
 	} else {
+
 		if resp != nil  {
 			switch resp.StatusCode {
 			case 200:

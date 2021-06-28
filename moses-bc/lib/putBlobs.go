@@ -64,6 +64,7 @@ func PutBig1(document *documentpb.Document,maxPage int,replace bool) int {
 		start int = 1
 		perrors int
 		end   int = start + maxPage-1
+
 		request = sproxyd.HttpRequest{
 			Hspool: sproxyd.TargetHP, // IP of target sproxyd
 			Client: &http.Client{
@@ -89,7 +90,7 @@ func PutBig1(document *documentpb.Document,maxPage int,replace bool) int {
 	// gLog.Trace.Printf("Docid: %s - number of pages: %d - document metadata: %s",document.DocId,document.NumberOfPages,document.Metadata)
 
 	for s := 1; s <= q; s++ {
-		perrors = putPart1(document,start, end,replace)
+		perrors = putPart1(&request,document,start, end,replace)
 		start = end + 1
 		end += maxPage
 		if end > np {
@@ -97,15 +98,16 @@ func PutBig1(document *documentpb.Document,maxPage int,replace bool) int {
 		}
 	}
 	if r > 0 {
-		perrors = putPart1(document,q*maxPage+1 , np,replace)
+		perrors = putPart1(&request,document,q*maxPage+1 , np,replace)
 	}
 	return perrors
 }
 
 
-func putPart1(document *documentpb.Document,start int,end int,replace bool) (int) {
+func putPart1(request *sproxyd.HttpRequest, document *documentpb.Document,start int,end int,replace bool) (int) {
 
 	var (
+		/*
 		request = sproxyd.HttpRequest{
 			Hspool: sproxyd.TargetHP,
 			Client: &http.Client{
@@ -113,6 +115,8 @@ func putPart1(document *documentpb.Document,start int,end int,replace bool) (int
 				Transport: sproxyd.Transport,
 			},
 		}
+		*/
+
 		perrors int
 
 		// num   =  end -start +1
@@ -135,9 +139,10 @@ func putPart1(document *documentpb.Document,start int,end int,replace bool) (int
 				pu.Unlock()
 			}
 			wg1.Done()
-		}(request, &pg,replace)
+		}(*request, &pg,replace)
 	}
 	wg1.Wait()
+	// request.Client.CloseIdleConnections()
 	gLog.Trace.Printf("Writedoc document %s  starting slot: %d - endingslot: %d  completed",document.DocId,start,end)
 	return perrors
 

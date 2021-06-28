@@ -297,6 +297,7 @@ func restoreBlobs(marker string, bucket string, replace bool) (string, error) {
 										gLog.Info.Printf("Document id %s is now indexed in the bucket %s - Elapsed time %v",document.DocId,mbucket,time.Since(start5))
 									}
 								}
+
 								/*
 								indexing the document
 								 */
