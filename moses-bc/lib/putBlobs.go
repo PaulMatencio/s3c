@@ -52,6 +52,7 @@ func PutBlob1(document *documentpb.Document,replace bool) int {
 		}(request, pg)
 	}
 	wg1.Wait()
+	request.Client.CloseIdleConnections()
 	return perrors
 }
 
@@ -107,19 +108,7 @@ func PutBig1(document *documentpb.Document,maxPage int,replace bool) int {
 func putPart1(request *sproxyd.HttpRequest, document *documentpb.Document,start int,end int,replace bool) (int) {
 
 	var (
-		/*
-		request = sproxyd.HttpRequest{
-			Hspool: sproxyd.TargetHP,
-			Client: &http.Client{
-				Timeout:   sproxyd.ReadTimeout,
-				Transport: sproxyd.Transport,
-			},
-		}
-		*/
-
 		perrors int
-
-		// num   =  end -start +1
 		pages = document.GetPage()
 		pu      sync.Mutex
 		wg1 sync.WaitGroup
@@ -142,7 +131,7 @@ func putPart1(request *sproxyd.HttpRequest, document *documentpb.Document,start 
 		}(*request, &pg,replace)
 	}
 	wg1.Wait()
-	// request.Client.CloseIdleConnections()
+	request.Client.CloseIdleConnections()
 	gLog.Trace.Printf("Writedoc document %s  starting slot: %d - endingslot: %d  completed",document.DocId,start,end)
 	return perrors
 
