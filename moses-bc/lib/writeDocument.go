@@ -258,6 +258,7 @@ func WriteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Documen
 	} else {
 
 		if resp != nil  {
+			defer resp.Body.Close()
 			switch resp.StatusCode {
 			case 200:
 				gLog.Trace.Printf("Path/Key %s/%s has been written", request.Path, resp.Header["X-Scal-Ring-Key"])
