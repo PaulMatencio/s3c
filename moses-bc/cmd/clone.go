@@ -63,10 +63,10 @@ func init() {
 }
 
 func Clone(cmd *cobra.Command, args []string) {
-	var (
-		srcS3,tgtS3 *s3.S3
-	)
-	mosesbc.SetSproxydHost("check",srcUrl,targetUrl,driver,targetDriver)
+
+	mosesbc.SetSourceSproxyd("clone",srcUrl,driver)
+	mosesbc.SetTargetSproxyd("check",targetUrl,targetDriver)
+
 	if len(srcBucket) == 0 {
 		if len(viper.GetString("clone.s3.source.bucket")) == 0 {
 			gLog.Warning.Printf("%s", "missing clone.s3.source.bucket in the config file")
@@ -160,7 +160,6 @@ func cloneBlobs(srcS3 *s3.S3, tgtS3 *s3.S3) (string, error) {
 							json.Unmarshal([]byte(usermd), &userm)
 							pn = rh.Key
 							if np, err = strconv.Atoi(userm.TotalPages); err == nil {
-
 								mosesbc.CloneBlob1(pn, np, maxPage, replace)
 							}
 						}

@@ -29,6 +29,7 @@ func CloneBlob1(pn string, np int, maxPage int,replace bool) (int){
 
 //  document with  smaller pages number than maxPage
 func _cloneBlob1(pn string, np int,replace bool) (int){
+
 	var (
 		request = sproxyd.HttpRequest{
 			Hspool: sproxyd.HP,
@@ -37,6 +38,7 @@ func _cloneBlob1(pn string, np int,replace bool) (int){
 				Transport: sproxyd.Transport,
 			},
 		}
+
 		request1 = sproxyd.HttpRequest{
 			Hspool: sproxyd.TargetHP, // IP of target sproxyd
 			Client: &http.Client{
@@ -49,7 +51,7 @@ func _cloneBlob1(pn string, np int,replace bool) (int){
 		usermd   string
 		body     *[]byte
 		start    int
-		pu	sync.Mutex
+		pu		sync.Mutex
 		perrors int
 		document = &documentpb.Document{}
 	)
