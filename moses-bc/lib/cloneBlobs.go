@@ -63,6 +63,8 @@ func _cloneBlob1(pn string, np int,replace bool) (int){
 
 	//  clone document meta data
 	document.Metadata= usermd
+	document.DocId= pn
+	
 	if nerr,status := WriteDocMetadata(&request1, document,replace); nerr > 0 {
 		gLog.Warning.Printf("Document %s is not restored",document.DocId)
 		return nerr
