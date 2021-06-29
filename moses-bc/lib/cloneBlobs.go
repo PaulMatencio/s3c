@@ -64,7 +64,7 @@ func _cloneBlob1(pn string, np int,replace bool) (int){
 	//  clone document meta data
 	document.Metadata= usermd
 	document.DocId= pn
-	
+
 	if nerr,status := WriteDocMetadata(&request1, document,replace); nerr > 0 {
 		gLog.Warning.Printf("Document %s is not restored",document.DocId)
 		return nerr
@@ -96,7 +96,9 @@ func _cloneBlob1(pn string, np int,replace bool) (int){
 	}
 	wg1 := sync.WaitGroup{}
 	for k := start; k <= np; k++ {
+
 		request.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
+		gLog.Trace.Println(request.Path)
 		go func(request sproxyd.HttpRequest, request1 sproxyd.HttpRequest,pn string, k int) {
 			defer wg1.Done()
 			err, usermd, body = GetObject(request, pn)
@@ -110,8 +112,6 @@ func _cloneBlob1(pn string, np int,replace bool) (int){
 		}(request, request1, pn, k)
 	}
 	wg1.Wait()
-
-
 	return perrors
 }
 
