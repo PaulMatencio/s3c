@@ -78,6 +78,7 @@ func Restore(cmd *cobra.Command, args []string) {
 	)
 	start := time.Now()
 	mosesbc.SetTargetSproxyd("restore",targetUrl,targetDriver)
+
 	if bMedia == "S3" {
 		srcS3 = mosesbc.CreateS3Session("restore","source")
 	} else {
@@ -88,7 +89,8 @@ func Restore(cmd *cobra.Command, args []string) {
 	}
 	//  create the output directory if it does not exist
 	utils.MakeDir(outDir)
-
+	//   bucket for indexing
+	tgtS3 = mosesbc.CreateS3Session("restore","target")
 
 	if nextMarker, err = _restoreBlobs(marker, srcBucket,replace); err != nil {
 		gLog.Error.Printf("error %v - Next marker %s", err, nextMarker)
