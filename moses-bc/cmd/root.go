@@ -15,7 +15,6 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/paulmatencio/s3c/gLog"
@@ -35,7 +34,8 @@ const (
 	MaxFileSize                = MinPartSize * 409.6 // 2 GB
 	DefaultDownloadConcurrency = 5
 	Dummy                      = "/dev/null"
-	WaitTime	= 200
+	WaitTime	= time.Duration(200)          /*  default waitime between retry in sec */
+	RetryNumber = 5             /*   default retry number*/
 	MaxPartSize					= MinPartSize *  20
 )
 
@@ -140,48 +140,33 @@ func initConfig() {
 		logOutput += string(os.PathSeparator) + bucket
 	}
 
-	waitTime = utils.GetWaitTime(*viper.GetViper())
-
-	if retryNumber =utils.GetRetryNumber(*viper.GetViper()); retryNumber > 0 {
-		sproxyd.DoRetry= retryNumber
-	}
-
-	if source = viper.GetString("sproxyd.source.urls"); len(source) == 0 {
-		err := errors.New(missingSource)
-		log.Fatalln(err)
+	if waitTime = viper.GetDuration("transport.retry.waittime"); waitTime == 0 {
+		waitTime = WaitTime
 	} else {
-		sproxyd.Url = source
+		waitTime = time.Duration(waitTime*time.Millisecond)
 	}
 
-	if target = viper.GetString("sproxyd.target.urls"); len(target) == 0 {
-		err := errors.New(missingTarget)
-		log.Fatalln(err)
-	} else {
-		sproxyd.TargetUrl = target
+	if  retryNumber = viper.GetInt("transport.retry.number"); retryNumber == 0 {
+		retryNumber = RetryNumber
 	}
 
-	if conTimeout := viper.GetDuration("sproxyd.target.connectionTimeout"); conTimeout >  0 {
-		sproxyd.ConnectionTimeout= conTimeout
+	sproxyd.DoRetry= retryNumber
+
+	if conTimeout := viper.GetDuration("transport.connectionTimeout"); conTimeout >  0 {
+		sproxyd.ConnectionTimeout= time.Duration(conTimeout*time.Millisecond)
 	}
 
 
-	if copyTimeout := viper.GetDuration("sproxyd.target.connectionTimeout"); copyTimeout == 0 {
-		sproxyd.CopyTimeout = copyTimeout
+	if copyTimeout := viper.GetDuration("transport.copyTimeout"); copyTimeout > 0 {
+		sproxyd.CopyTimeout = time.Duration(copyTimeout*time.Millisecond)
 	}
 
-	if readTimeout := viper.GetDuration("sproxyd.target.readTimeout"); readTimeout == 0 {
-		sproxyd.ReadTimeout = readTimeout
+	if readTimeout := viper.GetDuration("transport.readTimeout"); readTimeout >0 {
+		sproxyd.ReadTimeout = time.Duration(readTimeout*time.Millisecond)
 	}
 
-	if writeTimeout := viper.GetDuration("sproxyd.target.readTimeout"); writeTimeout == 0 {
-		sproxyd.ReadTimeout = writeTimeout
-	}
-
-	if driver := viper.GetString("sproxyd.source.driver"); len(driver) == 0 {
-		sproxyd.Driver = driver
-	}
-	if driver := viper.GetString("sproxyd.target.driver"); len(driver) == 0 {
-		sproxyd.TargetDriver= driver
+	if writeTimeout := viper.GetDuration("transport.writeTimeout"); writeTimeout > 0 {
+		sproxyd.WriteTimeout = time.Duration(writeTimeout*time.Millisecond)
 	}
 
 	/*

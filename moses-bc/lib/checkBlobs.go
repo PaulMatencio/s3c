@@ -220,6 +220,8 @@ func _CheckPart1(pn string, np int, start int, end int) int {
 				} else {
 					gLog.Error.Println(err)
 				}
+			} else {
+				gLog.Error.Printf("Error %v while getting object %s",err,request1.Path)
 			}
 		}(request, pn, np, k)
 	}

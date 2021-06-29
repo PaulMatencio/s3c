@@ -16,13 +16,11 @@ package cmd
 
 import (
 	"encoding/json"
-	"errors"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/paulmatencio/protobuf-doc/src/document/documentpb"
 	"github.com/paulmatencio/s3c/api"
 	"github.com/paulmatencio/s3c/datatype"
 	mosesbc "github.com/paulmatencio/s3c/moses-bc/lib"
-	"github.com/spf13/viper"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	// "github.com/golang/protobuf/proto"
@@ -40,16 +38,18 @@ var (
 		Use:   "backup",
 		Short: "Command to backup MOSES",
 		Long:  ``,
-		Run:   backup,
+		Run:   Backup,
 	}
 	prefix, outDir, delimiter string
 	maxKey ,maxPartSize       int64
-	marker, mbucket, bbucket  string
+	marker  string
+	srcBucket,tgtBucket string
 	maxLoop, maxPage          int
 	missingoDir               = "Missing backup output directory"
-	missingbBucket            = "Missing backup bucket"
-	back, meta                datatype.CreateSession
-	svcb, svcm                *s3.S3
+	missingsrcBucket          = "Missing source S3 bucket"
+	missingtgtBucket          = "Missing target S3 bucket"
+	// back, meta                datatype.CreateSession
+	tgtS3, srcS3               *s3.S3
 )
 
 type UserMd struct {
@@ -62,16 +62,17 @@ type UserMd struct {
 
 func initBkFlags(cmd *cobra.Command) {
 
-	cmd.Flags().StringVarP(&mbucket, "mbucket", "b", "", "the name of the metadata bucket")
-	cmd.Flags().StringVarP(&bbucket, "bbucket", "t", "", "the name of the backup bucket")
-	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "key prefix")
-	cmd.Flags().Int64VarP(&maxKey, "maxKey", "m", 40, "maximum number of documents (keys) to be backed up concurrently -Check --maxpage for maximum number of concurrent pages")
-	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key - Useful for rerun")
-	cmd.Flags().StringVarP(&delimiter, "delimiter", "d", "", "prefix  delimiter")
-	cmd.Flags().StringVarP(&outDir, "outDir", "O", "", "output directory for --backupMedia = File")
-	cmd.Flags().IntVarP(&maxPage, "maxPage", "", 50, "maximum number of concurrent pages per document. check  --maxKey  for maximum number of concurrent documents")
+	cmd.Flags().StringVarP(&srcBucket, "source-bucket", "", "", "name of source s3 bucket")
+	cmd.Flags().StringVarP(&tgtBucket, "target-bucket", "", "", "name of the target s3 bucket")
+	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "key's prefix; key= moses-document in the form of cc/pn/kc")
+	cmd.Flags().Int64VarP(&maxKey, "maxKey", "m", 40, "maximum number of moses documents  to be cloned concurrently")
+	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key; key= moses-document in the form of cc/pn/kc")
+	cmd.Flags().IntVarP(&maxPage, "maxPage", "", 50, "maximum number of concurrent moses pages to be concurrently procsessed")
 	cmd.Flags().IntVarP(&maxLoop, "maxLoop", "", 1, "maximum number of loop, 0 means no upper limit")
+	cmd.Flags().StringVarP(&outDir, "outDir", "O", "", "output directory for --backupMedia = File")
 	cmd.Flags().Int64VarP(&maxPartSize, "maxPartSize", "", 40, "Maximum partsize (MB)  for multipart upload")
+	cmd.Flags().StringVarP(&srcUrl, "source-sproxyd-url", "s", "", "source sproxyd endpoints  http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
+	cmd.Flags().StringVarP(&driver, "source-sproxyd-driver", "", "", "source sproxyd driver [bpchord|bparc]")
 
 }
 
@@ -81,7 +82,7 @@ func init() {
 	// viper.BindPFlag("maxPartSize",rootCmd.PersistentFlags().Lookup("maxParSize"))
 }
 
-func backup(cmd *cobra.Command, args []string) {
+func Backup(cmd *cobra.Command, args []string) {
 
 	var (
 		nextmarker string
@@ -89,64 +90,21 @@ func backup(cmd *cobra.Command, args []string) {
 	)
 	start := time.Now()
 
-	if len(bbucket) == 0 {
-		gLog.Warning.Printf("%s", missingbBucket)
+	if len(srcBucket) == 0 {
+		gLog.Warning.Printf("%s", missingsrcBucket)
 		return
 	}
-	if metaUrl = viper.GetString("meta.s3.url"); len(metaUrl) == 0 {
-		gLog.Error.Println(errors.New(missingMetaurl))
-		return
-	}
-
-	if metaAccessKey = viper.GetString("meta.credential.access_key_id"); len(metaAccessKey) == 0 {
-		gLog.Error.Println(errors.New(missingMetaak))
-		return
-	}
-
-	if metaSecretKey = viper.GetString("meta.credential.secret_access_key"); len(metaSecretKey) == 0 {
-		gLog.Error.Println(errors.New(missingMetask))
-		return
-	}
-
-	meta = datatype.CreateSession{
-		Region:    viper.GetString("meta.s3.region"),
-		EndPoint:  metaUrl,
-		AccessKey: metaAccessKey,
-		SecretKey: metaSecretKey,
-	}
-	svcm = s3.New(api.CreateSession2(meta))
+	srcS3 = mosesbc.CreateS3Session("backup","source")
 	maxPartSize= maxPartSize * 1024 * 1024
+	mosesbc.SetSourceSproxyd("backup",srcUrl,driver)
 
 	if bMedia == "S3" {
 
-		if len(bbucket) == 0 {
-			gLog.Warning.Printf("%s", missingbBucket)
+		if len(tgtBucket) == 0 {
+			gLog.Warning.Printf("%s", missingtgtBucket)
 			return
 		}
-
-		if bS3Url = viper.GetString("backup.s3.url"); len(bS3Url) == 0 {
-			gLog.Error.Println(errors.New(missingBS3url))
-			return
-		}
-
-		if bS3AccessKey = viper.GetString("backup.credential.access_key_id"); len(bS3AccessKey) == 0 {
-			gLog.Error.Println(errors.New(missingBS3ak))
-			return
-		}
-
-		if bS3SecretKey = viper.GetString("backup.credential.secret_access_key"); len(bS3SecretKey) == 0 {
-			gLog.Error.Println(errors.New(missingBS3sk))
-			return
-		}
-		//  create the
-		back = datatype.CreateSession{
-			Region:    viper.GetString("backup.s3.region"),
-			EndPoint:  bS3Url,
-			AccessKey: bS3AccessKey,
-			SecretKey: bS3SecretKey,
-		}
-		svcb = s3.New(api.CreateSession2(back))
-
+		tgtS3 =  mosesbc.CreateS3Session("backup","target")
 	} else {
 		if len(outDir) == 0 {
 			gLog.Warning.Printf("%s", missingoDir)
@@ -157,7 +115,7 @@ func backup(cmd *cobra.Command, args []string) {
 	}
 	utils.MakeDir(outDir)
 	// start backing up
-	if nextmarker, err = backupBlobs(marker, mbucket); err != nil {
+	if nextmarker, err = _backupBlobs(marker, srcS3, srcBucket,tgtS3,tgtBucket); err != nil {
 		gLog.Error.Printf("error %v - Next marker %s", err, nextmarker)
 	} else {
 		gLog.Info.Printf("Next Marker %s", nextmarker)
@@ -168,7 +126,7 @@ func backup(cmd *cobra.Command, args []string) {
 
 /* S3 API list user metadata  function */
 
-func backupBlobs(marker string, bucket string) (string, error) {
+func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string,tgtS3 *s3.S3,tgtBucket string ) (string, error) {
 
 	var (
 		nextmarker            string
@@ -179,13 +137,12 @@ func backupBlobs(marker string, bucket string) (string, error) {
 		mt                    sync.Mutex
 	)
 
-	req := datatype.ListObjRequest{
-		Service:   svcm,
-		Bucket:    bucket,
+	req1 := datatype.ListObjRequest{
+		Service:   srcS3,
+		Bucket:    srcBucket,
 		Prefix:    prefix,
 		MaxKey:    maxKey,
 		Marker:    marker,
-		Delimiter: delimiter,
 	}
 	for {
 		var (
@@ -197,26 +154,25 @@ func backupBlobs(marker string, bucket string) (string, error) {
 			gerrors  int = 0
 		)
 		N++ // number of loop
-		if result, err = api.ListObject(req); err == nil {
-			gLog.Info.Println(bucket, len(result.Contents))
-
+		if result, err = api.ListObject(req1); err == nil {
+			gLog.Info.Println(srcBucket, len(result.Contents))
 			if l := len(result.Contents); l > 0 {
 				ndocs += int(l)
 				var wg1 sync.WaitGroup
 				wg1.Add(len(result.Contents))
 				for _, v := range result.Contents {
 					gLog.Trace.Printf("Key: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size, v.LastModified)
-					svc := req.Service
-					head := datatype.StatObjRequest{
+					svc := req1.Service
+					request := datatype.StatObjRequest{
 						Service: svc,
-						Bucket:  req.Bucket,
+						Bucket:  req1.Bucket,
 						Key:     *v.Key,
 					}
 					go func(request datatype.StatObjRequest) {
 
 						var (
 							rh = datatype.Rh{
-								Key: head.Key,
+								Key: request.Key,
 							}
 							np, status, docsize,npage int
 							err                 error
@@ -225,15 +181,16 @@ func backupBlobs(marker string, bucket string) (string, error) {
 
 						defer wg1.Done()
 
-						rh.Result, rh.Err = api.StatObject(head)
+						rh.Result, rh.Err = api.StatObject(request)
 						if usermd, err = utils.GetUserMeta(rh.Result.Metadata); err == nil {
 							userm := UserMd{}
 							json.Unmarshal([]byte(usermd), &userm)
 							pn := rh.Key
 							if np, err = strconv.Atoi(userm.TotalPages); err == nil {
-								if errs, document := mosesbc.GetBlob1(pn, np, maxPage); len(errs) == 0 {
+								if errs, document := mosesbc.BackBlob1(pn, np, maxPage); len(errs) == 0 {
 									document.S3Meta = usermd
-									if bMedia != "S3" {
+									switch(bMedia){
+									case "s3":
 										if err, docsize = mosesbc.WriteDirectory(pn, document, outDir); err != nil {
 											gLog.Error.Printf("Error:%v writing document: %s to directory %s", err, document.DocId, outDir)
 											mt.Lock()
@@ -243,17 +200,19 @@ func backupBlobs(marker string, bucket string) (string, error) {
 											docsize = (int)(document.Size)
 											npage = (int)(document.NumberOfPages)
 										}
-									} else {
-										if _, err := writeS3(svcb, bbucket, maxPartSize,document); err != nil {
-											gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
+									case "File":
+										if err, docsize = mosesbc.WriteDirectory(pn, document, outDir); err != nil {
+											gLog.Error.Printf("Error:%v writing document: %s to directory %s", err, document.DocId, outDir)
 											mt.Lock()
 											gerrors += 1
 											mt.Unlock()
 										} else {
 											docsize = (int)(document.Size)
 											npage = (int)(document.NumberOfPages)
-											// gLog.Trace.Printf("Etag %v", so.ETag)
 										}
+									default:
+										gLog.Info.Printf("bMedia option should  is [S3|File]")
+										return
 									}
 									gLog.Trace.Printf("Docid: %s - number of pages: %d - Document metadata: %s", document.DocId, document.NumberOfPages, document.Metadata)
 								} else {
@@ -265,7 +224,7 @@ func backupBlobs(marker string, bucket string) (string, error) {
 							} else {
 								gLog.Error.Printf("Document %s - S3 Metadata has invalid number of pages in %s - Try to get it from the document user metadata ", pn, usermd)
 								if np, err, status = mosesbc.GetPageNumber(pn); err == nil {
-									if errs, document := mosesbc.GetBlob1(pn, np, maxPage); len(errs) == 0 {
+									if errs, document := mosesbc.BackBlob1(pn, np, maxPage); len(errs) == 0 {
 										/*
 										Add  s3 moses metadata to the document even if it may be  invalid from the source
 										the purpose of the backup is not to fix  data
@@ -274,7 +233,7 @@ func backupBlobs(marker string, bucket string) (string, error) {
 										document.LastUpdated = timestamppb.Now()
 										switch (bMedia) {
 										case "S3":
-											if _, err := writeS3(svcb, bbucket, maxPartSize,document); err != nil {
+											if _, err := writeS3(tgtS3, tgtBucket, maxPartSize,document); err != nil {
 												gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
 												mt.Lock()
 												gerrors += 1
@@ -295,7 +254,8 @@ func backupBlobs(marker string, bucket string) (string, error) {
 												npage = (int)(document.NumberOfPages)
 											}
 										default:
-
+											gLog.Info.Printf("bMedia option should  is [S3|File]")
+											return
 										}
 									} else {
 										/*
@@ -319,7 +279,7 @@ func backupBlobs(marker string, bucket string) (string, error) {
 						docsizes += docsize
 						mu.Unlock()
 						// utils.PrintUsermd(rh.Key, rh.Result.Metadata)
-					}(head)
+					}(request)
 				}
 				wg1.Wait()
 
@@ -340,7 +300,7 @@ func backupBlobs(marker string, bucket string) (string, error) {
 		}
 
 		if *result.IsTruncated && (maxLoop == 0 || N <= maxLoop) {
-			req.Marker = nextmarker
+			req1.Marker = nextmarker
 		} else {
 			gLog.Info.Printf("Total number of backup documents: %d - total number of pages: %d  - Total document size: %d - Total number of errors: %d", tdocs, tpages, tsizes, terrors)
 			break

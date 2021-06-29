@@ -10,7 +10,7 @@ import (
 )
 
 //  Put  sproxyd blobs
-func PutBlob1(document *documentpb.Document,replace bool) int {
+func RestBlob1(document *documentpb.Document,replace bool) int {
 	var (
 		request = sproxyd.HttpRequest{
 			Hspool: sproxyd.TargetHP, // IP of target sproxyd
@@ -42,13 +42,12 @@ func PutBlob1(document *documentpb.Document,replace bool) int {
 	for _, pg := range pages {
 		wg1.Add(1)
 		go func(request sproxyd.HttpRequest,  pg *documentpb.Page) {
+			defer wg1.Done()
 			if perr,_ := WriteDocPage(request,  pg,replace); perr > 0 {
 				pu.Lock()
 				perrors += perr
 				pu.Unlock()
 			}
-			// gLog.Info.Printf("Time of writing page %s/p%d  Page size %d - %v  ",pg.PageId,pg.PageNumber,pg.Size,time.Since(start))
-			wg1.Done()
 		}(request, pg)
 	}
 	wg1.Wait()
@@ -57,7 +56,7 @@ func PutBlob1(document *documentpb.Document,replace bool) int {
 }
 
 
-func PutBig1(document *documentpb.Document,maxPage int,replace bool) int {
+func RestBig1(document *documentpb.Document,maxPage int,replace bool) int {
 	var (
 		np = int (document.NumberOfPages)
 		q     int = np  / maxPage
@@ -65,7 +64,6 @@ func PutBig1(document *documentpb.Document,maxPage int,replace bool) int {
 		start int = 1
 		perrors int
 		end   int = start + maxPage-1
-
 		request = sproxyd.HttpRequest{
 			Hspool: sproxyd.TargetHP, // IP of target sproxyd
 			Client: &http.Client{
@@ -91,7 +89,7 @@ func PutBig1(document *documentpb.Document,maxPage int,replace bool) int {
 	// gLog.Trace.Printf("Docid: %s - number of pages: %d - document metadata: %s",document.DocId,document.NumberOfPages,document.Metadata)
 
 	for s := 1; s <= q; s++ {
-		perrors = putPart1(&request,document,start, end,replace)
+		perrors = _restPart1(&request,document,start, end,replace)
 		start = end + 1
 		end += maxPage
 		if end > np {
@@ -99,13 +97,13 @@ func PutBig1(document *documentpb.Document,maxPage int,replace bool) int {
 		}
 	}
 	if r > 0 {
-		perrors = putPart1(&request,document,q*maxPage+1 , np,replace)
+		perrors = _restPart1(&request,document,q*maxPage+1 , np,replace)
 	}
 	return perrors
 }
 
 
-func putPart1(request *sproxyd.HttpRequest, document *documentpb.Document,start int,end int,replace bool) (int) {
+func _restPart1(request *sproxyd.HttpRequest, document *documentpb.Document,start int,end int,replace bool) (int) {
 
 	var (
 		perrors int
@@ -122,12 +120,13 @@ func putPart1(request *sproxyd.HttpRequest, document *documentpb.Document,start 
 		wg1.Add(1)
 		request.Path = sproxyd.TargetEnv + "/" + pg.PageId + "/p" + strconv.Itoa(int(pg.PageNumber))
 		go func(request sproxyd.HttpRequest, pg *documentpb.Page,replace bool) {
+			defer wg1.Done()
 			if perr,_ := WriteDocPage(request,  pg,replace); perr > 0 {
 				pu.Lock()
 				perrors += perr
 				pu.Unlock()
 			}
-			wg1.Done()
+
 		}(*request, &pg,replace)
 	}
 	wg1.Wait()

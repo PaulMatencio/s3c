@@ -312,7 +312,7 @@ func WriteDocPage(request sproxyd.HttpRequest, pg *documentpb.Page, replace bool
 	return perrors,-1
 }
 
-func WriteDocPdf( /*request *sproxyd.HttpRequest,*/ pd *documentpb.Pdf, replace bool) (int,int) {
+func WriteDocPdf( /*request *sproxyd.HttpRequest */  pd *documentpb.Pdf, replace bool) (int,int) {
 
 	var (
 		pn = pd.GetPdfId()

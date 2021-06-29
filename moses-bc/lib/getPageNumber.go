@@ -42,6 +42,7 @@ func GetPageNumber(key string) (int, error, int) {
 		default:
 			err = errors.New("Check the status Code for the reason")
 		}
+		return pgn, err, resp.StatusCode
 	}
-	return pgn, err, resp.StatusCode
+	return pgn, err, -1
 }
