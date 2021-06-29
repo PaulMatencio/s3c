@@ -98,7 +98,6 @@ func _cloneBlob1(pn string, np int,replace bool) (int){
 	for k := start; k <= np; k++ {
 
 		request.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
-		gLog.Trace.Println(request.Path)
 		go func(request sproxyd.HttpRequest, request1 sproxyd.HttpRequest,pn string, k int) {
 			defer wg1.Done()
 			err, usermd, body = GetObject(request, pn)
