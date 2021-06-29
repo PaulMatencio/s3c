@@ -265,7 +265,7 @@ func WriteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Documen
 			case 412:
 				gLog.Warning.Printf("Path/Key %s/%s already existed", request.Path,resp.Header["X-Scal-Ring-Key"])
 			default:
-				gLog.Error.Printf("putObj Path/key %s/%s - resp.Status %d",request.Path, resp.Header["X-Scal-Ring-Key"],resp.Status)
+				gLog.Error.Printf("putObj Path/key %s/%s - resp.Status %d",request.Path, resp.Header["X-Scal-Ring-Key"],resp.StatusCode)
 				perrors++
 			}
 			return perrors,resp.StatusCode

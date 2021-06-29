@@ -173,10 +173,11 @@ func initConfig() {
 	Set  new source and target  sproxyd
 		sproxyd.HP
 	    sproxyd.TargetHP
-	 */
+
 
 	sproxyd.SetNewProxydHost()
 	sproxyd.SetNewTargetProxydHost()
+	 */
 
 	gLog.InitLog(rootCmd.Name(),loglevel,logOutput)
 	log.Printf("Logging level: %d   Output: %s",loglevel,logOutput)

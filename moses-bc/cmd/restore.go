@@ -77,6 +77,7 @@ func Restore(cmd *cobra.Command, args []string) {
 		err        error
 	)
 	start := time.Now()
+	mosesbc.SetTargetSproxyd("restore",targetUrl,targetDriver)
 	if bMedia == "S3" {
 		srcS3 = mosesbc.CreateS3Session("restore","source")
 	} else {
@@ -87,6 +88,7 @@ func Restore(cmd *cobra.Command, args []string) {
 	}
 	//  create the output directory if it does not exist
 	utils.MakeDir(outDir)
+
 
 	if nextMarker, err = _restoreBlobs(marker, srcBucket,replace); err != nil {
 		gLog.Error.Printf("error %v - Next marker %s", err, nextMarker)
@@ -105,6 +107,8 @@ func _restoreBlobs(marker string, srcBucket string, replace bool) (string, error
 		terrors               int
 		re,si                 sync.Mutex
 	)
+	// mosesbc.SetSourceSproxyd("restore",srcUrl,driver)
+
 
 	req := datatype.ListObjRequest{
 		Service:   srcS3,
