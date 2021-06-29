@@ -96,7 +96,7 @@ func _cloneBlob1(pn string, np int,replace bool) (int){
 	}
 	wg1 := sync.WaitGroup{}
 	for k := start; k <= np; k++ {
-
+		wg1.Add(1)
 		request.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
 		go func(request sproxyd.HttpRequest, request1 sproxyd.HttpRequest,pn string, k int) {
 			defer wg1.Done()
@@ -238,6 +238,7 @@ func _clonePart1(document *documentpb.Document, pn string, np int, start int, en
 	wg1 := sync.WaitGroup{}
 	// gLog.Info.Printf("Getpart of pn %s - start-page %d - end-page %d ", pn, start, end)
 	for k := start; k <= end; k++ {
+		wg1.Add(1)
 		request.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
 		go func(request sproxyd.HttpRequest, request1 sproxyd.HttpRequest, k int,replace bool) {
 			defer wg1.Done()
