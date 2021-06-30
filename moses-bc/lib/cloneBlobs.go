@@ -219,7 +219,7 @@ func _cloneBig1(pn string, np int, maxPage int,replace bool) (int,*documentpb.Do
 		nerr = _clonePart1(document, pn,np,start, np,replace)
 		gLog.Info.Printf("Get pages range %d:%d for document %s - Elapsed time %v ",start,np,pn,time.Since(start4))
 	}
-	gLog.Info.Printf("Backup document %s - number of pages %d - Document size %d - Elapsed time %v",document.DocId,npages,document.Size,time.Since(start2))
+	gLog.Info.Printf("Clone document %s - number of pages %d - Document size %d - Elapsed time %v",document.DocId,npages,document.Size,time.Since(start2))
 	return nerr,document
 }
 
@@ -277,10 +277,9 @@ func _clonePart1(document *documentpb.Document, pn string, np int, start int, en
 				ps.Unlock()
 			}
 			// gLog.Info.Printf("Time of writing page %s/p%d  Page size %d - %v  ",pg.PageId,pg.PageNumber,pg.Size,time.Since(start))
-			wg1.Done()
-
 		}(request, request1,document, k,replace)
 	}
+	wg1.Wait()
 
 	return nerr
 }
