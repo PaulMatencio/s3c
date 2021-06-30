@@ -107,7 +107,7 @@ func cloneBlobs(srcS3 *s3.S3, tgtS3 *s3.S3) (string, error) {
 	var (
 		nextmarker            string
 		N                     int
-		tdocs, tpages, tsizes int64
+		tdocs, tpages, tsizes,tdocr  int64
 		terrors               int
 		re,si                 sync.Mutex
 	)
@@ -124,7 +124,7 @@ func cloneBlobs(srcS3 *s3.S3, tgtS3 *s3.S3) (string, error) {
 		var (
 			result   *s3.ListObjectsOutput
 			err      error
-			ndocs    int = 0
+			ndocs,ndocr    int = 0,0
 			npages   int = 0
 			docsizes int64 = 0
 			gerrors  int = 0
@@ -133,7 +133,7 @@ func cloneBlobs(srcS3 *s3.S3, tgtS3 *s3.S3) (string, error) {
 		if result, err = api.ListObject(req1); err == nil {
 			gLog.Info.Printf("target backup bucket %s - source  metadata bucket %s - number of documents: %d", tgtBucket, srcBucket, len(result.Contents))
 			if l := len(result.Contents); l > 0 {
-				ndocs += int(l)
+				ndocr += int(l)
 				var wg1 sync.WaitGroup
 				start := time.Now()
 				for _, v := range result.Contents {
@@ -187,8 +187,9 @@ func cloneBlobs(srcS3 *s3.S3, tgtS3 *s3.S3) (string, error) {
 					gLog.Warning.Printf("Truncated %v - Next marker: %s ", *result.IsTruncated, nextmarker)
 				}
 				// ndocs = ndocs - gerrors
-				gLog.Info.Printf("Number of documents cloned: %d  - Number of pages: %d  - Documents size: %d - Number of errors: %d -  Elapsed time: %v", ndocs, npages, docsizes, gerrors, time.Since(start))
+				gLog.Info.Printf("Number of documents cloned: %d of %d - Number of pages: %d  - Documents size: %d - Number of errors: %d -  Elapsed time: %v", ndocs, ndocr,npages, docsizes, gerrors, time.Since(start))
 				tdocs += int64(ndocs)
+				tdocr += int64(ndocr)
 				tpages += int64(npages)
 				tsizes += int64(docsizes)
 				terrors += gerrors
@@ -201,7 +202,7 @@ func cloneBlobs(srcS3 *s3.S3, tgtS3 *s3.S3) (string, error) {
 		if *result.IsTruncated && (maxLoop == 0 || N <= maxLoop) {
 			req1.Marker = nextmarker
 		} else {
-			gLog.Info.Printf("Total number of documents restored: %d  - total number of pages: %d  - Total document size: %d - Total number of errors: %d - Total elapsed time: %v", tdocs, tpages, tsizes, terrors, time.Since(start0))
+			gLog.Info.Printf("Total number of documents restored: %d of %d - total number of pages: %d  - Total document size: %d - Total number of errors: %d - Total elapsed time: %v", tdocs, tdocr,tpages, tsizes, terrors, time.Since(start0))
 			break
 		}
 	}
