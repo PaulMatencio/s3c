@@ -18,7 +18,7 @@ import (
 */
 
 
-func CloneBlob1(pn string, np int, maxPage int,replace bool) (int){
+func CloneBlob1(pn string, np int, maxPage int,replace bool) (int,*documentpb.Document){
 
 	if np <= maxPage {
 		return _cloneBlob1(pn,np,replace)
@@ -27,8 +27,10 @@ func CloneBlob1(pn string, np int, maxPage int,replace bool) (int){
 	}
 }
 
-//  document with  smaller pages number than maxPage
-func _cloneBlob1(pn string, np int,replace bool) (int){
+/*
+document with  smaller pages number than the maxPage value
+ */
+func _cloneBlob1(pn string, np int,replace bool) (int,*documentpb.Document){
 
 	var (
 		request = sproxyd.HttpRequest{
@@ -51,27 +53,29 @@ func _cloneBlob1(pn string, np int,replace bool) (int){
 		usermd   string
 		body     *[]byte
 		start    int
-		pu		sync.Mutex
+		pu,ps		sync.Mutex
 		perrors int
 		document = &documentpb.Document{}
 	)
 	//  get document
 	if err, usermd = GetMetadata(request, pn); err != nil {
 		gLog.Error.Printf("%v",err)
-		return 1
+		return 1,document
 	}
 
 	//  clone document meta data
 	document.Metadata= usermd
 	document.DocId= pn
+	document.NumberOfPages= 0
+	document.Size= 0
 
 	if nerr,status := WriteDocMetadata(&request1, document,replace); nerr > 0 {
 		gLog.Warning.Printf("Document %s is not restored",document.DocId)
-		return nerr
+		return nerr,document
 	} else {
 		if status == 412 {
 			gLog.Warning.Printf("Document %s is not restored - use --replace=true  ou -r=true to replace the existing document",document.DocId)
-			return 1
+			return 1,document
 		}
 	}
 	//  check if page 0 and/or pdf exists
@@ -83,6 +87,7 @@ func _cloneBlob1(pn string, np int,replace bool) (int){
 		if err,pmeta,body := GetObject(request, pn); err == nil {
 			gLog.Info.Printf("Document %s has a PDF object - size %d",request.Path,len(*body))
 			pd:= doc.CreatePdf(pdfId, pmeta,body)
+			document.Size += pd.Size  // increment the document size
 			WriteDocPdf(pd,replace)
 		} else {
 			gLog.Warning.Printf("Error %v getting object %s ",err,request.Path)
@@ -91,6 +96,7 @@ func _cloneBlob1(pn string, np int,replace bool) (int){
 	//   if p0 exist just clone it
 	if p0 {
 		start = 0
+		// document.NumberOfPages += 1
 	} else {
 		start = 1
 	}
@@ -98,27 +104,32 @@ func _cloneBlob1(pn string, np int,replace bool) (int){
 	for k := start; k <= np; k++ {
 		wg1.Add(1)
 		request.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
-		go func(request sproxyd.HttpRequest, request1 sproxyd.HttpRequest,pn string, k int) {
+		go func(request sproxyd.HttpRequest, request1 sproxyd.HttpRequest,document *documentpb.Document, k int) {
 			defer wg1.Done()
+			pn := document.DocId
 			err, usermd, body = GetObject(request, pn)
 			pg:= doc.CreatePage(pn,usermd,k,body)
 			if perr,_ := WriteDocPage(request1, pg,replace); perr > 0 {
 				pu.Lock()
 				perrors += perr
 				pu.Unlock()
+			} else {
+				ps.Lock()
+				document.Size += (int64)(pg.Size)
+				document.NumberOfPages +=1
+				ps.Unlock()
 			}
-
-		}(request, request1, pn, k)
+		}(request, request1, document, k)
 	}
 	wg1.Wait()
-	return perrors
+	return perrors,document
 }
 
 /*
 	get document of which  the number of pages > maxPages
 
 */
-func _cloneBig1(pn string, np int, maxPage int,replace bool) (int){
+func _cloneBig1(pn string, np int, maxPage int,replace bool) (int,*documentpb.Document){
 	var (
 
 		start,q,r,end ,npages int
@@ -148,17 +159,21 @@ func _cloneBig1(pn string, np int, maxPage int,replace bool) (int){
 	//  retrieve the  document metadata and clone it
 	if err, usermd = GetMetadata(request, pn); err != nil {
 		gLog.Error.Printf("%v",err)
-		return 1
+		return 1,document
 	}
 
 	document.Metadata= usermd
+	document.DocId= pn
+	document.NumberOfPages= 0
+	document.Size= 0
+
 	if nerr,status := WriteDocMetadata(&request1, document,replace); nerr > 0 {
 		gLog.Warning.Printf("Document %s is not restored",document.DocId)
-		return nerr
+		return nerr,document
 	} else {
 		if status == 412 {
 			gLog.Warning.Printf("Document %s is not restored - use --replace=true  ou -r=true to replace the existing document",document.DocId)
-			return 1
+			return 1,document
 		}
 	}
 	//  if pdf , retrieve the pdf document and clone it
@@ -169,6 +184,7 @@ func _cloneBig1(pn string, np int, maxPage int,replace bool) (int){
 		if err,pmeta,body := GetObject(request, pn); err == nil {
 			gLog.Info.Printf("Document %s has a PDF object - size %d",request.Path,len(*body))
 			pd:= doc.CreatePdf(pdfId, pmeta,body)
+			document.Size += pd.Size
 			WriteDocPdf(pd,replace)
 		} else {
 			gLog.Warning.Printf("Error %v getting object %s ",err,request.Path)
@@ -204,7 +220,7 @@ func _cloneBig1(pn string, np int, maxPage int,replace bool) (int){
 		gLog.Info.Printf("Get pages range %d:%d for document %s - Elapsed time %v ",start,np,pn,time.Since(start4))
 	}
 	gLog.Info.Printf("Backup document %s - number of pages %d - Document size %d - Elapsed time %v",document.DocId,npages,document.Size,time.Since(start2))
-	return nerr
+	return nerr,document
 }
 
 
@@ -231,7 +247,7 @@ func _clonePart1(document *documentpb.Document, pn string, np int, start int, en
 		nerr   int
 		usermd string
 		body   *[]byte
-		pu  sync.Mutex
+		pu,ps  sync.Mutex
 		perrors int
 
 	)
@@ -240,9 +256,11 @@ func _clonePart1(document *documentpb.Document, pn string, np int, start int, en
 	for k := start; k <= end; k++ {
 		wg1.Add(1)
 		request.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
-		go func(request sproxyd.HttpRequest, request1 sproxyd.HttpRequest, k int,replace bool) {
+		go func(request sproxyd.HttpRequest, request1 sproxyd.HttpRequest, document *documentpb.Document,k int,replace bool) {
 			defer wg1.Done()
-			//get the source object and user metadata
+			/*
+				get the source object and user metadata
+			 */
 			err, usermd, body = GetObject(request, pn)
 			/*
 				create a corresponding page
@@ -252,11 +270,16 @@ func _clonePart1(document *documentpb.Document, pn string, np int, start int, en
 				pu.Lock()
 				perrors += perr
 				pu.Unlock()
+			} else {
+				ps.Lock()
+				document.Size += (int64)(pg.Size)
+				document.NumberOfPages +=1
+				ps.Unlock()
 			}
 			// gLog.Info.Printf("Time of writing page %s/p%d  Page size %d - %v  ",pg.PageId,pg.PageNumber,pg.Size,time.Since(start))
 			wg1.Done()
 
-		}(request, request1, k,replace)
+		}(request, request1,document, k,replace)
 	}
 
 	return nerr
