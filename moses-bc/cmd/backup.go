@@ -225,6 +225,7 @@ func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string,listpn *bufio.Sc
 									document.S3Meta = usermd
 									switch(bMedia){
 									case "s3":
+										/*
 										if err, docsize = mosesbc.WriteDirectory(pn, document, outDir); err != nil {
 											gLog.Error.Printf("Error:%v writing document: %s to directory %s", err, document.DocId, outDir)
 											mt.Lock()
@@ -234,6 +235,19 @@ func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string,listpn *bufio.Sc
 											docsize = (int)(document.Size)
 											npage = (int)(document.NumberOfPages)
 										}
+
+										 */
+										if _, err := writeS3(tgtS3, tgtBucket, maxPartSize,document); err != nil {
+												gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
+												mt.Lock()
+												gerrors += 1
+												mt.Unlock()
+											} else {
+												docsize = (int)(document.Size)
+												npage = (int)(document.NumberOfPages)
+												// gLog.Trace.Printf("Docid: %s - Etag %v", document.DocId, so.ETag)
+										}
+
 									case "File":
 										if err, docsize = mosesbc.WriteDirectory(pn, document, outDir); err != nil {
 											gLog.Error.Printf("Error:%v writing document: %s to directory %s", err, document.DocId, outDir)
@@ -277,6 +291,7 @@ func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string,listpn *bufio.Sc
 												npage = (int)(document.NumberOfPages)
 												// gLog.Trace.Printf("Docid: %s - Etag %v", document.DocId, so.ETag)
 											}
+
 										case "File":
 											if err, docsize = mosesbc.WriteDirectory(pn, document, outDir); err != nil {
 												gLog.Error.Printf("Error:%v writing document: %s to  directory %s", err, document.DocId, outDir)
@@ -287,6 +302,7 @@ func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string,listpn *bufio.Sc
 												docsize = (int)(document.Size)
 												npage = (int)(document.NumberOfPages)
 											}
+
 										default:
 											gLog.Info.Printf("bMedia option should  is [S3|File]")
 											return
