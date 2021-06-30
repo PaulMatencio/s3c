@@ -38,7 +38,7 @@ var (
 	backupCmd = &cobra.Command{
 		Use:   "backup",
 		Short: "Command to backup MOSES objects",
-		Long:  `Command to backup MOSES objects
+		Long: `Command to backup MOSES objects
 Moses metadata buckets are split into 6 buckets ( -xx ) 
 	<bucket>-xx  xx=00..05 
 	The source and target bucket 
@@ -47,19 +47,19 @@ Backup all the documents prefixed with FR. The find out  the source bucket suffi
 Backup all the documents listed in a given bucket 
 	moses-bc backup --source-bucket <source bucket> --target-bucket <target bucket>  --maxLoop 0 
 `,
-         Run:   Backup,
+		Run: Backup,
 	}
 	prefix, inFile, outDir, delimiter string
-	maxPartSize, maxKey      int64
-	marker  string
-	srcBucket,tgtBucket string
-	maxLoop, maxPage        int
-	missingoDir               = "Missing output directory --output-directory"
-	missingiFile              = "Missing input file --input-file"
-	missingsrcBucket          = "Missing source S3 bucket --source-bucket"
-	missingtgtBucket          = "Missing target S3 bucket --target-bucket"
+	maxPartSize, maxKey               int64
+	marker                            string
+	srcBucket, tgtBucket              string
+	maxLoop, maxPage                  int
+	missingoDir                       = "Missing output directory --output-directory"
+	missingiFile                      = "Missing input file --input-file"
+	missingsrcBucket                  = "Missing source S3 bucket --source-bucket"
+	missingtgtBucket                  = "Missing target S3 bucket --target-bucket"
 	// back, meta                datatype.CreateSession
-	tgtS3, srcS3               *s3.S3
+	tgtS3, srcS3 *s3.S3
 )
 
 type UserMd struct {
@@ -98,8 +98,7 @@ func Backup(cmd *cobra.Command, args []string) {
 	var (
 		nextmarker string
 		err        error
-		listpn  *bufio.Scanner
-		bMedia = "S3"
+		listpn     *bufio.Scanner
 	)
 	start := time.Now()
 
@@ -109,17 +108,17 @@ func Backup(cmd *cobra.Command, args []string) {
 			gLog.Warning.Printf("%s", missingiFile)
 			return
 		} else {
-			if listpn,err  = utils.Scanner(inFile); err != nil {
-				gLog.Error.Printf("Error %v  scanning %d ",err,inFile)
+			if listpn, err = utils.Scanner(inFile); err != nil {
+				gLog.Error.Printf("Error %v  scanning %d ", err, inFile)
 				return
 			}
 		}
 	}
 
-	srcS3 = mosesbc.CreateS3Session("backup","source")
-	maxPartSize= maxPartSize * 1024 * 1024
+	srcS3 = mosesbc.CreateS3Session("backup", "source")
+	maxPartSize = maxPartSize * 1024 * 1024
 
-	mosesbc.SetSourceSproxyd("backup",srcUrl,driver)
+	mosesbc.SetSourceSproxyd("backup", srcUrl, driver)
 
 	if bMedia == "S3" {
 
@@ -128,11 +127,11 @@ func Backup(cmd *cobra.Command, args []string) {
 			return
 		}
 
-		if err :=mosesbc.CheckBucketName(srcBucket,tgtBucket); err != nil {
-			gLog.Warning.Printf("%v",err)
+		if err := mosesbc.CheckBucketName(srcBucket, tgtBucket); err != nil {
+			gLog.Warning.Printf("%v", err)
 			return
 		}
-		tgtS3 =  mosesbc.CreateS3Session("backup","target")
+		tgtS3 = mosesbc.CreateS3Session("backup", "target")
 	} else {
 		if len(outDir) == 0 {
 			gLog.Warning.Printf("%s", missingoDir)
@@ -144,7 +143,7 @@ func Backup(cmd *cobra.Command, args []string) {
 	utils.MakeDir(outDir)
 
 	// start backing up
-	if nextmarker, err = _backupBlobs(marker, srcS3, srcBucket,listpn,tgtS3,tgtBucket); err != nil {
+	if nextmarker, err = _backupBlobs(marker, srcS3, srcBucket, listpn, tgtS3, tgtBucket); err != nil {
 		gLog.Error.Printf("error %v - Next marker %s", err, nextmarker)
 	} else {
 		gLog.Info.Printf("Next Marker %s", nextmarker)
@@ -155,7 +154,7 @@ func Backup(cmd *cobra.Command, args []string) {
 
 /* S3 API list user metadata  function */
 
-func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string,listpn *bufio.Scanner,tgtS3 *s3.S3,tgtBucket string ) (string, error) {
+func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string, listpn *bufio.Scanner, tgtS3 *s3.S3, tgtBucket string) (string, error) {
 
 	var (
 		nextmarker            string
@@ -167,11 +166,11 @@ func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string,listpn *bufio.Sc
 	)
 
 	req1 := datatype.ListObjRequest{
-		Service:   srcS3,
-		Bucket:    srcBucket,
-		Prefix:    prefix,
-		MaxKey:    int64(maxKey),
-		Marker:    marker,
+		Service: srcS3,
+		Bucket:  srcBucket,
+		Prefix:  prefix,
+		MaxKey:  int64(maxKey),
+		Marker:  marker,
 	}
 	for {
 		var (
@@ -187,10 +186,10 @@ func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string,listpn *bufio.Sc
 			result, err = api.ListObject(req1)
 			gLog.Info.Printf("target bucket %s - source metadata bucket %s - number of documents: %d", tgtBucket, srcBucket, len(result.Contents))
 		} else {
-			result,err =  ListPn(listpn,int(maxKey));
+			result, err = ListPn(listpn, int(maxKey))
 			gLog.Info.Printf("target bucket %s - input file %s - number of documents: %d", tgtBucket, inFile, len(result.Contents))
 		}
-		if  err == nil {
+		if err == nil {
 			if l := len(result.Contents); l > 0 {
 				ndocs += int(l)
 				var wg1 sync.WaitGroup
@@ -209,9 +208,9 @@ func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string,listpn *bufio.Sc
 							rh = datatype.Rh{
 								Key: request.Key,
 							}
-							np, status, docsize,npage int
-							err                 error
-							usermd              string
+							np, status, docsize, npage int
+							err                        error
+							usermd                     string
 						)
 
 						defer wg1.Done()
@@ -224,29 +223,29 @@ func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string,listpn *bufio.Sc
 							if np, err = strconv.Atoi(userm.TotalPages); err == nil {
 								if errs, document := mosesbc.BackBlob1(pn, np, maxPage); len(errs) == 0 {
 									document.S3Meta = usermd
-									switch(bMedia){
+									switch bMedia {
 									case "s3":
 										/*
-										if err, docsize = mosesbc.WriteDirectory(pn, document, outDir); err != nil {
-											gLog.Error.Printf("Error:%v writing document: %s to directory %s", err, document.DocId, outDir)
-											mt.Lock()
-											gerrors += 1
-											mt.Unlock()
-										} else {
-											docsize = (int)(document.Size)
-											npage = (int)(document.NumberOfPages)
-										}
-
-										 */
-										if _, err := writeS3(tgtS3, tgtBucket, maxPartSize,document); err != nil {
-												gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
+											if err, docsize = mosesbc.WriteDirectory(pn, document, outDir); err != nil {
+												gLog.Error.Printf("Error:%v writing document: %s to directory %s", err, document.DocId, outDir)
 												mt.Lock()
 												gerrors += 1
 												mt.Unlock()
 											} else {
 												docsize = (int)(document.Size)
 												npage = (int)(document.NumberOfPages)
-												// gLog.Trace.Printf("Docid: %s - Etag %v", document.DocId, so.ETag)
+											}
+
+										*/
+										if _, err := writeS3(tgtS3, tgtBucket, maxPartSize, document); err != nil {
+											gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
+											mt.Lock()
+											gerrors += 1
+											mt.Unlock()
+										} else {
+											docsize = (int)(document.Size)
+											npage = (int)(document.NumberOfPages)
+											// gLog.Trace.Printf("Docid: %s - Etag %v", document.DocId, so.ETag)
 										}
 
 									case "File":
@@ -260,8 +259,17 @@ func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string,listpn *bufio.Sc
 											npage = (int)(document.NumberOfPages)
 										}
 									default:
-										gLog.Info.Printf("bMedia option should  is [S3|File]")
-										return
+										//gLog.Info.Printf("bMedia option should be [S3|File]")
+										if _, err := writeS3(tgtS3, tgtBucket, maxPartSize, document); err != nil {
+											gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
+											mt.Lock()
+											gerrors += 1
+											mt.Unlock()
+										} else {
+											docsize = (int)(document.Size)
+											npage = (int)(document.NumberOfPages)
+											// gLog.Trace.Printf("Docid: %s - Etag %v", document.DocId, so.ETag)
+										}
 									}
 									gLog.Trace.Printf("Docid: %s - number of pages: %d - Document metadata: %s", document.DocId, document.NumberOfPages, document.Metadata)
 								} else {
@@ -275,14 +283,14 @@ func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string,listpn *bufio.Sc
 								if np, err, status = mosesbc.GetPageNumber(pn); err == nil {
 									if errs, document := mosesbc.BackBlob1(pn, np, maxPage); len(errs) == 0 {
 										/*
-										Add  s3 moses metadata to the document even if it may be  invalid from the source
-										the purpose of the backup is not to fix  data
-										 */
+											Add  s3 moses metadata to the document even if it may be  invalid from the source
+											the purpose of the backup is not to fix  data
+										*/
 										document.S3Meta = usermd
 										document.LastUpdated = timestamppb.Now()
-										switch (bMedia) {
+										switch bMedia {
 										case "S3":
-											if _, err := writeS3(tgtS3, tgtBucket, maxPartSize,document); err != nil {
+											if _, err := writeS3(tgtS3, tgtBucket, maxPartSize, document); err != nil {
 												gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
 												mt.Lock()
 												gerrors += 1
@@ -305,13 +313,23 @@ func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string,listpn *bufio.Sc
 											}
 
 										default:
-											gLog.Info.Printf("bMedia option should  is [S3|File]")
-											return
+											//gLog.Info.Printf("bMedia option should  is [S3|File]")
+
+											if _, err := writeS3(tgtS3, tgtBucket, maxPartSize, document); err != nil {
+												gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
+												mt.Lock()
+												gerrors += 1
+												mt.Unlock()
+											} else {
+												docsize = (int)(document.Size)
+												npage = (int)(document.NumberOfPages)
+												// gLog.Trace.Printf("Docid: %s - Etag %v", document.DocId, so.ETag)
+											}
 										}
 									} else {
 										/*
 											some errors have been found by getBlob1
-										 */
+										*/
 										printErr(errs)
 										mt.Lock()
 										gerrors += len(errs)
@@ -360,48 +378,46 @@ func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string,listpn *bufio.Sc
 	return nextmarker, nil
 }
 
-
-
 func printErr(errs []error) {
 	for _, e := range errs {
 		gLog.Error.Println(e)
 	}
 }
 
-func writeS3(service *s3.S3, bucket string , maxPartSize int64, document *documentpb.Document) (interface{},error){
+func writeS3(service *s3.S3, bucket string, maxPartSize int64, document *documentpb.Document) (interface{}, error) {
 
-	if maxPartSize >0 && document.Size > maxPartSize {
-		gLog.Warning.Printf("Multipart upload %s - size %d - max part size %d",document.DocId,document.Size,maxPartSize)
-		return mosesbc.WriteS3Multipart(service,bucket,maxPartSize,document)
+	if maxPartSize > 0 && document.Size > maxPartSize {
+		gLog.Warning.Printf("Multipart upload %s - size %d - max part size %d", document.DocId, document.Size, maxPartSize)
+		return mosesbc.WriteS3Multipart(service, bucket, maxPartSize, document)
 	} else {
-		return mosesbc.WriteS3(service,bucket,document)
+		return mosesbc.WriteS3(service, bucket, document)
 	}
 
 }
 
-func ListPn( buf *bufio.Scanner,num  int) (*s3.ListObjectsOutput,error){
+func ListPn(buf *bufio.Scanner, num int) (*s3.ListObjectsOutput, error) {
 
 	var (
-		T = true
-		Z int64 = 0
-		D = time.Now()
-		result = &s3.ListObjectsOutput{
+		T            = true
+		Z      int64 = 0
+		D            = time.Now()
+		result       = &s3.ListObjectsOutput{
 			IsTruncated: &T,
 		}
-		err error
+		err     error
 		objects []*s3.Object
 	)
-	for k:= 1; k <= num;k ++ {
+	for k := 1; k <= num; k++ {
 		var object s3.Object
 		if buf.Scan() {
 			if text := buf.Text(); len(text) > 0 {
 				object.Key = &text
-				object.Size= &Z
-				object.LastModified= &D
-				objects = append(objects,&object)
+				object.Size = &Z
+				object.LastModified = &D
+				objects = append(objects, &object)
 				result.Marker = &text
 			} else {
-				T= false
+				T = false
 				result.IsTruncated = &T
 
 			}
@@ -410,6 +426,6 @@ func ListPn( buf *bufio.Scanner,num  int) (*s3.ListObjectsOutput,error){
 			result.IsTruncated = &T
 		}
 	}
-	result.Contents= objects
-	return result,err
+	result.Contents = objects
+	return result, err
 }

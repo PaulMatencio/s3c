@@ -88,12 +88,12 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&config,"config", "c","", "sc config file; default $HOME/.clone/config.yaml")
 	rootCmd.PersistentFlags().BoolVarP(&autoCompletion,"autoCompletion", "C",false, "generate bash auto completion")
 	rootCmd.PersistentFlags().IntVarP(&profiling,"profiling", "P",0, "display memory usage every P seconds")
-	rootCmd.PersistentFlags().StringVarP(&bMedia,"backupMedia","","S3","backup media [S3|File]")
+	rootCmd.PersistentFlags().StringVarP(&bMedia,"bMedia","","S3","backup media [S3|File]")
 
 	viper.BindPFlag("loglevel",rootCmd.PersistentFlags().Lookup("loglevel"))
 	viper.BindPFlag("autoCompletion",rootCmd.PersistentFlags().Lookup("autoCompletion"))
 	viper.BindPFlag("profiling",rootCmd.PersistentFlags().Lookup("profiling"))
-	viper.BindPFlag("bMedia",rootCmd.PersistentFlags().Lookup("backupMedia"))
+	viper.BindPFlag("bMedia",rootCmd.PersistentFlags().Lookup("bMedia"))
 	cobra.OnInitialize(initConfig)
 }
 
