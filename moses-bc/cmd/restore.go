@@ -266,7 +266,7 @@ func _restoreBlobs(marker string, srcBucket string, replace bool) (string, error
 					gLog.Warning.Printf("Truncated %v - Next marker: %s ", *result.IsTruncated, nextmarker)
 				}
 				ndocs = ndocs - gerrors
-				gLog.Info.Printf("Number of documents restored: %d  - Number of pages: %d  - Documents size: %d - Number of errors: %d -  Elapsed time: %v", ndocs, npages, docsizes, gerrors,time.Since(start))
+				gLog.Info.Printf("Number of restored documents: %d  - Number of pages: %d  - Documents size: %d - Number of errors: %d -  Elapsed time: %v", ndocs, npages, docsizes, gerrors,time.Since(start))
 				tdocs += int64(ndocs)
 				tpages += int64(npages)
 				tsizes += int64(docsizes)
@@ -280,7 +280,7 @@ func _restoreBlobs(marker string, srcBucket string, replace bool) (string, error
 		if *result.IsTruncated && (maxLoop == 0 || N <= maxLoop) {
 			req.Marker = nextmarker
 		} else {
-			gLog.Info.Printf("Total number of documents restored: %d  - total number of pages: %d  - Total document size: %d - Total number of errors: %d - Total elapsed time: %v", tdocs, tpages, tsizes, terrors,time.Since(start0))
+			gLog.Info.Printf("Total number of restored documents: %d  - total number of pages: %d  - Total document size: %d - Total number of errors: %d - Total elapsed time: %v", tdocs, tpages, tsizes, terrors,time.Since(start0))
 			break
 		}
 	}

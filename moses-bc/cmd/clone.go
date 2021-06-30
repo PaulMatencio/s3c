@@ -187,7 +187,7 @@ func cloneBlobs(srcS3 *s3.S3, tgtS3 *s3.S3) (string, error) {
 					gLog.Warning.Printf("Truncated %v - Next marker: %s ", *result.IsTruncated, nextmarker)
 				}
 				// ndocs = ndocs - gerrors
-				gLog.Info.Printf("Number of documents cloned: %d of %d - Number of pages: %d  - Documents size: %d - Number of errors: %d -  Elapsed time: %v", ndocs, ndocr,npages, docsizes, gerrors, time.Since(start))
+				gLog.Info.Printf("Number of cloned documents: %d of %d - Number of pages: %d  - Documents size: %d - Number of errors: %d -  Elapsed time: %v", ndocs, ndocr,npages, docsizes, gerrors, time.Since(start))
 				tdocs += int64(ndocs)
 				tdocr += int64(ndocr)
 				tpages += int64(npages)
@@ -202,7 +202,7 @@ func cloneBlobs(srcS3 *s3.S3, tgtS3 *s3.S3) (string, error) {
 		if *result.IsTruncated && (maxLoop == 0 || N <= maxLoop) {
 			req1.Marker = nextmarker
 		} else {
-			gLog.Info.Printf("Total number of documents restored: %d of %d - total number of pages: %d  - Total document size: %d - Total number of errors: %d - Total elapsed time: %v", tdocs, tdocr,tpages, tsizes, terrors, time.Since(start0))
+			gLog.Info.Printf("Total number of cloned documents: %d of %d - total number of pages: %d  - Total document size: %d - Total number of errors: %d - Total elapsed time: %v", tdocs, tdocr,tpages, tsizes, terrors, time.Since(start0))
 			break
 		}
 	}

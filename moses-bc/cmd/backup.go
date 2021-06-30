@@ -288,7 +288,7 @@ func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string,tgtS3 *s3.S3,tgt
 					gLog.Warning.Printf("Truncated %v - Next marker: %s ", *result.IsTruncated, nextmarker)
 
 				}
-				gLog.Info.Printf("Total number of backup documents: %d  - total number of pages: %d  - Total document size: %d - Total number of errors: %d", ndocs, npages, docsizes, gerrors)
+				gLog.Info.Printf("Total number of backed up documents: %d  - total number of pages: %d  - Total document size: %d - Total number of errors: %d", ndocs, npages, docsizes, gerrors)
 				tdocs += int64(ndocs)
 				tpages += int64(npages)
 				tsizes += int64(docsizes)
@@ -302,7 +302,7 @@ func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string,tgtS3 *s3.S3,tgt
 		if *result.IsTruncated && (maxLoop == 0 || N <= maxLoop) {
 			req1.Marker = nextmarker
 		} else {
-			gLog.Info.Printf("Total number of backup documents: %d - total number of pages: %d  - Total document size: %d - Total number of errors: %d", tdocs, tpages, tsizes, terrors)
+			gLog.Info.Printf("Total number of backed up documents: %d - total number of pages: %d  - Total document size: %d - Total number of errors: %d", tdocs, tpages, tsizes, terrors)
 			break
 		}
 	}
