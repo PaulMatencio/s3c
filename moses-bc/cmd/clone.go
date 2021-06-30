@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"bufio"
 	"encoding/json"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/paulmatencio/s3c/api"
@@ -23,7 +24,6 @@ import (
 	mosesbc "github.com/paulmatencio/s3c/moses-bc/lib"
 	"github.com/paulmatencio/s3c/utils"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"strconv"
 	"sync"
 	"time"
@@ -49,7 +49,8 @@ func initCloFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVarP(&maxPage, "maxPage", "", 50, "maximum number of concurrent moses pages to be concurrently procsessed")
 	cmd.Flags().IntVarP(&maxLoop, "maxLoop", "", 1, "maximum number of loop, 0 means no upper limit")
 	cmd.Flags().BoolVarP(&replace, "replace", "r", false, "replace the existing target moses pages")
-	cmd.Flags().BoolVarP(&reIndex, "reIndex", "I", false, "re-index the target moses documents")
+	cmd.Flags().BoolVarP(&reIndex, "reIndex", "", false, "re-index the target moses documents")
+	cmd.Flags().StringVarP(&inFile, "input-file", "i", "", "input file containing the list of documents to clone")
 	cmd.Flags().StringVarP(&srcUrl, "source-sproxyd-url", "s", "", "source sproxyd endpoints  http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
 	cmd.Flags().StringVarP(&driver, "source-sproxyd-driver", "", "", "source sproxyd driver [bpchord|bparc]")
 	cmd.Flags().StringVarP(&targetDriver, "target-sproxyd-driver", "", "", "target sproxyd driver [bpchord|bparc]")
@@ -64,27 +65,33 @@ func init() {
 
 func Clone(cmd *cobra.Command, args []string) {
 
+	var listpn  *bufio.Scanner
 	mosesbc.SetSourceSproxyd("clone", srcUrl, driver)
 	mosesbc.SetTargetSproxyd("check", targetUrl, targetDriver)
 
 	if len(srcBucket) == 0 {
-		if len(viper.GetString("clone.s3.source.bucket")) == 0 {
-			gLog.Warning.Printf("%s", "missing clone.s3.source.bucket in the config file")
+		if len(inFile) == 0 {
+			gLog.Warning.Printf("%s", missingsrcBucket)
+			gLog.Warning.Printf("%s", missingiFile)
 			return
 		} else {
-			srcBucket = viper.GetString("clone.s3.source.bucket")
+			if listpn,err  = utils.Scanner(inFile); err != nil {
+				gLog.Error.Printf("Error %v  scanning %d ",err,inFile)
+				return
+			}
 		}
 	}
 
-	if len(tgtBucket) == 0 && reIndex {
-		if len(viper.GetString("clone.s3.target.bucket")) == 0 {
-			gLog.Warning.Printf("%s", "missing clone.s3.target.bucket in the config file")
-			return
-		} else {
-			tgtBucket = viper.GetString("clone.s3.target.bucket")
-		}
+	if len(tgtBucket) == 0 {
+		gLog.Warning.Printf("%s", missingtgtBucket)
+		return
 	}
-	// setS3Session("clone","source")
+
+	if err := mosesbc.CheckBucketName(srcBucket, tgtBucket); err != nil {
+		gLog.Warning.Printf("%v", err)
+		return
+	}
+
 	if srcS3 = mosesbc.CreateS3Session("clone", "source"); srcS3 == nil {
 		gLog.Error.Printf("Failed to create a S3 source session")
 		return
@@ -96,42 +103,52 @@ func Clone(cmd *cobra.Command, args []string) {
 			return
 		}
 	}
-
-	nm, nerr := cloneBlobs(srcS3, tgtS3)
-	gLog.Info.Printf("Next marker %s -  Total number of errors %d", nm, nerr)
-
+	start := time.Now()
+	if nextMarker, err := _cloneBlobs(srcS3, tgtS3,listpn); err != nil {
+		gLog.Error.Printf("error %v - Next marker %s", err, nextMarker)
+	} else {
+		gLog.Info.Printf("Next Marker %s", nextMarker)
+	}
+	gLog.Info.Printf("Total Elapsed time: %v", time.Since(start))
 }
 
-func cloneBlobs(srcS3 *s3.S3, tgtS3 *s3.S3) (string, error) {
+func _cloneBlobs(srcS3 *s3.S3, tgtS3 *s3.S3,listpn *bufio.Scanner) (string, error) {
 
 	var (
-		nextmarker            string
-		N                     int
-		tdocs, tpages, tsizes,tdocr  int64
-		terrors               int
-		re,si                 sync.Mutex
+		nextmarker                   string
+		N                            int
+		tdocs, tpages, tsizes, tdocr int64
+		terrors                      int
+		re, si                       sync.Mutex
 	)
 	req1 := datatype.ListObjRequest{
 		Service: srcS3,
 		Bucket:  srcBucket,
 		Prefix:  prefix,
-		MaxKey:  maxKey,
+		MaxKey:  int64(maxKey),
 		Marker:  marker,
 	}
 	gLog.Info.Println(req1)
 	start0 := time.Now()
 	for {
 		var (
-			result   *s3.ListObjectsOutput
-			err      error
-			ndocs,ndocr    int = 0,0
-			npages   int = 0
-			docsizes int64 = 0
-			gerrors  int = 0
+			result       *s3.ListObjectsOutput
+			err          error
+			ndocs, ndocr int   = 0, 0
+			npages       int   = 0
+			docsizes     int64 = 0
+			gerrors      int   = 0
 		)
 		N++ // number of loop
-		if result, err = api.ListObject(req1); err == nil {
-			gLog.Info.Printf("target backup bucket %s - source  metadata bucket %s - number of documents: %d", tgtBucket, srcBucket, len(result.Contents))
+		if len(srcBucket) > 0 {
+			result, err = api.ListObject(req1)
+			gLog.Info.Printf("target bucket %s - source metadata bucket %s - number of documents: %d", tgtBucket, srcBucket, len(result.Contents))
+		} else {
+			result,err =  ListPn(listpn,5);
+			gLog.Info.Println(inFile, len(result.Contents))
+		}
+		if  err == nil {
+
 			if l := len(result.Contents); l > 0 {
 				ndocr += int(l)
 				var wg1 sync.WaitGroup
@@ -167,7 +184,7 @@ func cloneBlobs(srcS3 *s3.S3, tgtS3 *s3.S3) (string, error) {
 									si.Lock()
 									npages += int(document.NumberOfPages)
 									docsizes += document.Size
-									ndocs +=1
+									ndocs += 1
 									si.Unlock()
 									gLog.Info.Printf("Document id %s is cloned - Number of pages %d - Document size %d - Number of errors %d - Elapsed time %v ", document.DocId, document.NumberOfPages, document.Size, nerr, time.Since(start3))
 								} else {
@@ -187,7 +204,7 @@ func cloneBlobs(srcS3 *s3.S3, tgtS3 *s3.S3) (string, error) {
 					gLog.Warning.Printf("Truncated %v - Next marker: %s ", *result.IsTruncated, nextmarker)
 				}
 				// ndocs = ndocs - gerrors
-				gLog.Info.Printf("Number of cloned documents: %d of %d - Number of pages: %d  - Documents size: %d - Number of errors: %d -  Elapsed time: %v", ndocs, ndocr,npages, docsizes, gerrors, time.Since(start))
+				gLog.Info.Printf("Number of cloned documents: %d of %d - Number of pages: %d  - Documents size: %d - Number of errors: %d -  Elapsed time: %v", ndocs, ndocr, npages, docsizes, gerrors, time.Since(start))
 				tdocs += int64(ndocs)
 				tdocr += int64(ndocr)
 				tpages += int64(npages)
@@ -202,7 +219,7 @@ func cloneBlobs(srcS3 *s3.S3, tgtS3 *s3.S3) (string, error) {
 		if *result.IsTruncated && (maxLoop == 0 || N <= maxLoop) {
 			req1.Marker = nextmarker
 		} else {
-			gLog.Info.Printf("Total number of cloned documents: %d of %d - total number of pages: %d  - Total document size: %d - Total number of errors: %d - Total elapsed time: %v", tdocs, tdocr,tpages, tsizes, terrors, time.Since(start0))
+			gLog.Info.Printf("Total number of cloned documents: %d of %d - total number of pages: %d  - Total document size: %d - Total number of errors: %d - Total elapsed time: %v", tdocs, tdocr, tpages, tsizes, terrors, time.Since(start0))
 			break
 		}
 	}

@@ -60,6 +60,7 @@ func initResFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key")
 	cmd.Flags().StringVarP(&delimiter, "delimiter", "d", "", "key delimiter")
 	cmd.Flags().StringVarP(&pn, "pn", "k", "", "publication number to be restored")
+	cmd.Flags().StringVarP(&inFile, "input-file", "i", "", "input file containing the list of documents to restore")
 	cmd.Flags().IntVarP(&maxPage, "maxPage", "", 50, "maximum number of concurrent pages ")
 	cmd.Flags().IntVarP(&maxLoop, "maxLoop", "", 1, "maximum number of loop, 0 means no upper limit")
 	cmd.Flags().BoolVarP(&replace, "replace", "r", false, "replace existing pages")
@@ -72,6 +73,7 @@ func init() {
 }
 
 func Restore(cmd *cobra.Command, args []string) {
+
 	var (
 		nextMarker string
 		err        error
@@ -79,7 +81,19 @@ func Restore(cmd *cobra.Command, args []string) {
 	start := time.Now()
 	mosesbc.SetTargetSproxyd("restore",targetUrl,targetDriver)
 
+	if len(srcBucket) == 0 {
+		gLog.Warning.Printf("%s", missingsrcBucket)
+		return
+	}
 	if bMedia == "S3" {
+		if len(tgtBucket) == 0 {
+			gLog.Warning.Printf("%s", missingtgtBucket)
+			return
+		}
+		if err :=mosesbc.CheckBucketName(srcBucket,tgtBucket); err != nil {
+			gLog.Warning.Printf("%v",err)
+			return
+		}
 		srcS3 = mosesbc.CreateS3Session("restore","source")
 	} else {
 		if len(iDir) == 0 {
@@ -116,7 +130,7 @@ func _restoreBlobs(marker string, srcBucket string, replace bool) (string, error
 		Service:   srcS3,
 		Bucket:    srcBucket,
 		Prefix:    prefix,
-		MaxKey:    maxKey,
+		MaxKey:    int64(maxKey),
 		Marker:    marker,
 		Delimiter: delimiter,
 	}
