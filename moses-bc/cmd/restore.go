@@ -56,7 +56,7 @@ func initResFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&srcBucket, "source-bucket", "", "", "name of the S3 backup bucket")
 	cmd.Flags().StringVarP(&tgtBucket, "target-bucket", "", "", "name of the target metadata bucket")
 	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "key prefix")
-	cmd.Flags().Int64VarP(&maxKey, "maxKey", "m", 40, "maximum number of keys to be restored concurrently")
+	cmd.Flags().Int64VarP(&maxKey, "maxKey", "m", 20, "maximum number of keys to be restored concurrently")
 	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key")
 	cmd.Flags().StringVarP(&delimiter, "delimiter", "d", "", "key delimiter")
 	cmd.Flags().StringVarP(&pn, "pn", "k", "", "publication number to be restored")
