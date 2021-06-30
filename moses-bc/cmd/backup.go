@@ -99,6 +99,7 @@ func Backup(cmd *cobra.Command, args []string) {
 		nextmarker string
 		err        error
 		listpn  *bufio.Scanner
+		bMedia = "S3"
 	)
 	start := time.Now()
 
