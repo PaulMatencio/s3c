@@ -93,7 +93,7 @@ func init() {
 	viper.BindPFlag("loglevel",rootCmd.PersistentFlags().Lookup("loglevel"))
 	viper.BindPFlag("autoCompletion",rootCmd.PersistentFlags().Lookup("autoCompletion"))
 	viper.BindPFlag("profiling",rootCmd.PersistentFlags().Lookup("profiling"))
-	viper.BindPFlag("backupMedia",rootCmd.PersistentFlags().Lookup("backupMedia"))
+	viper.BindPFlag("bMedia",rootCmd.PersistentFlags().Lookup("backupMedia"))
 	cobra.OnInitialize(initConfig)
 }
 
