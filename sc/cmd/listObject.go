@@ -69,6 +69,7 @@ func listObject(cmd *cobra.Command,args []string) {
 	var (
 		start = utils.LumberPrefix(cmd)
 		total int64 = 0
+		nextmarker string
 	)
 
 	if len(bucket) == 0 {
@@ -94,7 +95,7 @@ func listObject(cmd *cobra.Command,args []string) {
 	L:=1
 	for {
 		var (
-			nextmarker string
+
 			result  *s3.ListObjectsOutput
 			err error
 		)
@@ -134,6 +135,7 @@ func listObjectV2(cmd *cobra.Command,args []string) {
 		start = utils.LumberPrefix(cmd)
 		total int64 = 0
 		token string
+		nextmarker  string
 
 	)
 
@@ -161,7 +163,7 @@ func listObjectV2(cmd *cobra.Command,args []string) {
 	L:=1
 	for {
 		var (
-			nextmarker  string
+
 			result  *s3.ListObjectsV2Output
 			err error
 		)
