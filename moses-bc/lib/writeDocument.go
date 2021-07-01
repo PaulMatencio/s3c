@@ -88,6 +88,7 @@ func WriteS3Multipart(service *s3.S3, bucket string, maxPartSize int64,document 
 		n, t                                   = 0, 0
 		curr, remaining, partSize int64
 		partNumber                             int
+		documentSize                           int64
 		completedParts                         []*s3.CompletedPart
 		// buffer                                 = document.GetObject()
 		key                                    = document.GetDocId()
@@ -108,7 +109,7 @@ func WriteS3Multipart(service *s3.S3, bucket string, maxPartSize int64,document 
 	if buffer, err = proto.Marshal(document); err != nil {
 		return errs, err
 	}
-
+	documentSize = int64(len(buffer))
 	fType  := http.DetectContentType(buffer)
 	create := datatype.CreateMultipartUploadRequest{
 		Service:     service,
@@ -126,7 +127,7 @@ func WriteS3Multipart(service *s3.S3, bucket string, maxPartSize int64,document 
 			Resp:    resp,
 		}
 		partSize = maxPartSize
-		remaining = document.Size
+		remaining = documentSize
 		ch := make(chan *Resp)
 		start := time.Now()
 		for curr = 0; remaining != 0; curr += partSize {
