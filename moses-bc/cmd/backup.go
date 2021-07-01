@@ -193,103 +193,51 @@ func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string, listpn *bufio.S
 			if l := len(result.Contents); l > 0 {
 				ndocs += int(l)
 				var wg1 sync.WaitGroup
-				wg1.Add(len(result.Contents))
-				for _, v := range result.Contents {
-					gLog.Trace.Printf("Key: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size, v.LastModified)
-					svc := req1.Service
-					request := datatype.StatObjRequest{
-						Service: svc,
-						Bucket:  req1.Bucket,
-						Key:     *v.Key,
+				// wg1.Add(len(result.Contents))
+				for k, v := range result.Contents {
+					ok := false
+					if len(nextmarker) > 0 {
+						if k > 0 {
+							gLog.Info.Printf("Key: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size, v.LastModified)
+							ok = true
+						}
+					} else {
+						gLog.Info.Printf("Key: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size, v.LastModified)
+						ok = true
 					}
-					go func(request datatype.StatObjRequest) {
+					if ok {
 
-						var (
-							rh = datatype.Rh{
-								Key: request.Key,
-							}
-							np, status, docsize, npage int
-							err                        error
-							usermd                     string
-						)
+						//gLog.Trace.Printf("Key: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size, v.LastModified)
+						svc := req1.Service
+						request := datatype.StatObjRequest{
+							Service: svc,
+							Bucket:  req1.Bucket,
+							Key:     *v.Key,
+						}
+						wg1.Add(1)
+						go func(request datatype.StatObjRequest) {
 
-						defer wg1.Done()
-
-						rh.Result, rh.Err = api.StatObject(request)
-						if usermd, err = utils.GetUserMeta(rh.Result.Metadata); err == nil {
-							userm := UserMd{}
-							json.Unmarshal([]byte(usermd), &userm)
-							pn := rh.Key
-							if np, err = strconv.Atoi(userm.TotalPages); err == nil {
-								if errs, document := mosesbc.BackBlob1(pn, np, maxPage); len(errs) == 0 {
-									document.S3Meta = usermd
-									switch bMedia {
-									case "s3":
-										/*
-											if err, docsize = mosesbc.WriteDirectory(pn, document, outDir); err != nil {
-												gLog.Error.Printf("Error:%v writing document: %s to directory %s", err, document.DocId, outDir)
-												mt.Lock()
-												gerrors += 1
-												mt.Unlock()
-											} else {
-												docsize = (int)(document.Size)
-												npage = (int)(document.NumberOfPages)
-											}
-
-										*/
-										if _, err := writeS3(tgtS3, tgtBucket, maxPartSize, document); err != nil {
-											gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
-											mt.Lock()
-											gerrors += 1
-											mt.Unlock()
-										} else {
-											docsize = (int)(document.Size)
-											npage = (int)(document.NumberOfPages)
-											// gLog.Trace.Printf("Docid: %s - Etag %v", document.DocId, so.ETag)
-										}
-
-									case "File":
-										if err, docsize = mosesbc.WriteDirectory(pn, document, outDir); err != nil {
-											gLog.Error.Printf("Error:%v writing document: %s to directory %s", err, document.DocId, outDir)
-											mt.Lock()
-											gerrors += 1
-											mt.Unlock()
-										} else {
-											docsize = (int)(document.Size)
-											npage = (int)(document.NumberOfPages)
-										}
-									default:
-										//gLog.Info.Printf("bMedia option should be [S3|File]")
-										if _, err := writeS3(tgtS3, tgtBucket, maxPartSize, document); err != nil {
-											gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
-											mt.Lock()
-											gerrors += 1
-											mt.Unlock()
-										} else {
-											docsize = (int)(document.Size)
-											npage = (int)(document.NumberOfPages)
-											// gLog.Trace.Printf("Docid: %s - Etag %v", document.DocId, so.ETag)
-										}
-									}
-									gLog.Trace.Printf("Docid: %s - number of pages: %d - Document metadata: %s", document.DocId, document.NumberOfPages, document.Metadata)
-								} else {
-									printErr(errs)
-									mt.Lock()
-									gerrors += len(errs)
-									mt.Unlock()
+							var (
+								rh = datatype.Rh{
+									Key: request.Key,
 								}
-							} else {
-								gLog.Error.Printf("Document %s - S3 Metadata has invalid number of pages in %s - Try to get it from the document user metadata ", pn, usermd)
-								if np, err, status = mosesbc.GetPageNumber(pn); err == nil {
+								np, status, docsize, npage int
+								err                        error
+								usermd                     string
+							)
+
+							defer wg1.Done()
+
+							rh.Result, rh.Err = api.StatObject(request)
+							if usermd, err = utils.GetUserMeta(rh.Result.Metadata); err == nil {
+								userm := UserMd{}
+								json.Unmarshal([]byte(usermd), &userm)
+								pn := rh.Key
+								if np, err = strconv.Atoi(userm.TotalPages); err == nil {
 									if errs, document := mosesbc.BackBlob1(pn, np, maxPage); len(errs) == 0 {
-										/*
-											Add  s3 moses metadata to the document even if it may be  invalid from the source
-											the purpose of the backup is not to fix  data
-										*/
 										document.S3Meta = usermd
-										document.LastUpdated = timestamppb.Now()
 										switch bMedia {
-										case "S3":
+										case "s3":
 											if _, err := writeS3(tgtS3, tgtBucket, maxPartSize, document); err != nil {
 												gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
 												mt.Lock()
@@ -303,7 +251,7 @@ func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string, listpn *bufio.S
 
 										case "File":
 											if err, docsize = mosesbc.WriteDirectory(pn, document, outDir); err != nil {
-												gLog.Error.Printf("Error:%v writing document: %s to  directory %s", err, document.DocId, outDir)
+												gLog.Error.Printf("Error:%v writing document: %s to directory %s", err, document.DocId, outDir)
 												mt.Lock()
 												gerrors += 1
 												mt.Unlock()
@@ -311,9 +259,8 @@ func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string, listpn *bufio.S
 												docsize = (int)(document.Size)
 												npage = (int)(document.NumberOfPages)
 											}
-
 										default:
-											//gLog.Info.Printf("bMedia option should  is [S3|File]")
+											//gLog.Info.Printf("bMedia option should be [S3|File]")
 											if _, err := writeS3(tgtS3, tgtBucket, maxPartSize, document); err != nil {
 												gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
 												mt.Lock()
@@ -325,29 +272,84 @@ func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string, listpn *bufio.S
 												// gLog.Trace.Printf("Docid: %s - Etag %v", document.DocId, so.ETag)
 											}
 										}
+										gLog.Trace.Printf("Docid: %s - number of pages: %d - Document metadata: %s", document.DocId, document.NumberOfPages, document.Metadata)
 									} else {
-										/*
-											some errors have been found by getBlob1
-										*/
 										printErr(errs)
 										mt.Lock()
 										gerrors += len(errs)
 										mt.Unlock()
 									}
 								} else {
-									gLog.Error.Printf(" Error %v - Status Code: %v  - Getting number of pages for %s ", err, status, pn)
-									mt.Lock()
-									gerrors += 1
-									mt.Unlock()
+									gLog.Error.Printf("Document %s - S3 Metadata has invalid number of pages in %s - Try to get it from the document user metadata ", pn, usermd)
+									if np, err, status = mosesbc.GetPageNumber(pn); err == nil {
+										if errs, document := mosesbc.BackBlob1(pn, np, maxPage); len(errs) == 0 {
+											/*
+												Add  s3 moses metadata to the document even if it may be  invalid from the source
+												the purpose of the backup is not to fix  data
+											*/
+											document.S3Meta = usermd
+											document.LastUpdated = timestamppb.Now()
+											switch bMedia {
+											case "S3":
+												if _, err := writeS3(tgtS3, tgtBucket, maxPartSize, document); err != nil {
+													gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
+													mt.Lock()
+													gerrors += 1
+													mt.Unlock()
+												} else {
+													docsize = (int)(document.Size)
+													npage = (int)(document.NumberOfPages)
+													// gLog.Trace.Printf("Docid: %s - Etag %v", document.DocId, so.ETag)
+												}
+
+											case "File":
+												if err, docsize = mosesbc.WriteDirectory(pn, document, outDir); err != nil {
+													gLog.Error.Printf("Error:%v writing document: %s to  directory %s", err, document.DocId, outDir)
+													mt.Lock()
+													gerrors += 1
+													mt.Unlock()
+												} else {
+													docsize = (int)(document.Size)
+													npage = (int)(document.NumberOfPages)
+												}
+
+											default:
+												//gLog.Info.Printf("bMedia option should  is [S3|File]")
+												if _, err := writeS3(tgtS3, tgtBucket, maxPartSize, document); err != nil {
+													gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
+													mt.Lock()
+													gerrors += 1
+													mt.Unlock()
+												} else {
+													docsize = (int)(document.Size)
+													npage = (int)(document.NumberOfPages)
+													// gLog.Trace.Printf("Docid: %s - Etag %v", document.DocId, so.ETag)
+												}
+											}
+										} else {
+											/*
+												some errors have been found by getBlob1
+											*/
+											printErr(errs)
+											mt.Lock()
+											gerrors += len(errs)
+											mt.Unlock()
+										}
+									} else {
+										gLog.Error.Printf(" Error %v - Status Code: %v  - Getting number of pages for %s ", err, status, pn)
+										mt.Lock()
+										gerrors += 1
+										mt.Unlock()
+									}
 								}
 							}
-						}
-						mu.Lock()
-						npages += npage
-						docsizes += docsize
-						mu.Unlock()
-						// utils.PrintUsermd(rh.Key, rh.Result.Metadata)
-					}(request)
+							mu.Lock()
+							npages += npage
+							docsizes += docsize
+							mu.Unlock()
+							// utils.PrintUsermd(rh.Key, rh.Result.Metadata)
+						}(request)
+					}
 				}
 				wg1.Wait()
 
