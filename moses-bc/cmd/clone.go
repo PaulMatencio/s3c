@@ -65,7 +65,7 @@ func init() {
 
 func Clone(cmd *cobra.Command, args []string) {
 
-	var listpn  *bufio.Scanner
+	var listpn *bufio.Scanner
 	mosesbc.SetSourceSproxyd("clone", srcUrl, driver)
 	mosesbc.SetTargetSproxyd("check", targetUrl, targetDriver)
 
@@ -75,8 +75,8 @@ func Clone(cmd *cobra.Command, args []string) {
 			gLog.Warning.Printf("%s", missingiFile)
 			return
 		} else {
-			if listpn,err  = utils.Scanner(inFile); err != nil {
-				gLog.Error.Printf("Error %v  scanning %d ",err,inFile)
+			if listpn, err = utils.Scanner(inFile); err != nil {
+				gLog.Error.Printf("Error %v  scanning %d ", err, inFile)
 				return
 			}
 		}
@@ -104,7 +104,7 @@ func Clone(cmd *cobra.Command, args []string) {
 		}
 	}
 	start := time.Now()
-	if nextMarker, err := _cloneBlobs(srcS3, tgtS3,listpn); err != nil {
+	if nextMarker, err := _cloneBlobs(srcS3, tgtS3, listpn); err != nil {
 		gLog.Error.Printf("error %v - Next marker %s", err, nextMarker)
 	} else {
 		gLog.Info.Printf("Next Marker %s", nextMarker)
@@ -112,21 +112,21 @@ func Clone(cmd *cobra.Command, args []string) {
 	gLog.Info.Printf("Total Elapsed time: %v", time.Since(start))
 }
 
-func _cloneBlobs(srcS3 *s3.S3, tgtS3 *s3.S3,listpn *bufio.Scanner) (string, error) {
+func _cloneBlobs(srcS3 *s3.S3, tgtS3 *s3.S3, listpn *bufio.Scanner) (string, error) {
 
 	var (
-		nextmarker,token                   string
+		nextmarker, token            string
 		N                            int
 		tdocs, tpages, tsizes, tdocr int64
 		terrors                      int
 		re, si                       sync.Mutex
 	)
 	req1 := datatype.ListObjV2Request{
-		Service: srcS3,
-		Bucket:  srcBucket,
-		Prefix:  prefix,
-		MaxKey:  int64(maxKey),
-		Marker:  marker,
+		Service:          srcS3,
+		Bucket:           srcBucket,
+		Prefix:           prefix,
+		MaxKey:           int64(maxKey),
+		Marker:           marker,
 		Continuationoken: token,
 	}
 	gLog.Info.Println(req1)
@@ -145,59 +145,61 @@ func _cloneBlobs(srcS3 *s3.S3, tgtS3 *s3.S3,listpn *bufio.Scanner) (string, erro
 			result, err = api.ListObjectV2(req1)
 			gLog.Info.Printf("target bucket %s - source metadata bucket %s - number of documents: %d", tgtBucket, srcBucket, len(result.Contents))
 		} else {
-			result,err =  ListPn(listpn,int(maxKey));
+			result, err = ListPn(listpn, int(maxKey))
 			gLog.Info.Println(inFile, len(result.Contents))
 		}
-		if  err == nil {
+		if err == nil {
 
 			if l := len(result.Contents); l > 0 {
-				ndocr += int(l)
 				var wg1 sync.WaitGroup
 				start := time.Now()
 				for _, v := range result.Contents {
-					svc1 := req1.Service
-					request := datatype.StatObjRequest{
-						Service: svc1,
-						Bucket:  req1.Bucket,
-						Key:     *v.Key,
-					}
-					wg1.Add(1)
-					go func(request datatype.StatObjRequest, replace bool) {
-						var (
-							rh = datatype.Rh{
-								Key: request.Key,
-							}
-							err    error
-							usermd string
-							np     int
-							pn     string
-						)
-						defer wg1.Done()
-						rh.Result, rh.Err = api.StatObject(request)
-						if usermd, err = utils.GetUserMeta(rh.Result.Metadata); err == nil {
-							userm := UserMd{}
-							json.Unmarshal([]byte(usermd), &userm)
-							pn = rh.Key
-							if np, err = strconv.Atoi(userm.TotalPages); err == nil {
-								start3 := time.Now()
-								nerr, document := mosesbc.CloneBlob1(pn, np, maxPage, replace)
-								if nerr == 0 {
-									si.Lock()
-									npages += int(document.NumberOfPages)
-									docsizes += document.Size
-									ndocs += 1
-									si.Unlock()
-									gLog.Info.Printf("Document id %s is cloned - Number of pages %d - Document size %d - Number of errors %d - Elapsed time %v ", document.DocId, document.NumberOfPages, document.Size, nerr, time.Since(start3))
-								} else {
-									re.Lock()
-									gerrors += nerr
-									re.Unlock()
-									gLog.Info.Printf("Document id %s is not fully cloned - Number of pages %d - Document size %d - Number of errors %d - Elapsed time %v ", document.DocId, document.NumberOfPages, document.Size, nerr, time.Since(start3))
+					if *v.Key != nextmarker {
+						ndocr += 1
+						svc1 := req1.Service
+						request := datatype.StatObjRequest{
+							Service: svc1,
+							Bucket:  req1.Bucket,
+							Key:     *v.Key,
+						}
+						wg1.Add(1)
+						go func(request datatype.StatObjRequest, replace bool) {
+							var (
+								rh = datatype.Rh{
+									Key: request.Key,
+								}
+								err    error
+								usermd string
+								np     int
+								pn     string
+							)
+							defer wg1.Done()
+							rh.Result, rh.Err = api.StatObject(request)
+							if usermd, err = utils.GetUserMeta(rh.Result.Metadata); err == nil {
+								userm := UserMd{}
+								json.Unmarshal([]byte(usermd), &userm)
+								pn = rh.Key
+								if np, err = strconv.Atoi(userm.TotalPages); err == nil {
+									start3 := time.Now()
+									nerr, document := mosesbc.CloneBlob1(pn, np, maxPage, replace)
+									if nerr == 0 {
+										si.Lock()
+										npages += int(document.NumberOfPages)
+										docsizes += document.Size
+										ndocs += 1
+										si.Unlock()
+										gLog.Info.Printf("Document id %s is cloned - Number of pages %d - Document size %d - Number of errors %d - Elapsed time %v ", document.DocId, document.NumberOfPages, document.Size, nerr, time.Since(start3))
+									} else {
+										re.Lock()
+										gerrors += nerr
+										re.Unlock()
+										gLog.Info.Printf("Document id %s is not fully cloned - Number of pages %d - Document size %d - Number of errors %d - Elapsed time %v ", document.DocId, document.NumberOfPages, document.Size, nerr, time.Since(start3))
+									}
 								}
 							}
-						}
 
-					}(request, replace)
+						}(request, replace)
+					}
 				}
 				wg1.Wait()
 				if *result.IsTruncated {

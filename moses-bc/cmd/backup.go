@@ -157,7 +157,7 @@ func Backup(cmd *cobra.Command, args []string) {
 func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string, listpn *bufio.Scanner, tgtS3 *s3.S3, tgtBucket string) (string, error) {
 
 	var (
-		nextmarker,token      string
+		nextmarker, token     string
 		N                     int
 		tdocs, tpages, tsizes int64
 		terrors               int
@@ -166,11 +166,11 @@ func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string, listpn *bufio.S
 	)
 
 	req1 := datatype.ListObjV2Request{
-		Service: srcS3,
-		Bucket:  srcBucket,
-		Prefix:  prefix,
-		MaxKey:  int64(maxKey),
-		Marker:  marker,
+		Service:          srcS3,
+		Bucket:           srcBucket,
+		Prefix:           prefix,
+		MaxKey:           int64(maxKey),
+		Marker:           marker,
 		Continuationoken: token,
 	}
 	for {
@@ -195,21 +195,10 @@ func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string, listpn *bufio.S
 				ndocs += int(l)
 				var wg1 sync.WaitGroup
 				// wg1.Add(len(result.Contents))
-				for k, v := range result.Contents {
-					ok := false
-					if len(nextmarker) > 0 {
-						if k > 0 {
-							gLog.Info.Printf("Key: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size, v.LastModified)
-							ok = true
-						} else {
-							ok = false
-						}
-					} else {
+				for _, v := range result.Contents {
+
+					if *v.Key != nextmarker {
 						gLog.Info.Printf("Key: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size, v.LastModified)
-						ok = true
-					}
-					if ok {
-						//gLog.Trace.Printf("Key: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size, v.LastModified)
 						svc := req1.Service
 						request := datatype.StatObjRequest{
 							Service: svc,
@@ -357,7 +346,7 @@ func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string, listpn *bufio.S
 
 				if *result.IsTruncated {
 					nextmarker = *result.Contents[l-1].Key
-					token=*result.NextContinuationToken
+					token = *result.NextContinuationToken
 					gLog.Warning.Printf("Truncated %v - Next marker: %s ", *result.IsTruncated, nextmarker)
 
 				}

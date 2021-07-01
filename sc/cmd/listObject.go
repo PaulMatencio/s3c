@@ -100,33 +100,12 @@ func listObject(cmd *cobra.Command,args []string) {
 		)
 		if result, err = api.ListObject(req); err == nil {
 			if l := len(result.Contents); l > 0 {
-				ok := false
-				for k, v := range result.Contents {
-					/*
-					if len(nextmarker) > 0 {
-						if k > 0 {
-							total += 1
-							gLog.Info.Printf("Key: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size, v.LastModified)
-						}
-					} else {
-						total += 1
-						gLog.Info.Printf("Key: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size, v.LastModified)
-					}
-					 */
-					if len(nextmarker) > 0 {
-						if k > 0 {
-							ok = true
-						} else {
-							ok = false
-						}
-					} else {
-						ok = true
-					}
-					if ok {
-						gLog.Info.Printf("Key: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size, v.LastModified)
-						total +=1
-					}
 
+				for _, v := range result.Contents {
+					if *v.Key != nextmarker {
+						gLog.Info.Printf("Key: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size, v.LastModified)
+						total += 1
+					}
 				}
 				if *result.IsTruncated {
 					nextmarker = *result.Contents[l-1].Key
@@ -182,15 +161,18 @@ func listObjectV2(cmd *cobra.Command,args []string) {
 	L:=1
 	for {
 		var (
-			nextmarker string
+			nextmarker  string
 			result  *s3.ListObjectsV2Output
 			err error
 		)
 		if result, err = api.ListObjectV2(req); err == nil {
 			if l := len(result.Contents); l > 0 {
-				total += int64(l)
+
 				for _, v := range result.Contents {
-					gLog.Info.Printf("Key: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size,v.LastModified)
+					if *v.Key != nextmarker {
+						total += 1
+						gLog.Info.Printf("Key: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size, v.LastModified)
+					}
 				}
 				if *result.IsTruncated {
 					nextmarker = *result.Contents[l-1].Key
