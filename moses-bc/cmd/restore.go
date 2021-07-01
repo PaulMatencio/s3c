@@ -117,7 +117,7 @@ func Restore(cmd *cobra.Command, args []string) {
 func _restoreBlobs(marker string, srcBucket string, replace bool) (string, error) {
 
 	var (
-		nextmarker            string
+		nextmarker,token            string
 		N                     int
 		tdocs, tpages, tsizes int64
 		terrors               int
@@ -126,18 +126,19 @@ func _restoreBlobs(marker string, srcBucket string, replace bool) (string, error
 	// mosesbc.SetSourceSproxyd("restore",srcUrl,driver)
 
 
-	req := datatype.ListObjRequest{
+	req := datatype.ListObjV2Request{
 		Service:   srcS3,
 		Bucket:    srcBucket,
 		Prefix:    prefix,
 		MaxKey:    int64(maxKey),
 		Marker:    marker,
 		Delimiter: delimiter,
+		Continuationoken: token,
 	}
 	start0 := time.Now()
 	for {
 		var (
-			result   *s3.ListObjectsOutput
+			result   *s3.ListObjectsV2Output
 			err      error
 			ndocs    int = 0
 			npages   int = 0
@@ -146,7 +147,7 @@ func _restoreBlobs(marker string, srcBucket string, replace bool) (string, error
 
 		)
 		N++ // number of loop
-		if result, err = api.ListObject(req); err == nil {
+		if result, err = api.ListObjectV2(req); err == nil {
 			gLog.Info.Printf("Backup bucket %s - target metadata bucket %s - number of documents: %d", srcBucket, tgtBucket, len(result.Contents))
 			if l := len(result.Contents); l > 0 {
 				ndocs += int(l)

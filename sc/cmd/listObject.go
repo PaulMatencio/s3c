@@ -195,7 +195,7 @@ func listObjectV2(cmd *cobra.Command,args []string) {
 				if *result.IsTruncated {
 					nextmarker = *result.Contents[l-1].Key
 					token=*result.NextContinuationToken
-					gLog.Warning.Printf("Truncated %v  - Next marker : %s ", *result.IsTruncated, nextmarker)
+					gLog.Warning.Printf("Truncated %v - Next marker: %s - Next continuation token: %s", *result.IsTruncated, nextmarker,token)
 				}
 			}
 		} else {
