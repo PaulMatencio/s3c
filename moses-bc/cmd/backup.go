@@ -314,7 +314,6 @@ func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string, listpn *bufio.S
 
 										default:
 											//gLog.Info.Printf("bMedia option should  is [S3|File]")
-
 											if _, err := writeS3(tgtS3, tgtBucket, maxPartSize, document); err != nil {
 												gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
 												mt.Lock()

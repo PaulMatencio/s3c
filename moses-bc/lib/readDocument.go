@@ -55,6 +55,7 @@ func GetDocument(bytes  []byte) (*documentpb.Document,error){
 		err error
 	)
 	err = proto.Unmarshal(bytes, &document)
+	gLog.Info.Printf("Actual buffer size %d - Document size %d ",len(bytes),document.Size)
 	return &document,err
 }
 
