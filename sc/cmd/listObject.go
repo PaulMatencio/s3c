@@ -118,8 +118,13 @@ func listObject(cmd *cobra.Command,args []string) {
 		if  *result.IsTruncated  && (maxLoop == 0 || L <= maxLoop) {
 			req.Marker = nextmarker
 		} else {
-			gLog.Info.Printf("Total number of objects returned: %d",total)
-			break
+			if L > maxLoop || len(nextmarker) == 0 {
+				gLog.Info.Printf("Total number of objects returned: %d", total)
+				break
+			} else {
+				req.Marker = nextmarker
+			}
+
 		}
 	}
 
