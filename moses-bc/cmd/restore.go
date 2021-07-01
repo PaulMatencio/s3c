@@ -132,7 +132,7 @@ func _restoreBlobs(marker string, srcBucket string, replace bool) (string, error
 		MaxKey:           int64(maxKey),
 		Marker:           marker,
 		Delimiter:        delimiter,
-		Continuationoken: token,
+		Continuationtoken: token,
 	}
 	start0 := time.Now()
 	for {

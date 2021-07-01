@@ -171,7 +171,7 @@ func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string, listpn *bufio.S
 		Prefix:           prefix,
 		MaxKey:           int64(maxKey),
 		Marker:           marker,
-		Continuationoken: token,
+		Continuationtoken: token,
 	}
 	for {
 		var (
@@ -363,7 +363,7 @@ func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string, listpn *bufio.S
 
 		if *result.IsTruncated && (maxLoop == 0 || N <= maxLoop) {
 			// req1.Marker = nextmarker
-			req1.Continuationoken = token
+			req1.Continuationtoken = token
 		} else {
 			gLog.Info.Printf("Total number of backed up documents: %d - total number of pages: %d  - Total document size: %d - Total number of errors: %d", tdocs, tpages, tsizes, terrors)
 			break

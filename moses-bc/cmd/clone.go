@@ -127,7 +127,7 @@ func _cloneBlobs(srcS3 *s3.S3, tgtS3 *s3.S3, listpn *bufio.Scanner) (string, err
 		Prefix:           prefix,
 		MaxKey:           int64(maxKey),
 		Marker:           marker,
-		Continuationoken: token,
+		Continuationtoken: token,
 	}
 	gLog.Info.Println(req1)
 	start0 := time.Now()
@@ -139,6 +139,7 @@ func _cloneBlobs(srcS3 *s3.S3, tgtS3 *s3.S3, listpn *bufio.Scanner) (string, err
 			npages       int   = 0
 			docsizes     int64 = 0
 			gerrors      int   = 0
+			wg1 sync.WaitGroup
 		)
 		N++ // number of loop
 		if len(srcBucket) > 0 {
@@ -149,9 +150,7 @@ func _cloneBlobs(srcS3 *s3.S3, tgtS3 *s3.S3, listpn *bufio.Scanner) (string, err
 			gLog.Info.Println(inFile, len(result.Contents))
 		}
 		if err == nil {
-
 			if l := len(result.Contents); l > 0 {
-				var wg1 sync.WaitGroup
 				start := time.Now()
 				for _, v := range result.Contents {
 					if *v.Key != nextmarker {
@@ -197,15 +196,14 @@ func _cloneBlobs(srcS3 *s3.S3, tgtS3 *s3.S3, listpn *bufio.Scanner) (string, err
 									}
 								}
 							}
-
 						}(request, replace)
 					}
 				}
 				wg1.Wait()
 				if *result.IsTruncated {
 					nextmarker = *result.Contents[l-1].Key
-					req1.Continuationoken = token
-					gLog.Warning.Printf("Truncated %v - Next marker: %s ", *result.IsTruncated, nextmarker)
+					token = *result.NextContinuationToken
+					gLog.Warning.Printf("Truncated %v - Next marker: %s  - Nextcontinuation token: %s", *result.IsTruncated, nextmarker,token)
 				}
 				// ndocs = ndocs - gerrors
 				gLog.Info.Printf("Number of cloned documents: %d of %d - Number of pages: %d  - Documents size: %d - Number of errors: %d -  Elapsed time: %v", ndocs, ndocr, npages, docsizes, gerrors, time.Since(start))
@@ -222,7 +220,7 @@ func _cloneBlobs(srcS3 *s3.S3, tgtS3 *s3.S3, listpn *bufio.Scanner) (string, err
 
 		if *result.IsTruncated && (maxLoop == 0 || N <= maxLoop) {
 			// req1.Marker = nextmarker
-			req1.Continuationoken = token
+			req1.Continuationtoken = token
 		} else {
 			gLog.Info.Printf("Total number of cloned documents: %d of %d - total number of pages: %d  - Total document size: %d - Total number of errors: %d - Total elapsed time: %v", tdocs, tdocr, tpages, tsizes, terrors, time.Since(start0))
 			break

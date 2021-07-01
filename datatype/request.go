@@ -94,7 +94,7 @@ type ListObjV2Request struct {
 	Bucket       string
 	Prefix       string
 	MaxKey	      int64
-	Continuationoken	 string
+	Continuationtoken	 string
 	Marker        string
 	Delimiter     string
 }

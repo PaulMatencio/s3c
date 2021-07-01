@@ -35,8 +35,8 @@ func ListObjectV2(req datatype.ListObjV2Request)  ( *s3.ListObjectsV2Output, err
 		StartAfter: aws.String(req.Marker),
 		Delimiter: aws.String(req.Delimiter),
 	}
-	if len(req.Continuationoken) > 0 {
-		input.ContinuationToken = &req.Continuationoken
+	if len(req.Continuationtoken) > 0 {
+		input.ContinuationToken = &req.Continuationtoken
 	}
 	// svc.ListObjectsRequest(input)
 
