@@ -100,9 +100,17 @@ func listObject(cmd *cobra.Command,args []string) {
 		)
 		if result, err = api.ListObject(req); err == nil {
 			if l := len(result.Contents); l > 0 {
-				total += int64(l)
-				for _, v := range result.Contents {
-					gLog.Info.Printf("Key: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size,v.LastModified)
+				for k, v := range result.Contents {
+					if len(nextmarker) > 0 {
+						if k > 0 {
+							total += 1
+							gLog.Info.Printf("Key: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size, v.LastModified)
+						}
+					} else {
+						total += 1
+						gLog.Info.Printf("Key: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size, v.LastModified)
+					}
+
 				}
 				if *result.IsTruncated {
 					nextmarker = *result.Contents[l-1].Key
@@ -118,13 +126,8 @@ func listObject(cmd *cobra.Command,args []string) {
 		if  *result.IsTruncated  && (maxLoop == 0 || L <= maxLoop) {
 			req.Marker = nextmarker
 		} else {
-			if L > maxLoop || len(nextmarker) == 0 {
-				gLog.Info.Printf("Total number of objects returned: %d", total)
-				break
-			} else {
-				req.Marker = nextmarker
-			}
-
+			gLog.Info.Printf("Total number of objects returned: %d", total)
+			break
 		}
 	}
 
