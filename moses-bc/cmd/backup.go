@@ -192,7 +192,6 @@ func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string, listpn *bufio.S
 		}
 		if err == nil {
 			if l := len(result.Contents); l > 0 {
-				ndocs += int(l)
 				var wg1 sync.WaitGroup
 				// wg1.Add(len(result.Contents))
 				for _, v := range result.Contents {
@@ -205,6 +204,7 @@ func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string, listpn *bufio.S
 							Bucket:  req1.Bucket,
 							Key:     *v.Key,
 						}
+						ndocs +=1
 						wg1.Add(1)
 						go func(request datatype.StatObjRequest) {
 
