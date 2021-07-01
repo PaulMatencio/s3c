@@ -157,7 +157,7 @@ func Backup(cmd *cobra.Command, args []string) {
 func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string, listpn *bufio.Scanner, tgtS3 *s3.S3, tgtBucket string) (string, error) {
 
 	var (
-		nextmarker            string
+		nextmarker,token      string
 		N                     int
 		tdocs, tpages, tsizes int64
 		terrors               int
@@ -165,16 +165,17 @@ func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string, listpn *bufio.S
 		mt                    sync.Mutex
 	)
 
-	req1 := datatype.ListObjRequest{
+	req1 := datatype.ListObjV2Request{
 		Service: srcS3,
 		Bucket:  srcBucket,
 		Prefix:  prefix,
 		MaxKey:  int64(maxKey),
 		Marker:  marker,
+		Continuationoken: token,
 	}
 	for {
 		var (
-			result   *s3.ListObjectsOutput
+			result   *s3.ListObjectsV2Output
 			err      error
 			ndocs    int = 0
 			npages   int = 0
@@ -183,7 +184,7 @@ func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string, listpn *bufio.S
 		)
 		N++ // number of loop
 		if len(srcBucket) > 0 {
-			result, err = api.ListObject(req1)
+			result, err = api.ListObjectV2(req1)
 			gLog.Info.Printf("target bucket %s - source metadata bucket %s - number of documents: %d", tgtBucket, srcBucket, len(result.Contents))
 		} else {
 			result, err = ListPn(listpn, int(maxKey))
@@ -200,13 +201,14 @@ func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string, listpn *bufio.S
 						if k > 0 {
 							gLog.Info.Printf("Key: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size, v.LastModified)
 							ok = true
+						} else {
+							ok = false
 						}
 					} else {
 						gLog.Info.Printf("Key: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size, v.LastModified)
 						ok = true
 					}
 					if ok {
-
 						//gLog.Trace.Printf("Key: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size, v.LastModified)
 						svc := req1.Service
 						request := datatype.StatObjRequest{
@@ -355,6 +357,7 @@ func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string, listpn *bufio.S
 
 				if *result.IsTruncated {
 					nextmarker = *result.Contents[l-1].Key
+					token=*result.NextContinuationToken
 					gLog.Warning.Printf("Truncated %v - Next marker: %s ", *result.IsTruncated, nextmarker)
 
 				}
@@ -370,7 +373,8 @@ func _backupBlobs(marker string, srcS3 *s3.S3, srcBucket string, listpn *bufio.S
 		}
 
 		if *result.IsTruncated && (maxLoop == 0 || N <= maxLoop) {
-			req1.Marker = nextmarker
+			// req1.Marker = nextmarker
+			req1.Continuationoken = token
 		} else {
 			gLog.Info.Printf("Total number of backed up documents: %d - total number of pages: %d  - Total document size: %d - Total number of errors: %d", tdocs, tpages, tsizes, terrors)
 			break
@@ -396,13 +400,13 @@ func writeS3(service *s3.S3, bucket string, maxPartSize int64, document *documen
 
 }
 
-func ListPn(buf *bufio.Scanner, num int) (*s3.ListObjectsOutput, error) {
+func ListPn(buf *bufio.Scanner, num int) (*s3.ListObjectsV2Output, error) {
 
 	var (
 		T            = true
 		Z      int64 = 0
 		D            = time.Now()
-		result       = &s3.ListObjectsOutput{
+		result       = &s3.ListObjectsV2Output{
 			IsTruncated: &T,
 		}
 		err     error
@@ -416,7 +420,7 @@ func ListPn(buf *bufio.Scanner, num int) (*s3.ListObjectsOutput, error) {
 				object.Size = &Z
 				object.LastModified = &D
 				objects = append(objects, &object)
-				result.Marker = &text
+				result.StartAfter = &text
 			} else {
 				T = false
 				result.IsTruncated = &T

@@ -24,7 +24,7 @@ func ListObject(req datatype.ListObjRequest)  ( *s3.ListObjectsOutput, error) {
 
 }
 
-func ListObjectV2(req datatype.ListObjRequest)  ( *s3.ListObjectsV2Output, error) {
+func ListObjectV2(req datatype.ListObjV2Request)  ( *s3.ListObjectsV2Output, error) {
 
 
 	input := &s3.ListObjectsV2Input{
@@ -35,7 +35,9 @@ func ListObjectV2(req datatype.ListObjRequest)  ( *s3.ListObjectsV2Output, error
 		StartAfter: aws.String(req.Marker),
 		Delimiter: aws.String(req.Delimiter),
 	}
-
+	if len(req.Continuationoken) > 0 {
+		input.ContinuationToken = &req.Continuationoken
+	}
 	// svc.ListObjectsRequest(input)
 
 	return  req.Service.ListObjectsV2(input)

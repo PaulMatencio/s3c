@@ -115,24 +115,25 @@ func Clone(cmd *cobra.Command, args []string) {
 func _cloneBlobs(srcS3 *s3.S3, tgtS3 *s3.S3,listpn *bufio.Scanner) (string, error) {
 
 	var (
-		nextmarker                   string
+		nextmarker,token                   string
 		N                            int
 		tdocs, tpages, tsizes, tdocr int64
 		terrors                      int
 		re, si                       sync.Mutex
 	)
-	req1 := datatype.ListObjRequest{
+	req1 := datatype.ListObjV2Request{
 		Service: srcS3,
 		Bucket:  srcBucket,
 		Prefix:  prefix,
 		MaxKey:  int64(maxKey),
 		Marker:  marker,
+		Continuationoken: token,
 	}
 	gLog.Info.Println(req1)
 	start0 := time.Now()
 	for {
 		var (
-			result       *s3.ListObjectsOutput
+			result       *s3.ListObjectsV2Output
 			err          error
 			ndocs, ndocr int   = 0, 0
 			npages       int   = 0
@@ -141,10 +142,10 @@ func _cloneBlobs(srcS3 *s3.S3, tgtS3 *s3.S3,listpn *bufio.Scanner) (string, erro
 		)
 		N++ // number of loop
 		if len(srcBucket) > 0 {
-			result, err = api.ListObject(req1)
+			result, err = api.ListObjectV2(req1)
 			gLog.Info.Printf("target bucket %s - source metadata bucket %s - number of documents: %d", tgtBucket, srcBucket, len(result.Contents))
 		} else {
-			result,err =  ListPn(listpn,5);
+			result,err =  ListPn(listpn,int(maxKey));
 			gLog.Info.Println(inFile, len(result.Contents))
 		}
 		if  err == nil {
@@ -201,6 +202,7 @@ func _cloneBlobs(srcS3 *s3.S3, tgtS3 *s3.S3,listpn *bufio.Scanner) (string, erro
 				wg1.Wait()
 				if *result.IsTruncated {
 					nextmarker = *result.Contents[l-1].Key
+					req1.Continuationoken = token
 					gLog.Warning.Printf("Truncated %v - Next marker: %s ", *result.IsTruncated, nextmarker)
 				}
 				// ndocs = ndocs - gerrors
@@ -217,7 +219,8 @@ func _cloneBlobs(srcS3 *s3.S3, tgtS3 *s3.S3,listpn *bufio.Scanner) (string, erro
 		}
 
 		if *result.IsTruncated && (maxLoop == 0 || N <= maxLoop) {
-			req1.Marker = nextmarker
+			// req1.Marker = nextmarker
+			req1.Continuationoken = token
 		} else {
 			gLog.Info.Printf("Total number of cloned documents: %d of %d - total number of pages: %d  - Total document size: %d - Total number of errors: %d - Total elapsed time: %v", tdocs, tdocr, tpages, tsizes, terrors, time.Since(start0))
 			break

@@ -89,6 +89,15 @@ type ListObjRequest struct {
 	Marker        string
 	Delimiter     string
 }
+type ListObjV2Request struct {
+	Service 	*s3.S3
+	Bucket       string
+	Prefix       string
+	MaxKey	      int64
+	Continuationoken	 string
+	Marker        string
+	Delimiter     string
+}
 
 type ListMultipartObjRequest struct {
 	Service 	*s3.S3

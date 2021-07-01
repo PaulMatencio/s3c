@@ -100,7 +100,9 @@ func listObject(cmd *cobra.Command,args []string) {
 		)
 		if result, err = api.ListObject(req); err == nil {
 			if l := len(result.Contents); l > 0 {
+				ok := false
 				for k, v := range result.Contents {
+					/*
 					if len(nextmarker) > 0 {
 						if k > 0 {
 							total += 1
@@ -109,6 +111,20 @@ func listObject(cmd *cobra.Command,args []string) {
 					} else {
 						total += 1
 						gLog.Info.Printf("Key: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size, v.LastModified)
+					}
+					 */
+					if len(nextmarker) > 0 {
+						if k > 0 {
+							ok = true
+						} else {
+							ok = false
+						}
+					} else {
+						ok = true
+					}
+					if ok {
+						gLog.Info.Printf("Key: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size, v.LastModified)
+						total +=1
 					}
 
 				}
@@ -138,6 +154,8 @@ func listObjectV2(cmd *cobra.Command,args []string) {
 	var (
 		start = utils.LumberPrefix(cmd)
 		total int64 = 0
+		token string
+
 	)
 
 	if len(bucket) == 0 {
@@ -152,12 +170,13 @@ func listObjectV2(cmd *cobra.Command,args []string) {
 	if R {
 		prefix = utils.Reverse(prefix)
 	}
-	req := datatype.ListObjRequest{
+	req := datatype.ListObjV2Request{
 		Service : s3.New(api.CreateSession()),
 		Bucket: bucket,
 		Prefix : prefix,
 		MaxKey : maxKey,
 		Marker : marker,
+		Continuationoken:  token,
 		Delimiter: delimiter,
 	}
 	L:=1
@@ -174,8 +193,8 @@ func listObjectV2(cmd *cobra.Command,args []string) {
 					gLog.Info.Printf("Key: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size,v.LastModified)
 				}
 				if *result.IsTruncated {
-					//nextmarker = *result.Contents[l-1].Key
-					nextmarker = *result.ContinuationToken
+					nextmarker = *result.Contents[l-1].Key
+					token=*result.NextContinuationToken
 					gLog.Warning.Printf("Truncated %v  - Next marker : %s ", *result.IsTruncated, nextmarker)
 				}
 			}
@@ -185,7 +204,8 @@ func listObjectV2(cmd *cobra.Command,args []string) {
 		}
 		L++
 		if  *result.IsTruncated  && (maxLoop == 0 || L <= maxLoop) {
-			req.Marker = nextmarker
+			req.Continuationoken = token
+
 		} else {
 			gLog.Info.Printf("Total number of objects returned: %d",total)
 			break
