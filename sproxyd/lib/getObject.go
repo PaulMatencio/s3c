@@ -17,7 +17,8 @@ func Getobject(sproxydRequest *HttpRequest) (*http.Response, error) {
 	if ifunmod, ok := sproxydRequest.ReqHeader["If-Unmodified-Since"]; ok {
 		req.Header.Add("If-Unmodified-Since", ifunmod)
 	}
-	req.Header.Add("X-Scal-Replica-Policy","immutable")
-	// resp, err := client.Do(req)
+	if replica,ok := sproxydRequest.ReqHeader["X-Scal-Replica-Policy"];ok {
+		req.Header.Add("X-Scal-Replica-Policy",replica)
+	}
 	return DoRequest(sproxydRequest.Hspool, sproxydRequest.Client, req, nil)
 }

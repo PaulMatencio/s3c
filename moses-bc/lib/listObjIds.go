@@ -68,8 +68,15 @@ func ListObjIds(request datatype.ListObjRequest,maxLoop int,maxPage int) {
 
 func ListObjId1 (pn string, np int, maxPage int) (int){
 	var (
-		request1 = sproxyd.HttpRequest{
+		request = sproxyd.HttpRequest{
 			Hspool: sproxyd.HP,
+			Client: &http.Client{
+				Timeout:   sproxyd.ReadTimeout,
+				Transport: sproxyd.Transport,
+			},
+		}
+		request1 = sproxyd.HttpRequest{
+			Hspool: sproxyd.TargetHP,
 			Client: &http.Client{
 				Timeout:   sproxyd.ReadTimeout,
 				Transport: sproxyd.Transport,
@@ -79,12 +86,12 @@ func ListObjId1 (pn string, np int, maxPage int) (int){
 		nerrors = 0
 		err     error
 		start   int
-		pdf, p0 bool
+		p0 bool
 	)
 	/*
 		Check document has a Clipping page
 	*/
-	if err, pdf, p0 = checkPdfP0(pn); err != nil {
+	if err, _, p0 = checkPdfP0(pn); err != nil {
 		return 1
 	}
 	if p0 {
@@ -93,12 +100,9 @@ func ListObjId1 (pn string, np int, maxPage int) (int){
 	} else {
 		start = 1
 	}
-
+	/*
 	if pdf {
 		gLog.Info.Printf("DocId %s contains a pdf", pn)
-		/*
-			Compare source vs restored pdf
-		*/
 		pdfId := pn + "/pdf"
 		if err, ok := comparePdf(pdfId); err == nil {
 			gLog.Info.Printf("Comparing source and restored PDF: %s - isEqual ? %v", pdfId, ok)
@@ -106,19 +110,27 @@ func ListObjId1 (pn string, np int, maxPage int) (int){
 			gLog.Error.Printf("Error %v when comparing PDF %s", err, pdfId)
 		}
 	}
+	*/
 
 	for k := start; k <= np; k++ {
-		request1.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
+		request.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
 		wg2.Add(1)
-		go func(request1 sproxyd.HttpRequest, pn string, k int){
+		go func(request sproxyd.HttpRequest, pn string, k int){
 			defer wg2.Done()
-			ringId := GetObjId(request1,pn)
+			ringId := GetObjId(request,pn)
 			if ringId.Err == nil {
-				gLog.Info.Printf("DocId: %s - RingKey : %s",pn,ringId.Key)
+
+				//gLog.Info.Printf("DocId: %s - RingKey : %s",pn,ringId.Key,sproxyd.TargetUrl,sproxyd.TargetDriver)
+
+				request1.Hspool = sproxyd.TargetHP
+				request1.Path = ringId.Key
+				gLog.Info.Printf("Target Path %s/%s",request1.Hspool.Hosts(),ringId.Key)
+
+				/*  Write it    */
 			} else {
 				gLog.Error.Printf("%v",ringId.Err)
 			}
-		}(request1, pn, k)
+		}(request, pn, k)
 	}
 	// Write the document to File
 	wg2.Wait()

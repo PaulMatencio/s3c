@@ -52,7 +52,9 @@ func GetObject(request sproxyd.HttpRequest, pn string) (error, string, *[]byte) 
 		usermd string
 		md     []byte
 	)
-	// request.ReqHeader["X-Scal-Replica-Policy"] = "immutable"
+	request.ReqHeader =  map[string]string{
+		"X-Scal-Replica-Policy": "immutable",
+	}
 	resp, err := sproxyd.Getobject(&request)
 	if err == nil {
 		defer resp.Body.Close()
@@ -83,7 +85,9 @@ func GetObjId(request sproxyd.HttpRequest, pn string) (RingId) {
 		usermd,ringKey string
 
 	)
-	//request.ReqHeader["X-Scal-Replica-Policy"] = "immutable"
+	request.ReqHeader =  map[string]string{
+		"X-Scal-Replica-Policy": "immutable",
+	}
 	resp, err := sproxyd.Getobject(&request)
 	if err == nil {
 		defer resp.Body.Close()
