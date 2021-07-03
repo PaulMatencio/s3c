@@ -119,13 +119,14 @@ func ListObjId1 (pn string, np int, maxPage int) (int){
 			defer wg2.Done()
 			ringId := GetObjId(request,pn)
 			if ringId.Err == nil {
-
 				//gLog.Info.Printf("DocId: %s - RingKey : %s",pn,ringId.Key,sproxyd.TargetUrl,sproxyd.TargetDriver)
-
 				request1.Hspool = sproxyd.TargetHP
 				request1.Path = ringId.Key
-				gLog.Info.Printf("Source path %s/%s - Target Path %s/%s",request.Hspool.Hosts()[0],request.Path,request1.Hspool.Hosts()[0],request1.Path)
-
+				request1.ReqHeader =  map[string]string{}
+				request1.ReqHeader["Usermd"] = ringId.UserMeta
+				request1.ReqHeader["Content-Type"] = "application/octet-stream" // Content type
+				gLog.Info.Printf("Source %s/%s - Target %s/%s - usermd %s ",request.Hspool.Hosts()[0],request.Path,request1.Hspool.Hosts()[0],request1.Path,ringId.UserMeta)
+				// sproxyd.Putobject(&request1,*ringId.Object)
 				/*  Write it    */
 			} else {
 				gLog.Error.Printf("%v",ringId.Err)
