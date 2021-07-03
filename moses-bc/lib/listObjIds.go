@@ -115,7 +115,7 @@ func ListObjId1 (pn string, np int, maxPage int) (int){
 	for k := start; k <= np; k++ {
 		request.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
 		wg2.Add(1)
-		go func(request sproxyd.HttpRequest, pn string, k int){
+		go func(request sproxyd.HttpRequest,request1 sproxyd.HttpRequest, pn string, k int){
 			defer wg2.Done()
 			ringId := GetObjId(request,pn)
 			if ringId.Err == nil {
@@ -124,13 +124,13 @@ func ListObjId1 (pn string, np int, maxPage int) (int){
 
 				request1.Hspool = sproxyd.TargetHP
 				request1.Path = ringId.Key
-				gLog.Info.Printf("Target Path %s/%s",request1.Hspool.Hosts(),ringId.Key)
+				gLog.Info.Printf("Source path %s/%s - Target Path %s/%s",request.Hspool.Hosts()[0],request.Path,request1.Hspool.Hosts()[0],request1.Path)
 
 				/*  Write it    */
 			} else {
 				gLog.Error.Printf("%v",ringId.Err)
 			}
-		}(request, pn, k)
+		}(request, request1,pn, k)
 	}
 	// Write the document to File
 	wg2.Wait()
