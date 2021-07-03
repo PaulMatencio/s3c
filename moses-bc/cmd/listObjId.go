@@ -51,7 +51,7 @@ func initLoIdFlags(cmd *cobra.Command) {
 }
 func init() {
 	rootCmd.AddCommand(listObjCmd)
-	initLoIdFlags(checkCmd)
+	initLoIdFlags(listObjCmd)
 }
 
 func ListObjId(cmd *cobra.Command, args []string) {
