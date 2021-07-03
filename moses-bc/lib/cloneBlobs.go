@@ -50,7 +50,7 @@ func _cloneBlob1(pn string, np int,replace bool) (int,*documentpb.Document){
 			//  ReqHeader: map[string]string{},
 		}
 		err      error
-		usermd   string
+		usermd string
 		body     *[]byte
 		start    int
 		pu,ps		sync.Mutex

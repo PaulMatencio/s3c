@@ -15,6 +15,60 @@ import (
 	"sync"
 	"time"
 )
+/*
+
+	Check pn's returned by listObject of the meta bucket
+
+ */
+func CheckBlobs(request datatype.ListObjRequest,maxLoop int,maxPage int) {
+	var (
+		N          int = 0
+		nextmarker string
+	)
+	for {
+		var (
+			result *s3.ListObjectsOutput
+			err    error
+		)
+		N++ // number of loop
+		if result, err = api.ListObject(request); err == nil {
+			if l := len(result.Contents); l > 0 {
+				var wg1 sync.WaitGroup
+				for _, v := range result.Contents {
+					pn := *v.Key
+					wg1.Add(1)
+					go func(pn string) {
+						defer wg1.Done()
+						if np, err, status := GetPageNumber(pn); err == nil && status == 200 {
+							if np > 0 {
+								CheckBlob1(pn, np, maxPage)
+							} else {
+								gLog.Error.Printf("The number of pages is %d ", np)
+							}
+						} else {
+							gLog.Error.Printf("Error %v getting  the number of pages  run  with  -l 4  (trace)", err)
+						}
+					}(pn)
+				}
+				wg1.Wait()
+				if *result.IsTruncated {
+					nextmarker = *result.Contents[l-1].Key
+					gLog.Warning.Printf("Truncated %v - Next marker: %s ", *result.IsTruncated, nextmarker)
+				}
+			}
+		} else {
+			gLog.Error.Printf("%v", err)
+			break
+		}
+
+		if *result.IsTruncated && (maxLoop == 0 || N <= maxLoop) {
+			request.Marker = nextmarker
+		} else {
+			break
+		}
+	}
+
+}
 
 /*
 
@@ -24,11 +78,11 @@ func CheckBlob1(pn string, np int, maxPage int) int {
 
 	start := time.Now()
 	if np <= maxPage {
-		r := _CheckBlob1(pn, np)
+		r := _checkBlob1(pn, np)
 		gLog.Info.Printf("Elapsed time %v", time.Since(start))
 		return r
 	} else {
-		r := _CheckBig1(pn, np, maxPage)
+		r := _checkBig1(pn, np, maxPage)
 		gLog.Info.Printf("Elapsed time %v", time.Since(start))
 		return r
 	}
@@ -41,7 +95,7 @@ func CheckBlob1(pn string, np int, maxPage int) int {
 
 */
 
-func _CheckBlob1(pn string, np int) int {
+func _checkBlob1(pn string, np int) int {
 	var (
 		request1 = sproxyd.HttpRequest{
 			Hspool: sproxyd.HP,
@@ -132,7 +186,7 @@ func _CheckBlob1(pn string, np int) int {
 
 //  document with bigger  pages number than maxPage
 
-func _CheckBig1(pn string, np int, maxPage int) int {
+func _checkBig1(pn string, np int, maxPage int) int {
 
 	var (
 		q, r, start, end int
@@ -252,6 +306,7 @@ func compareObj(pn string, pagen int, body *[]byte, usermd string) (error, bool)
 			return err, false
 		}
 	}
+
 	return err, false
 }
 
@@ -315,59 +370,6 @@ func comparePdf(pn string) (error, bool) {
 	return err, false
 }
 
-/*
 
-	Check pn's returned by listObject of the meta bucket
-
- */
-func CheckBlobs(request datatype.ListObjRequest,maxLoop int,maxPage int) {
-	var (
-		N          int = 0
-		nextmarker string
-	)
-	for {
-		var (
-			result *s3.ListObjectsOutput
-			err    error
-		)
-		N++ // number of loop
-		if result, err = api.ListObject(request); err == nil {
-			if l := len(result.Contents); l > 0 {
-				var wg1 sync.WaitGroup
-				for _, v := range result.Contents {
-					pn := *v.Key
-					wg1.Add(1)
-					go func(pn string) {
-						defer wg1.Done()
-						if np, err, status := GetPageNumber(pn); err == nil && status == 200 {
-							if np > 0 {
-								CheckBlob1(pn, np, maxPage)
-							} else {
-								gLog.Error.Printf("The number of pages is %d ", np)
-							}
-						} else {
-							gLog.Error.Printf("Error %v getting  the number of pages  run  with  -l 4  (trace)", err)
-						}
-					}(pn)
-				}
-				wg1.Wait()
-				if *result.IsTruncated {
-					nextmarker = *result.Contents[l-1].Key
-					gLog.Warning.Printf("Truncated %v - Next marker: %s ", *result.IsTruncated, nextmarker)
-				}
-			}
-		} else {
-			gLog.Error.Printf("%v", err)
-			break
-		}
-
-		if *result.IsTruncated && (maxLoop == 0 || N <= maxLoop) {
-			request.Marker = nextmarker
-		} else {
-			break
-		}
-	}
-
-}
 
 
