@@ -140,11 +140,11 @@ func _opById1(method string, pn string, np int, replace bool, check bool) int {
 								defer resp.Body.Close()
 								switch resp.StatusCode {
 								case 200:
-									gLog.Info.Printf("Path/Key %s/%s has been written", request.Path, resp.Header["X-Scal-Ring-Key"])
+									gLog.Info.Printf("Path/Key %s/%s has been written", request1.Path, resp.Header["X-Scal-Ring-Key"])
 								case 412:
-									gLog.Warning.Printf("Path/Key %s/%s already existed", request.Path, resp.Header["X-Scal-Ring-Key"])
+									gLog.Warning.Printf("Path/Key %s/%s already existed", request1.Path, resp.Header["X-Scal-Ring-Key"])
 								default:
-									gLog.Error.Printf("Put  Path/key %s/%s - response status %d", request.Path, resp.Header["X-Scal-Ring-Key"], resp.StatusCode)
+									gLog.Error.Printf("Put  Path/key %s/%s - response status %d", request1.Path, resp.Header["X-Scal-Ring-Key"], resp.StatusCode)
 									pe.Lock()
 									perrors++
 									pe.Unlock()
@@ -167,11 +167,11 @@ func _opById1(method string, pn string, np int, replace bool, check bool) int {
 								defer resp.Body.Close()
 								switch resp.StatusCode {
 								case 200:
-									gLog.Info.Printf("Path %s has been deleted - Response status %d", request.Path,resp.StatusCode)
+									gLog.Info.Printf("Path %s has been deleted - Response status %d", request1.Path,resp.StatusCode)
 								case 404:
-									gLog.Warning.Printf("Path %s does not exist - Response status %d ", request.Path,resp.StatusCode)
+									gLog.Warning.Printf("Path %s does not exist - Response status %d ", request1.Path,resp.StatusCode)
 								default:
-									gLog.Error.Printf("Delete Path %s - Response status %d", request.Path, resp.StatusCode)
+									gLog.Error.Printf("Delete Path %s - Response status %d", request1.Path, resp.StatusCode)
 									pe.Lock()
 									perrors++
 									pe.Unlock()
