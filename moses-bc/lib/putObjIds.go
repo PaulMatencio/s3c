@@ -16,7 +16,7 @@ import (
 	Check pn's returned by listObject of the meta bucket
 
 */
-func PutObjIds(request datatype.ListObjRequest, maxLoop int, replace bool, check bool) {
+func OpByIds(request datatype.ListObjRequest, maxLoop int, replace bool, check bool) {
 	var (
 		N          int = 0
 		nextmarker string
@@ -37,7 +37,7 @@ func PutObjIds(request datatype.ListObjRequest, maxLoop int, replace bool, check
 						defer wg1.Done()
 						if np, err, status := GetPageNumber(pn); err == nil && status == 200 {
 							if np > 0 {
-								_putObjId1(pn, np, replace, check)
+								_opById1(pn, np, replace, check)
 							} else {
 								gLog.Error.Printf("The number of pages is %d ", np)
 							}
@@ -66,7 +66,7 @@ func PutObjIds(request datatype.ListObjRequest, maxLoop int, replace bool, check
 
 }
 
-func _putObjId1(pn string, np int, replace bool, check bool) int {
+func _opById1(pn string, np int, replace bool, check bool) int {
 	var (
 		request = sproxyd.HttpRequest{
 			Hspool: sproxyd.HP,

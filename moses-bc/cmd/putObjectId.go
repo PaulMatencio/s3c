@@ -23,12 +23,13 @@ import (
 // listObjectCmd represents the listObject command
 
 var (
-	putObjCmd = &cobra.Command{
-		Use:   "put-by-id",
-		Short: "Command to put  object by object Id",
+	testCmd = &cobra.Command{
+		Use:   "test",
+		Short: "Command to put/get/delete objects by object Id",
 		Long:  `Clone the objets using their object Id. This is for for testing if the targert sproxdd driver chord can change`,
-		Run:   PutObjId,
+		Run:   Test,
 	}
+	method string
 
 )
 
@@ -49,14 +50,15 @@ func initPoIdFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&targetDriver, "target-sproxyd-driver", "", "chord", "target sproxyd driver [bpchord|bparc]")
 	cmd.Flags().StringVarP(&targetUrl, "target-sproxyd-url", "t", "http://10.147.68.92:82/proxy,http://10.147.68.93:82/proxy", "target sproxyd endpoint URL http://xx.xx.xx.xx:81/proxy,http:// ...")
 	cmd.Flags().BoolVarP(&check, "check", "v", true, "Run in Checking  mode")
+	cmd.Flags().StringVarP(&method, "method", "", "", "test ")
 
 }
 func init() {
-	rootCmd.AddCommand(putObjCmd)
-	initPoIdFlags(putObjCmd)
+	rootCmd.AddCommand(testCmd)
+	initPoIdFlags(testCmd)
 }
 
-func PutObjId(cmd *cobra.Command, args []string) {
+func Test(cmd *cobra.Command, args []string) {
 	mosesbc.SetSourceSproxyd("check",srcUrl,driver)
 	mosesbc.SetTargetSproxyd("check",targetUrl,targetDriver)
 	if len(prefix) > 0 {
@@ -64,11 +66,11 @@ func PutObjId(cmd *cobra.Command, args []string) {
 			gLog.Error.Printf("Source S3  bucket is missing")
 			return
 		}
-		PutObjIds(srcBucket,marker,prefix,maxKey,maxLoop,check)
+		TestById(srcBucket,marker,prefix,maxKey,maxLoop,check)
 	}
 }
 
-func PutObjIds(bucket string, marker string,prefix string,maxKey int64,maxLoop int,check bool) {
+func TestById(bucket string, marker string,prefix string,maxKey int64,maxLoop int,check bool) {
 
 	if srcS3:= mosesbc.CreateS3Session("check","source"); srcS3 != nil {
 		request := datatype.ListObjRequest{
@@ -79,7 +81,7 @@ func PutObjIds(bucket string, marker string,prefix string,maxKey int64,maxLoop i
 			Marker:  marker,
 			// Delimiter: delimiter,
 		}
-		mosesbc.PutObjIds(request, maxLoop, replace,check)
+		mosesbc.OpByIds(request, maxLoop, replace,check)
 	} else {
 		gLog.Error.Printf("Failed to create a S3 source session")
 	}
