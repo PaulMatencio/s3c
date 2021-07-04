@@ -16,7 +16,7 @@ import (
 	Check pn's returned by listObject of the meta bucket
 
 */
-func OpByIds(request datatype.ListObjRequest, maxLoop int, replace bool, check bool) {
+func OpByIds(method string, request datatype.ListObjRequest, maxLoop int, replace bool, check bool) {
 	var (
 		N          int = 0
 		nextmarker string
@@ -37,7 +37,7 @@ func OpByIds(request datatype.ListObjRequest, maxLoop int, replace bool, check b
 						defer wg1.Done()
 						if np, err, status := GetPageNumber(pn); err == nil && status == 200 {
 							if np > 0 {
-								_opById1(pn, np, replace, check)
+								_opById1(method, pn, np, replace, check)
 							} else {
 								gLog.Error.Printf("The number of pages is %d ", np)
 							}
@@ -66,7 +66,7 @@ func OpByIds(request datatype.ListObjRequest, maxLoop int, replace bool, check b
 
 }
 
-func _opById1(pn string, np int, replace bool, check bool) int {
+func _opById1(method string, pn string, np int, replace bool, check bool) int {
 	var (
 		request = sproxyd.HttpRequest{
 			Hspool: sproxyd.HP,
@@ -123,35 +123,67 @@ func _opById1(pn string, np int, replace bool, check bool) int {
 				request1.Hspool = sproxyd.TargetHP
 				request1.Path = ringId.Key
 				request1.ReqHeader = map[string]string{}
-				request1.ReqHeader["Usermd"] = ringId.UserMeta
-				request1.ReqHeader["Content-Type"] = "application/octet-stream" // Content type
 				// gLog.Info.Printf("Source %s/%s - Target %s/%s - usermd %s ", request.Hspool.Hosts()[0], request.Path, request1.Hspool.Hosts()[0], request1.Path, ringId.UserMeta)
 				/*  Write it    */
 				if !check {
-					if resp, err := sproxyd.PutObj(&request1, replace, *ringId.Object); err != nil {
-						gLog.Error.Printf("Error %v - Put Page object %s", err, pn)
-						pe.Lock()
-						perrors++
-						pe.Unlock()
-					} else {
-						if resp != nil {
-							defer resp.Body.Close()
-							switch resp.StatusCode {
-							case 200:
-								gLog.Trace.Printf("Path/Key %s/%s has been written", request.Path, resp.Header["X-Scal-Ring-Key"])
-							case 412:
-								gLog.Warning.Printf("Path/Key %s/%s already existed", request.Path, resp.Header["X-Scal-Ring-Key"])
-							default:
-								gLog.Error.Printf("putObj Path/key %s/%s - resp.Status %d", request.Path, resp.Header["X-Scal-Ring-Key"], resp.Status)
-								pe.Lock()
-								perrors++
-								pe.Unlock()
+					switch method {
+					case "put":
+						request1.ReqHeader["Usermd"] = ringId.UserMeta
+						request1.ReqHeader["Content-Type"] = "application/octet-stream" // Content type
+						if resp, err := sproxyd.PutObj(&request1, replace, *ringId.Object); err != nil {
+							gLog.Error.Printf("Error %v - Put id %s", err, ringId.Key)
+							pe.Lock()
+							perrors++
+							pe.Unlock()
+						} else {
+							if resp != nil {
+								defer resp.Body.Close()
+								switch resp.StatusCode {
+								case 200:
+									gLog.Trace.Printf("Path/Key %s/%s has been written", request.Path, resp.Header["X-Scal-Ring-Key"])
+								case 412:
+									gLog.Warning.Printf("Path/Key %s/%s already existed", request.Path, resp.Header["X-Scal-Ring-Key"])
+								default:
+									gLog.Error.Printf("Put  Path/key %s/%s - response status %d", request.Path, resp.Header["X-Scal-Ring-Key"], resp.StatusCode)
+									pe.Lock()
+									perrors++
+									pe.Unlock()
+								}
+								return
 							}
-							return
 						}
+
+					case "get":
+						gLog.Info.Printf("Method get isnot yet implemented")
+
+					case "delete":
+						if resp, err := sproxyd.Deleteobject(&request1); err != nil {
+							gLog.Error.Printf("Error %v - delete  %s", err, )
+							pe.Lock()
+							perrors++
+							pe.Unlock()
+						} else {
+							if resp != nil {
+								defer resp.Body.Close()
+								switch resp.StatusCode {
+								case 200:
+									gLog.Trace.Printf("Path %s has been deleted - Response status %d", request.Path,resp.StatusCode)
+								case 404:
+									gLog.Warning.Printf("Path %s does not exist - Response status %d ", request.Path,resp.StatusCode)
+								default:
+									gLog.Error.Printf("Delete Path %s - Response status %d", request.Path, resp.StatusCode)
+									pe.Lock()
+									perrors++
+									pe.Unlock()
+								}
+								return
+							}
+						}
+
+					default:
 					}
 				} else {
-					 gLog.Info.Printf("Source %s/%s - Target %s/%s", request.Hspool.Hosts()[0], request.Path, request1.Hspool.Hosts()[0], request1.Path)
+					gLog.Info.Printf("Method %s - Source %s/%s - Target %s/%s", method, request.Hspool.Hosts()[0], request.Path, request1.Hspool.Hosts()[0], request1.Path)
 				}
 			} else {
 				gLog.Error.Printf("%v", ringId.Err)
