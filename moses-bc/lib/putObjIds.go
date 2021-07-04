@@ -140,9 +140,9 @@ func _opById1(method string, pn string, np int, replace bool, check bool) int {
 								defer resp.Body.Close()
 								switch resp.StatusCode {
 								case 200:
-									gLog.Info.Printf("Host: %s - Ring Key %s has been written", request1.Hspool.Hosts()[0],request1.Path, resp.Header["X-Scal-Ring-Key"])
+									gLog.Info.Printf("Host: %s - Ring Key %s has been written - Response status Code %d", request1.Hspool.Hosts()[0],request1.Path, resp.Header["X-Scal-Ring-Key"])
 								case 412:
-									gLog.Warning.Printf("Host: %s - Ring key  %s already existed", request1.Hspool.Hosts()[0], request1.Path,resp.StatusCode )
+									gLog.Warning.Printf("Host: %s - Ring key %s already existed - Response status Code %d", request1.Hspool.Hosts()[0], request1.Path,resp.StatusCode )
 								default:
 									gLog.Error.Printf("Host: %s - Put Ring key %s - response status %d", request1.Hspool.Hosts()[0], request1.Path,  resp.StatusCode)
 									pe.Lock()
