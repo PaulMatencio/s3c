@@ -1,4 +1,3 @@
-
 package lib
 
 import (
@@ -11,12 +10,13 @@ import (
 	"strconv"
 	"sync"
 )
+
 /*
 
 	Check pn's returned by listObject of the meta bucket
 
 */
-func ListObjIds(request datatype.ListObjRequest,maxLoop int,maxPage int) {
+func PutObjIds(request datatype.ListObjRequest, maxLoop int, replace bool, check bool) {
 	var (
 		N          int = 0
 		nextmarker string
@@ -37,7 +37,7 @@ func ListObjIds(request datatype.ListObjRequest,maxLoop int,maxPage int) {
 						defer wg1.Done()
 						if np, err, status := GetPageNumber(pn); err == nil && status == 200 {
 							if np > 0 {
-								ListObjId1(pn, np, maxPage)
+								_putObjId1(pn, np, replace, check)
 							} else {
 								gLog.Error.Printf("The number of pages is %d ", np)
 							}
@@ -66,7 +66,7 @@ func ListObjIds(request datatype.ListObjRequest,maxLoop int,maxPage int) {
 
 }
 
-func ListObjId1 (pn string, np int, maxPage int) (int){
+func _putObjId1(pn string, np int, replace bool, check bool) int {
 	var (
 		request = sproxyd.HttpRequest{
 			Hspool: sproxyd.HP,
@@ -83,10 +83,11 @@ func ListObjId1 (pn string, np int, maxPage int) (int){
 			},
 		}
 		wg2     sync.WaitGroup
-		nerrors = 0
+		perrors = 0
+		pe      sync.Mutex
 		err     error
 		start   int
-		p0 bool
+		p0      bool
 	)
 	/*
 		Check document has a Clipping page
@@ -101,41 +102,63 @@ func ListObjId1 (pn string, np int, maxPage int) (int){
 		start = 1
 	}
 	/*
-	if pdf {
-		gLog.Info.Printf("DocId %s contains a pdf", pn)
-		pdfId := pn + "/pdf"
-		if err, ok := comparePdf(pdfId); err == nil {
-			gLog.Info.Printf("Comparing source and restored PDF: %s - isEqual ? %v", pdfId, ok)
-		} else {
-			gLog.Error.Printf("Error %v when comparing PDF %s", err, pdfId)
+		if pdf {
+			gLog.Info.Printf("DocId %s contains a pdf", pn)
+			pdfId := pn + "/pdf"
+			if err, ok := comparePdf(pdfId); err == nil {
+				gLog.Info.Printf("Comparing source and restored PDF: %s - isEqual ? %v", pdfId, ok)
+			} else {
+				gLog.Error.Printf("Error %v when comparing PDF %s", err, pdfId)
+			}
 		}
-	}
 	*/
 
 	for k := start; k <= np; k++ {
 		request.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
 		wg2.Add(1)
-		go func(request sproxyd.HttpRequest,request1 sproxyd.HttpRequest, pn string, k int){
+		go func(request sproxyd.HttpRequest, request1 sproxyd.HttpRequest, pn string, k int) {
 			defer wg2.Done()
-			ringId := GetObjId(request,pn)
+			ringId := GetObjAndId(request, pn)
 			if ringId.Err == nil {
-				//gLog.Info.Printf("DocId: %s - RingKey : %s",pn,ringId.Key,sproxyd.TargetUrl,sproxyd.TargetDriver)
 				request1.Hspool = sproxyd.TargetHP
 				request1.Path = ringId.Key
-				request1.ReqHeader =  map[string]string{}
+				request1.ReqHeader = map[string]string{}
 				request1.ReqHeader["Usermd"] = ringId.UserMeta
 				request1.ReqHeader["Content-Type"] = "application/octet-stream" // Content type
-				gLog.Info.Printf("Source %s/%s - Target %s/%s - usermd %s ",request.Hspool.Hosts()[0],request.Path,request1.Hspool.Hosts()[0],request1.Path,ringId.UserMeta)
-				// sproxyd.Putobject(&request1,*ringId.Object)
+				// gLog.Info.Printf("Source %s/%s - Target %s/%s - usermd %s ", request.Hspool.Hosts()[0], request.Path, request1.Hspool.Hosts()[0], request1.Path, ringId.UserMeta)
 				/*  Write it    */
+				if !check {
+					if resp, err := sproxyd.PutObj(&request1, replace, *ringId.Object); err != nil {
+						gLog.Error.Printf("Error %v - Put Page object %s", err, pn)
+						pe.Lock()
+						perrors++
+						pe.Unlock()
+					} else {
+						if resp != nil {
+							defer resp.Body.Close()
+							switch resp.StatusCode {
+							case 200:
+								gLog.Trace.Printf("Path/Key %s/%s has been written", request.Path, resp.Header["X-Scal-Ring-Key"])
+							case 412:
+								gLog.Warning.Printf("Path/Key %s/%s already existed", request.Path, resp.Header["X-Scal-Ring-Key"])
+							default:
+								gLog.Error.Printf("putObj Path/key %s/%s - resp.Status %d", request.Path, resp.Header["X-Scal-Ring-Key"], resp.Status)
+								pe.Lock()
+								perrors++
+								pe.Unlock()
+							}
+							return
+						}
+					}
+				} else {
+					 gLog.Info.Printf("Source %s/%s - Target %s/%s", request.Hspool.Hosts()[0], request.Path, request1.Hspool.Hosts()[0], request1.Path)
+				}
 			} else {
-				gLog.Error.Printf("%v",ringId.Err)
+				gLog.Error.Printf("%v", ringId.Err)
 			}
-		}(request, request1,pn, k)
+		}(request, request1, pn, k)
 	}
 	// Write the document to File
 	wg2.Wait()
-	return nerrors
+	return perrors
 }
-
-

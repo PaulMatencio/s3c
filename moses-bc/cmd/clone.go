@@ -32,7 +32,7 @@ import (
 var (
 	cloneCmd = &cobra.Command{
 		Use:   "clone",
-		Short: "Command to clone Moses",
+		Short: "Command to clone Moses objects",
 		Long:  ``,
 		Run:   Clone,
 	}

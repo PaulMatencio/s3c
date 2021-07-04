@@ -37,7 +37,7 @@ import (
 var (
 	backupCmd = &cobra.Command{
 		Use:   "backup",
-		Short: "Command to backup MOSES objects",
+		Short: "Command to backup MOSES objects andindexes",
 		Long: `Command to backup MOSES objects
 Moses metadata buckets are split into 6 buckets ( -xx ) 
 	<bucket>-xx  xx=00..05 
@@ -60,6 +60,7 @@ Backup all the documents listed in a given bucket
 	missingtgtBucket                  = "Missing target S3 bucket --target-bucket"
 	// back, meta                datatype.CreateSession
 	tgtS3, srcS3 *s3.S3
+	check bool
 )
 
 type UserMd struct {
