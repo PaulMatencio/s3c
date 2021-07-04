@@ -67,7 +67,6 @@ func Check(cmd *cobra.Command, args []string) {
 	mosesbc.SetSourceSproxyd("check",srcUrl,driver,env)
 	mosesbc.SetTargetSproxyd("check",targetUrl,targetDriver,targetEnv)
 	gLog.Info.Println(sproxyd.TargetEnv,sproxyd.TargetDriver,sproxyd.TargetUrl)
-	return
 	if len(pn) > 0 {
 		ChekBlob1(pn)
 	} else if len(prefix) > 0 {
