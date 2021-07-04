@@ -81,7 +81,7 @@ func TestById(bucket string, marker string,prefix string,maxKey int64,maxLoop in
 			Marker:  marker,
 			// Delimiter: delimiter,
 		}
-		mosesbc.OpByIds(request, maxLoop, replace,check)
+		mosesbc.OpByIds(method,request, maxLoop, replace,check)
 	} else {
 		gLog.Error.Printf("Failed to create a S3 source session")
 	}
