@@ -18,6 +18,7 @@ import (
 	gLog "github.com/paulmatencio/s3c/gLog"
 	mosesbc "github.com/paulmatencio/s3c/moses-bc/lib"
 	"github.com/spf13/cobra"
+	"strings"
 )
 
 // listObjectCmd represents the listObject command
@@ -50,7 +51,7 @@ func initPoIdFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&targetDriver, "target-sproxyd-driver", "", "chord", "target sproxyd driver [bpchord|bparc]")
 	cmd.Flags().StringVarP(&targetUrl, "target-sproxyd-url", "t", "http://10.147.68.92:82/proxy,http://10.147.68.93:82/proxy", "target sproxyd endpoint URL http://xx.xx.xx.xx:81/proxy,http:// ...")
 	cmd.Flags().BoolVarP(&check, "check", "v", true, "Run in Checking  mode")
-	cmd.Flags().StringVarP(&method, "method", "", "", "test ")
+	cmd.Flags().StringVarP(&method, "method", "", "put", "test ")
 
 }
 func init() {
@@ -66,11 +67,11 @@ func Test(cmd *cobra.Command, args []string) {
 			gLog.Error.Printf("Source S3  bucket is missing")
 			return
 		}
-		TestById(srcBucket,marker,prefix,maxKey,maxLoop,check)
+		TestById(strings.ToLower(method), srcBucket,marker,prefix,maxKey,maxLoop,check)
 	}
 }
 
-func TestById(bucket string, marker string,prefix string,maxKey int64,maxLoop int,check bool) {
+func TestById(method string , bucket string, marker string,prefix string,maxKey int64,maxLoop int,check bool) {
 
 	if srcS3:= mosesbc.CreateS3Session("check","source"); srcS3 != nil {
 		request := datatype.ListObjRequest{
