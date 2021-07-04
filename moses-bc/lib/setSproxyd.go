@@ -85,7 +85,7 @@ func SetTargetSproxyd(op string,targetUrl string,targetDriver string, targetEnv 
 			sproxyd.TargetDriver= drv
 			targetDriver = drv
 		} else {
-			gLog.Error.Println("Source sproxyd driver is missing , add check.sproxyd.target.driver to the config file")
+			gLog.Error.Println("target sproxyd driver is missing , add check.sproxyd.target.driver to the config file")
 			return
 		}
 	}
@@ -96,14 +96,14 @@ func SetTargetSproxyd(op string,targetUrl string,targetDriver string, targetEnv 
 		if  env := viper.GetString(t_env);len (env) > 0 {
 			sproxyd.TargetEnv= env
 		} else {
-			gLog.Error.Println("Source sproxyd env is missing , add check.sproxyd.target.env to the config file")
+			gLog.Error.Println("Target sproxyd env is missing , add check.sproxyd.target.env to the config file")
 			return
 		}
 	}
 
 	sproxyd.SetNewTargetProxydHost1(targetUrl, targetDriver)
 	gLog.Trace.Printf("Connection timeout %v - read timeout %v - write timeoiut %v",sproxyd.ConnectionTimeout,sproxyd.ReadTimeout,sproxyd.WriteTimeout)
-	gLog.Trace.Printf("Target Host Pool: %v -  Source Env: %s - Source Driver: %s", sproxyd.TargetHP.Hosts(), sproxyd.TargetEnv, sproxyd.TargetDriver)
+	gLog.Trace.Printf("Target Host Pool: %v -  Target Env: %s - Target Driver: %s", sproxyd.TargetHP.Hosts(), sproxyd.TargetEnv, sproxyd.TargetDriver)
 
 }
 
