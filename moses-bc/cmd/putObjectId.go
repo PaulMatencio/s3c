@@ -46,7 +46,7 @@ func initPoIdFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVarP(&maxLoop, "maxLoop", "", 1, "maximum number of loop, 0 means no upper limit")
 	cmd.Flags().StringVarP(&srcUrl, "source-sproxyd-url", "s", "http://10.12.202.14:81/proxy,http://10.12.202.24:81/proxy", "source sproxyd endpoints  http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
 	cmd.Flags().StringVarP(&driver, "source-sproxyd-driver", "", "bpchord", "source sproxyd driver [bpchord|bparc]")
-	cmd.Flags().StringVarP(&targetDriver, "target-sproxyd-driver", "chord", "", "target sproxyd driver [bpchord|bparc]")
+	cmd.Flags().StringVarP(&targetDriver, "target-sproxyd-driver", "", "chord", "target sproxyd driver [bpchord|bparc]")
 	cmd.Flags().StringVarP(&targetUrl, "target-sproxyd-url", "t", "http://10.147.68.92:82/proxy,http://10.147.68.93:82/proxy", "target sproxyd endpoint URL http://xx.xx.xx.xx:81/proxy,http:// ...")
 	cmd.Flags().BoolVarP(&check, "check", "v", true, "Run in Checking  mode")
 
