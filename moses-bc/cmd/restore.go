@@ -65,6 +65,10 @@ func initResFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVarP(&maxLoop, "maxLoop", "", 1, "maximum number of loop, 0 means no upper limit")
 	cmd.Flags().BoolVarP(&replace, "replace", "r", false, "replace existing pages")
 	cmd.Flags().Int64VarP(&maxPartSize, "maxPartSize", "", 40, "Maximum partsize (MB) for multipart download")
+	cmd.Flags().StringVarP(&targetDriver, "target-sproxyd-driver", "", "", "target sproxyd driver [bpchord|bparc]")
+	cmd.Flags().StringVarP(&targetUrl, "target-sproxyd-url", "t", "", "target sproxyd endpoint URL http://xx.xx.xx.xx:81/proxy,http:// ...")
+	cmd.Flags().StringVarP(&targetEnv, "target-sproxyd-env", "", "", "target sproxyd environment [prod|osa]")
+
 }
 
 func init() {
@@ -79,7 +83,7 @@ func Restore(cmd *cobra.Command, args []string) {
 		err        error
 	)
 	start := time.Now()
-	mosesbc.SetTargetSproxyd("restore", targetUrl, targetDriver)
+	mosesbc.SetTargetSproxyd("restore", targetUrl, targetDriver,targetEnv)
 
 	if len(srcBucket) == 0 {
 		gLog.Warning.Printf("%s", missingsrcBucket)

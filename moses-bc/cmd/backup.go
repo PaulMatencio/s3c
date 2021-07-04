@@ -53,6 +53,7 @@ Backup all the documents listed in a given bucket
 	maxPartSize, maxKey               int64
 	marker                            string
 	srcBucket, tgtBucket              string
+	srcEnv,
 	maxLoop, maxPage                  int
 	missingoDir                       = "Missing output directory --output-directory"
 	missingiFile                      = "Missing input file --input-file"
@@ -85,7 +86,7 @@ func initBkFlags(cmd *cobra.Command) {
 	cmd.Flags().Int64VarP(&maxPartSize, "maxPartSize", "", 40, "Maximum partsize (MB)  for multipart upload")
 	cmd.Flags().StringVarP(&srcUrl, "source-sproxyd-url", "s", "", "source sproxyd endpoints  http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
 	cmd.Flags().StringVarP(&driver, "source-sproxyd-driver", "", "", "source sproxyd driver [bpchord|bparc]")
-
+	cmd.Flags().StringVarP(&env, "source-sproxyd-env", "", "", "source sproxyd environment [prod|osa]")
 }
 
 func init() {
@@ -119,7 +120,7 @@ func Backup(cmd *cobra.Command, args []string) {
 	srcS3 = mosesbc.CreateS3Session("backup", "source")
 	maxPartSize = maxPartSize * 1024 * 1024
 
-	mosesbc.SetSourceSproxyd("backup", srcUrl, driver)
+	mosesbc.SetSourceSproxyd("backup", srcUrl, driver,env)
 
 	if bMedia == "S3" {
 

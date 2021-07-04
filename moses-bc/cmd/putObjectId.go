@@ -47,9 +47,11 @@ func initPoIdFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVarP(&maxPage, "maxPage", "", 50, "maximum number of concurrent pages per document. check  --maxKey  for maximum number of concurrent documents")
 	cmd.Flags().IntVarP(&maxLoop, "maxLoop", "", 1, "maximum number of loop, 0 means no upper limit")
 	cmd.Flags().StringVarP(&srcUrl, "source-sproxyd-url", "s", "http://10.12.202.14:81/proxy,http://10.12.202.24:81/proxy", "source sproxyd endpoints  http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
-	cmd.Flags().StringVarP(&driver, "source-sproxyd-driver", "", "bpchord", "source sproxyd driver [bpchord|bparc]")
-	cmd.Flags().StringVarP(&targetDriver, "target-sproxyd-driver", "", "chord", "target sproxyd driver [bpchord|bparc]")
+	cmd.Flags().StringVarP(&driver, "source-sproxyd-driver", "", "", "source sproxyd driver [bpchord|bparc]")
+	cmd.Flags().StringVarP(&targetDriver, "target-sproxyd-driver", "", "", "target sproxyd driver [bpchord|bparc]")
 	cmd.Flags().StringVarP(&targetUrl, "target-sproxyd-url", "t", "http://10.147.68.92:82/proxy,http://10.147.68.93:82/proxy", "target sproxyd endpoint URL http://xx.xx.xx.xx:81/proxy,http:// ...")
+	cmd.Flags().StringVarP(&env, "source-sproxyd-env", "", "", "source sproxyd environment [prod|osa]")
+	cmd.Flags().StringVarP(&targetEnv, "target-sproxyd-env", "", "", "target sproxyd environment [prod|osa]")
 	cmd.Flags().BoolVarP(&check, "check", "v", true, "Run in Checking  mode")
 	cmd.Flags().StringVarP(&method, "method", "", "put", "test ")
 
@@ -60,8 +62,8 @@ func init() {
 }
 
 func Test(cmd *cobra.Command, args []string) {
-	mosesbc.SetSourceSproxyd("check",srcUrl,driver)
-	mosesbc.SetTargetSproxyd("check",targetUrl,targetDriver)
+	mosesbc.SetSourceSproxyd("check",srcUrl,driver,env)
+	mosesbc.SetTargetSproxyd("check",targetUrl,targetDriver,targetEnv)
 	if len(prefix) > 0 {
 		if len(srcBucket) == 0 {
 			gLog.Error.Printf("Source S3  bucket is missing")

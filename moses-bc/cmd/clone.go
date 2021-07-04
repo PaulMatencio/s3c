@@ -55,7 +55,8 @@ func initCloFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&driver, "source-sproxyd-driver", "", "", "source sproxyd driver [bpchord|bparc]")
 	cmd.Flags().StringVarP(&targetDriver, "target-sproxyd-driver", "", "", "target sproxyd driver [bpchord|bparc]")
 	cmd.Flags().StringVarP(&targetUrl, "target-sproxyd-url", "t", "", "target sproxyd endpoint URL http://xx.xx.xx.xx:81/proxy,http:// ...")
-
+	cmd.Flags().StringVarP(&env, "source-sproxyd-env", "", "", "source sproxyd environment [prod|osa]")
+	cmd.Flags().StringVarP(&targetEnv, "target-sproxyd-env", "", "", "target sproxyd environment [prod|osa]")
 }
 
 func init() {
@@ -66,8 +67,8 @@ func init() {
 func Clone(cmd *cobra.Command, args []string) {
 
 	var listpn *bufio.Scanner
-	mosesbc.SetSourceSproxyd("clone", srcUrl, driver)
-	mosesbc.SetTargetSproxyd("check", targetUrl, targetDriver)
+	mosesbc.SetSourceSproxyd("clone", srcUrl, driver,env)
+	mosesbc.SetTargetSproxyd("check", targetUrl, targetDriver,targetEnv)
 
 	if len(srcBucket) == 0 {
 		if len(inFile) == 0 {

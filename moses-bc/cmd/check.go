@@ -35,6 +35,7 @@ var (
 	np, status, srcUrl, targetUrl string
 	err                           error
 	driver, targetDriver         string
+	env, targetEnv    string
 
 )
 
@@ -51,8 +52,11 @@ func initCkFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVarP(&maxLoop, "maxLoop", "", 1, "maximum number of loop, 0 means no upper limit")
 	cmd.Flags().StringVarP(&srcUrl, "source-sproxyd-url", "s", "", "source sproxyd endpoints  http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
 	cmd.Flags().StringVarP(&driver, "source-sproxyd-driver", "", "", "source sproxyd driver [bpchord|bparc]")
+	cmd.Flags().StringVarP(&driver, "source-sproxyd-driver", "", "", "source sproxyd driver [bpchord|bparc]")
 	cmd.Flags().StringVarP(&targetDriver, "target-sproxyd-driver", "", "", "target sproxyd driver [bpchord|bparc]")
 	cmd.Flags().StringVarP(&targetUrl, "target-sproxyd-url", "t", "", "target sproxyd endpoint URL http://xx.xx.xx.xx:81/proxy,http:// ...")
+	cmd.Flags().StringVarP(&env, "source-sproxyd-env", "", "", "source sproxyd environment [prod|osa]")
+	cmd.Flags().StringVarP(&targetEnv, "target-sproxyd-env", "", "", "target sproxyd environment [prod|osa]")
 
 }
 func init() {
@@ -61,8 +65,8 @@ func init() {
 }
 
 func Check(cmd *cobra.Command, args []string) {
-	mosesbc.SetSourceSproxyd("check",srcUrl,driver)
-	mosesbc.SetTargetSproxyd("check",targetUrl,targetDriver)
+	mosesbc.SetSourceSproxyd("check",srcUrl,driver,env)
+	mosesbc.SetTargetSproxyd("check",targetUrl,targetDriver,targetEnv)
 	gLog.Info.Println(sproxyd.TargetEnv,sproxyd.TargetDriver,sproxyd.TargetUrl)
 	return
 	if len(pn) > 0 {
