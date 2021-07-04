@@ -18,6 +18,7 @@ import (
 	"github.com/paulmatencio/s3c/datatype"
 	gLog "github.com/paulmatencio/s3c/gLog"
 	mosesbc "github.com/paulmatencio/s3c/moses-bc/lib"
+	sproxyd "github.com/paulmatencio/s3c/sproxyd/lib"
 	"github.com/spf13/cobra"
 )
 
@@ -62,6 +63,8 @@ func init() {
 func Check(cmd *cobra.Command, args []string) {
 	mosesbc.SetSourceSproxyd("check",srcUrl,driver)
 	mosesbc.SetTargetSproxyd("check",targetUrl,targetDriver)
+	gLog.Info.Println(sproxyd.TargetEnv,sproxyd.TargetDriver,sproxyd.TargetUrl)
+	return
 	if len(pn) > 0 {
 		ChekBlob1(pn)
 	} else if len(prefix) > 0 {
