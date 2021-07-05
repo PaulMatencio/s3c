@@ -125,7 +125,7 @@ func _opById1(method string, pn string, np int, replace bool, check bool) int {
 				if sproxyd.Driver[0:2] != "bp" {
 					request1.Path = ringId.Key
 				} else {
-					request.Path = sproxyd.TargetEnv + "/" + pn + "/p" + strconv.Itoa(k)
+					request1.Path = sproxyd.TargetEnv + "/" + pn + "/p" + strconv.Itoa(k)
 				}
 				request1.ReqHeader = map[string]string{}
 				// gLog.Info.Printf("Source %s/%s - Target %s/%s - usermd %s ", request.Hspool.Hosts()[0], request.Path, request1.Hspool.Hosts()[0], request1.Path, ringId.UserMeta)
