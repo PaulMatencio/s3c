@@ -118,7 +118,7 @@ func _opById1(method string, pn string, np int, replace bool, check bool) int {
 			}
 		}
 	} else {
-		gLog.Info.Printf("Method %s - Source %s/%s - Target %s/%s", method, request.Hspool.Hosts()[0], pn, request1.Hspool.Hosts()[0], ringId.Key)
+		gLog.Info.Printf("Method %s - Source %s/%s - Target %s/%s", method, request.Hspool.Hosts()[0], pn, request1.Hspool.Hosts()[0], document.DocId)
 	}
 
 	/*
