@@ -245,10 +245,15 @@ func WriteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Documen
 	var (
 		pn      = document.GetDocId()
 		perrors = 0
-		err	error
-		resp  *http.Response
+		err     error
+		resp    *http.Response
 	)
-	request.Path = sproxyd.TargetEnv + "/" + pn
+	if sproxyd.TargetDriver[0:2] == "bp" {
+		request.Path = sproxyd.TargetEnv + "/" + pn
+	} else {
+		request.Path =  pn /*   pn is the Ring key   */
+	}
+
 	request.ReqHeader =  map[string]string{}
 	request.ReqHeader["Content-Type"] = "application/octet-stream"
 	request.ReqHeader["Usermd"] = document.GetMetadata()

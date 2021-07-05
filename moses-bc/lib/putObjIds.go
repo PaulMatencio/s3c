@@ -93,7 +93,7 @@ func _opById1(method string, pn string, np int, replace bool, check bool) int {
 	)
 
 
-	//  retrieve the  document metadata  
+	//  retrieve the  document metadata
 	request.Path = sproxyd.Env + "/" + pn
 	ringId := GetObjAndId(request, pn)
 	if ringId.Err != nil {
