@@ -35,6 +35,7 @@ var (
 	}
 	srcBucket,tgtBucket string
 	fromDate,inputKeys string
+	filter string
 	check, overWrite bool
 )
 
@@ -53,9 +54,12 @@ func initCbFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&prefix,"prefix","p","","key prefix")
 	cmd.Flags().Int64VarP(&maxKey,"maxKey","m",100,"maximum number of keys to be processed ")
 	cmd.Flags().StringVarP(&marker,"marker","M","","start key processing from marker")
+	// cmd.Flags().StringVarP(&filter,"filter","","","filter")
 	cmd.Flags().IntVarP(&maxLoop,"maxLoop","",1,"maximum number of loop, 0 means no upper limit")
+
 	cmd.Flags().StringVarP(&fromDate,"fromDate","","2019-01-01T00:00:00Z","clone objects with last modified from <yyyy-mm-ddThh:mm:ss>")
 	cmd.Flags().BoolVarP(&check,"check","",true,"check for new objects ,to be used with --fromDate argument")
+
 	// cmd.Flags().StringVarP(&delimiter,"delimiter","d","","key delimiter")
 }
 

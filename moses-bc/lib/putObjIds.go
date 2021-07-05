@@ -2,6 +2,7 @@ package lib
 
 import (
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/paulmatencio/protobuf-doc/src/document/documentpb"
 	"github.com/paulmatencio/s3c/api"
 	"github.com/paulmatencio/s3c/datatype"
 	gLog "github.com/paulmatencio/s3c/gLog"
@@ -88,7 +89,38 @@ func _opById1(method string, pn string, np int, replace bool, check bool) int {
 		err     error
 		start   int
 		p0      bool
+		document =  &documentpb.Document{}
 	)
+
+
+	//  retrieve the  document metadata and clone it
+
+	ringId := GetObjAndId(request, pn)
+	if ringId.Err != nil {
+
+	}
+	document.Metadata= ringId.UserMeta
+	if sproxyd.TargetDriver[0:2] != "bp" {
+		document.DocId = ringId.Key
+	} else {
+		document.DocId = pn
+	}
+	document.NumberOfPages= 0
+	document.Size= 0
+	if !check {
+		if nerr, status := WriteDocMetadata(&request1, document, replace); nerr > 0 {
+			gLog.Warning.Printf("Document %s is not written", document.DocId)
+			return nerr
+		} else {
+			if status == 412 {
+				gLog.Warning.Printf("Document %s is not restored - use --replace=true  ou -r=true to replace the existing document", document.DocId)
+				return 1
+			}
+		}
+	} else {
+		gLog.Info.Printf("Method %s - Source %s/%s - Target %s/%s", method, request.Hspool.Hosts()[0], pn, request1.Hspool.Hosts()[0], ringId.Key)
+	}
+
 	/*
 		Check document has a Clipping page
 	*/
@@ -144,11 +176,11 @@ func _opById1(method string, pn string, np int, replace bool, check bool) int {
 								defer resp.Body.Close()
 								switch resp.StatusCode {
 								case 200:
-									gLog.Info.Printf("Host: %s - Ring Key %s has been written - Response status Code %d", request1.Hspool.Hosts()[0],request1.Path,resp.StatusCode)
+									gLog.Info.Printf("Host: %s - Ring Key/path %s has been written - Response status Code %d", request1.Hspool.Hosts()[0],request1.Path,resp.StatusCode)
 								case 412:
-									gLog.Warning.Printf("Host: %s - Ring key %s already existed - Response status Code %d", request1.Hspool.Hosts()[0], request1.Path,resp.StatusCode )
+									gLog.Warning.Printf("Host: %s - Ring key/path %s already existed - Response status Code %d", request1.Hspool.Hosts()[0], request1.Path,resp.StatusCode )
 								default:
-									gLog.Error.Printf("Host: %s - Put Ring key %s - response status %d", request1.Hspool.Hosts()[0], request1.Path,  resp.StatusCode)
+									gLog.Error.Printf("Host: %s - Put Ring key/path %s - response status %d", request1.Hspool.Hosts()[0], request1.Path,  resp.StatusCode)
 									pe.Lock()
 									perrors++
 									pe.Unlock()
@@ -158,7 +190,7 @@ func _opById1(method string, pn string, np int, replace bool, check bool) int {
 						}
 
 					case "get":
-						gLog.Info.Printf("Method get isnot yet implemented")
+						gLog.Info.Printf("Method get is not yet implemented")
 
 					case "delete":
 						if resp, err := sproxyd.Deleteobject(&request1); err != nil {
@@ -171,11 +203,11 @@ func _opById1(method string, pn string, np int, replace bool, check bool) int {
 								defer resp.Body.Close()
 								switch resp.StatusCode {
 								case 200:
-									gLog.Info.Printf("Host: %s - Ring key %s has been deleted - Response status %d", request1.Hspool.Hosts()[0],request1.Path,resp.StatusCode)
+									gLog.Info.Printf("Host: %s - Ring key/path %s has been deleted - Response status %d", request1.Hspool.Hosts()[0],request1.Path,resp.StatusCode)
 								case 404:
-									gLog.Warning.Printf("Host: %s - Ring Key %s does not exist - Response status %d ", request1.Hspool.Hosts()[0], request1.Path,resp.StatusCode)
+									gLog.Warning.Printf("Host: %s - Ring Key/path %s does not exist - Response status %d ", request1.Hspool.Hosts()[0], request1.Path,resp.StatusCode)
 								default:
-									gLog.Error.Printf("Host: %s Delete Ring key %s - Response status %d", request1.Hspool.Hosts()[0], request1.Path, resp.StatusCode)
+									gLog.Error.Printf("Host: %s Delete Ring key/path %s - Response status %d", request1.Hspool.Hosts()[0], request1.Path, resp.StatusCode)
 									pe.Lock()
 									perrors++
 									pe.Unlock()
