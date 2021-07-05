@@ -121,8 +121,7 @@ func _opById1(method string, pn string, np int, replace bool, check bool) int {
 			ringId := GetObjAndId(request, pn)
 			if ringId.Err == nil {
 				request1.Hspool = sproxyd.TargetHP
-				
-				if sproxyd.Driver[0:2] != "bp" {
+				if sproxyd.TargetDriver[0:2] != "bp" {
 					request1.Path = ringId.Key
 				} else {
 					request1.Path = sproxyd.TargetEnv + "/" + pn + "/p" + strconv.Itoa(k)
