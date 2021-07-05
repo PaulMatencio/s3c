@@ -93,11 +93,14 @@ func _opById1(method string, pn string, np int, replace bool, check bool) int {
 	)
 
 
-	//  retrieve the  document metadata and clone it
-
+	//  retrieve the  document metadata  
+	request.Path = sproxyd.Env + "/" + pn
 	ringId := GetObjAndId(request, pn)
 	if ringId.Err != nil {
-
+		gLog.Warning.Printf("Document %s - Error getting metadata %v", pn, err)
+		return 1
+	} else {
+		gLog.Trace.Printf("Docid %s - Request Path %s - Ring key: %s -Metadata %s ",pn,request.Path,ringId.Key,ringId.UserMeta)
 	}
 	document.Metadata= ringId.UserMeta
 	if sproxyd.TargetDriver[0:2] != "bp" {
