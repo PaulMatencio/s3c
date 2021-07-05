@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 )
+
 /*
 const (
 	MinPartSize                = 5 * 1024 * 1024     // 5 MB
@@ -34,7 +35,7 @@ const (
 	//MaxPartSize					= MinPartSize * 4
 )
 
- */
+*/
 
 type Resp struct {
 	Cp  *s3.CompletedPart
@@ -82,35 +83,35 @@ func WriteS3(service *s3.S3, bucket string, document *documentpb.Document) (*s3.
 	}
 }
 
-func WriteS3Multipart(service *s3.S3, bucket string, maxPartSize int64,document *documentpb.Document) ([]error,error){
+func WriteS3Multipart(service *s3.S3, bucket string, maxPartSize int64, document *documentpb.Document) ([]error, error) {
 
 	var (
-		n, t                                   = 0, 0
+		n, t                      = 0, 0
 		curr, remaining, partSize int64
-		partNumber                             int
-		documentSize                           int64
-		completedParts                         []*s3.CompletedPart
+		partNumber                int
+		documentSize              int64
+		completedParts            []*s3.CompletedPart
 		// buffer                                 = document.GetObject()
-		key                                    = document.GetDocId()
-		buffer				[]byte
-		err										error
-		resp									*s3.CreateMultipartUploadOutput
-		errs								[]error
+		key    = document.GetDocId()
+		buffer []byte
+		err    error
+		resp   *s3.CreateMultipartUploadOutput
+		errs   []error
 	)
 	/*
-	if retryNumber :=utils.GetRetryNumber(*viper.GetViper()); retryNumber == 0 {
-	 	retryNumber = mosesbc.RETRY
-	}
+		if retryNumber :=utils.GetRetryNumber(*viper.GetViper()); retryNumber == 0 {
+		 	retryNumber = mosesbc.RETRY
+		}
 
-	if waitTime :=utils.GetWaitTime(*viper.GetViper()); waitTime == 0 {
-	 	waitTime = mosesbc.WaitTime
-	}
+		if waitTime :=utils.GetWaitTime(*viper.GetViper()); waitTime == 0 {
+		 	waitTime = mosesbc.WaitTime
+		}
 	*/
 	if buffer, err = proto.Marshal(document); err != nil {
 		return errs, err
 	}
 	documentSize = int64(len(buffer))
-	fType  := http.DetectContentType(buffer)
+	fType := http.DetectContentType(buffer)
 	create := datatype.CreateMultipartUploadRequest{
 		Service:     service,
 		Bucket:      bucket,
@@ -167,7 +168,7 @@ func WriteS3Multipart(service *s3.S3, bucket string, maxPartSize int64,document 
 					gLog.Trace.Printf("Appending completed part %d - Etag %s - size %d", *cp.Cp.PartNumber, *cp.Cp.ETag, cp.Cl)
 					completedParts = append(completedParts, cp.Cp)
 				} else {
-					errs = append(errs,cp.Err)
+					errs = append(errs, cp.Err)
 					gLog.Error.Printf("Error %v uploading part %d size %d", cp.Err, cp.Cp.PartNumber, cp.Cl)
 				}
 				if t == n {
@@ -185,7 +186,7 @@ func WriteS3Multipart(service *s3.S3, bucket string, maxPartSize int64,document 
 		MBsec := len(buffer) / int(elapsed)
 		gLog.Info.Printf("Elapsed time %v MB/sec %f3.1", elapsed, MBsec)
 	}
-	return errs,err
+	return errs, err
 }
 
 func CompletedUpload(svc *s3.S3, resp *s3.CreateMultipartUploadOutput, part []*s3.CompletedPart) {
@@ -208,15 +209,15 @@ func UploadPart(upload datatype.UploadPartRequest) (*s3.CompletedPart, error) {
 	gLog.Trace.Printf("Uploading part :%d - Size %d", upload.PartNumber, len(upload.Content))
 
 	if retryNumber := utils.GetRetryNumber(*viper.GetViper()); retryNumber == 0 {
-	 	upload.RetryNumber = 5
+		upload.RetryNumber = 5
 	} else {
 		upload.RetryNumber = retryNumber
 	}
 
 	if waitTime := utils.GetWaitTime(*viper.GetViper()); waitTime == 0 {
-	 	upload.WaitTime = 200
+		upload.WaitTime = 200
 	} else {
-		upload.WaitTime= waitTime
+		upload.WaitTime = waitTime
 	}
 
 	if completedPart, err := api.UploadPart(upload); err != nil {
@@ -235,12 +236,11 @@ func UploadPart(upload datatype.UploadPartRequest) (*s3.CompletedPart, error) {
 	}
 }
 
-
 /*
 	Write the document ( publication number) 's meta data
 */
 
-func WriteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Document,replace bool) (int,int) {
+func WriteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Document, replace bool) (int, int) {
 
 	var (
 		pn      = document.GetDocId()
@@ -251,122 +251,155 @@ func WriteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Documen
 	if sproxyd.TargetDriver[0:2] == "bp" {
 		request.Path = sproxyd.TargetEnv + "/" + pn
 	} else {
-		request.Path =  pn /*   pn is the Ring key   */
+		request.Path = pn /*   pn is the Ring key   */
 	}
 
-	request.ReqHeader =  map[string]string{}
+	request.ReqHeader = map[string]string{}
 	request.ReqHeader["Content-Type"] = "application/octet-stream"
 	request.ReqHeader["Usermd"] = document.GetMetadata()
-	gLog.Trace.Printf("writing pn %s - Path %s ",pn,request.Path)
-	if resp, err = sproxyd.PutObj(request, replace,[]byte{}); err != nil {
+	gLog.Trace.Printf("writing pn %s - Path %s ", pn, request.Path)
+	if resp, err = sproxyd.PutObj(request, replace, []byte{}); err != nil {
 		gLog.Error.Printf("Error %v - Put Document object %s", err, pn)
 		perrors++
 	} else {
 
-		if resp != nil  {
+		if resp != nil {
 			defer resp.Body.Close()
 			switch resp.StatusCode {
 			case 200:
 				gLog.Trace.Printf("Path/Key %s/%s has been written", request.Path, resp.Header["X-Scal-Ring-Key"])
 			case 412:
-				gLog.Warning.Printf("Path/Key %s/%s already existed", request.Path,resp.Header["X-Scal-Ring-Key"])
+				gLog.Warning.Printf("Path/Key %s/%s already existed", request.Path, resp.Header["X-Scal-Ring-Key"])
 			default:
-				gLog.Error.Printf("putObj Path/key %s/%s - resp.Status %d",request.Path, resp.Header["X-Scal-Ring-Key"],resp.StatusCode)
+				gLog.Error.Printf("putObj Path/key %s/%s - resp.Status %d", request.Path, resp.Header["X-Scal-Ring-Key"], resp.StatusCode)
 				perrors++
 			}
-			return perrors,resp.StatusCode
+			return perrors, resp.StatusCode
 		}
 	}
-	return perrors,-1
+	return perrors, -1
+}
+func DeleteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Document) (int,int) {
+
+	var (
+		pn      = document.GetDocId()
+		perr = 0
+	)
+
+	if sproxyd.TargetDriver[0:2] == "bp" {
+		request.Path = sproxyd.TargetEnv + "/" + pn
+	} else {
+		request.Path = pn /*   pn is the Ring key   */
+	}
+
+	gLog.Trace.Printf("deleting pn %s - Path %s ", pn, request.Path)
+	if resp, err := sproxyd.Deleteobject(request); err != nil {
+		gLog.Error.Printf("Error %v - deleting  %s", err)
+		perr++
+	} else {
+		if resp != nil {
+			defer resp.Body.Close()
+			switch resp.StatusCode {
+			case 200:
+				gLog.Info.Printf("Host: %s - Ring key/path %s has been deleted - Response status %d", request.Hspool.Hosts()[0], request.Path, resp.StatusCode)
+			case 404:
+				gLog.Warning.Printf("Host: %s - Ring Key/path %s does not exist - Response status %d ", request.Hspool.Hosts()[0], request.Path, resp.StatusCode)
+			default:
+				gLog.Error.Printf("Host: %s Delete Ring key/path %s - Response status %d", request.Hspool.Hosts()[0], request.Path, resp.StatusCode)
+				perr++
+			}
+			return perr,resp.StatusCode
+		}
+	}
+	return perr,-1
 }
 
 /*
 	write a page af a document pn ( publication number)
- */
+*/
 
-func WriteDocPage(request sproxyd.HttpRequest, pg *documentpb.Page, replace bool) (int,int) {
+func WriteDocPage(request sproxyd.HttpRequest, pg *documentpb.Page, replace bool) (int, int) {
 
 	var (
 		perrors = 0
-		pn = pg.GetPageId()
-		resp *http.Response
-		err error
+		pn      = pg.GetPageId()
+		resp    *http.Response
+		err     error
 	)
 	request.Path = sproxyd.TargetEnv + "/" + pn + "/p" + strconv.Itoa((int)(pg.PageNumber))
-	request.ReqHeader =  map[string]string{}
+	request.ReqHeader = map[string]string{}
 	request.ReqHeader["Usermd"] = pg.GetMetadata()
 	request.ReqHeader["Content-Type"] = "application/octet-stream" // Content type
-	gLog.Trace.Printf("writing %d bytes to path  %s/%s",pg.Size,sproxyd.TargetDriver,request.Path)
-	if resp, err = sproxyd.PutObj(&request,replace, pg.GetObject()); err != nil {
+	gLog.Trace.Printf("writing %d bytes to path  %s/%s", pg.Size, sproxyd.TargetDriver, request.Path)
+	if resp, err = sproxyd.PutObj(&request, replace, pg.GetObject()); err != nil {
 		gLog.Error.Printf("Error %v - Put Page object %s", err, pn)
 		perrors++
 	} else {
-		if resp != nil   {
+		if resp != nil {
 			defer resp.Body.Close()
 			switch resp.StatusCode {
 			case 200:
 				gLog.Trace.Printf("Path/Key %s/%s has been written", request.Path, resp.Header["X-Scal-Ring-Key"])
 			case 412:
-				gLog.Warning.Printf("Path/Key %s/%s already existed", request.Path,resp.Header["X-Scal-Ring-Key"])
+				gLog.Warning.Printf("Path/Key %s/%s already existed", request.Path, resp.Header["X-Scal-Ring-Key"])
 			default:
-				gLog.Error.Printf("putObj Path/key %s/%s - resp.Status %d",request.Path, resp.Header["X-Scal-Ring-Key"],resp.Status)
+				gLog.Error.Printf("putObj Path/key %s/%s - resp.Status %d", request.Path, resp.Header["X-Scal-Ring-Key"], resp.Status)
 				perrors++
 			}
-			return perrors,resp.StatusCode
+			return perrors, resp.StatusCode
 		}
 	}
-	return perrors,-1
+	return perrors, -1
 }
 
-func WriteDocPdf( /*request *sproxyd.HttpRequest */  pd *documentpb.Pdf, replace bool) (int,int) {
+func WriteDocPdf( /*request *sproxyd.HttpRequest */ pd *documentpb.Pdf, replace bool) (int, int) {
 
 	var (
-		pn = pd.GetPdfId()
+		pn      = pd.GetPdfId()
 		request = sproxyd.HttpRequest{
 			Hspool: sproxyd.TargetHP,
 			Client: &http.Client{
 				Timeout:   sproxyd.ReadTimeout,
 				Transport: sproxyd.Transport,
 			},
-			Path : sproxyd.TargetEnv + "/" + pn,
-			ReqHeader :  map[string]string{
-				"Usermd" : pd.GetMetadata(),
-				"Content-Type" : "application/octet-stream",
+			Path: sproxyd.TargetEnv + "/" + pn,
+			ReqHeader: map[string]string{
+				"Usermd":       pd.GetMetadata(),
+				"Content-Type": "application/octet-stream",
 			},
 		}
 		perrors = 0
-		resp *http.Response
-		err error
+		resp    *http.Response
+		err     error
 	)
 
 	/*
-	request.Path = sproxyd.TargetEnv + "/" + pn
-	request.ReqHeader = map[string]string{
-				"Usermd" : pd.GetMetadata(),
-				"Content-Type" : "application/octet-stream",
-			}
+		request.Path = sproxyd.TargetEnv + "/" + pn
+		request.ReqHeader = map[string]string{
+					"Usermd" : pd.GetMetadata(),
+					"Content-Type" : "application/octet-stream",
+				}
 	*/
 
+	gLog.Trace.Printf("writing %d bytes to path  %s/%s", pd.Size, sproxyd.TargetDriver, request.Path)
 
-	gLog.Trace.Printf("writing %d bytes to path  %s/%s",pd.Size,sproxyd.TargetDriver,request.Path)
-
-	if resp, err = sproxyd.PutObj(&request,replace, pd.GetPdf()); err != nil {
+	if resp, err = sproxyd.PutObj(&request, replace, pd.GetPdf()); err != nil {
 		gLog.Error.Printf("Error %v - Put Pdf object %s", err, pn)
 		perrors++
 	} else {
-		if resp != nil   {
+		if resp != nil {
 			defer resp.Body.Close()
 			switch resp.StatusCode {
 			case 200:
 				gLog.Trace.Printf("Path/Key %s/%s has been written", request.Path, resp.Header["X-Scal-Ring-Key"])
 			case 412:
-				gLog.Warning.Printf("Path/Key %s/%s already existed", request.Path,resp.Header["X-Scal-Ring-Key"])
+				gLog.Warning.Printf("Path/Key %s/%s already existed", request.Path, resp.Header["X-Scal-Ring-Key"])
 			default:
-				gLog.Error.Printf("putObj Path/key %s/%s - resp.Status %d",request.Path, resp.Header["X-Scal-Ring-Key"],resp.Status)
+				gLog.Error.Printf("putObj Path/key %s/%s - resp.Status %d", request.Path, resp.Header["X-Scal-Ring-Key"], resp.Status)
 				perrors++
 			}
-			return perrors,resp.StatusCode
+			return perrors, resp.StatusCode
 		}
 	}
-	return perrors,-1
+	return perrors, -1
 }
