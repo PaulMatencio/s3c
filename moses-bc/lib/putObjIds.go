@@ -112,19 +112,21 @@ func _opById1(method string, pn string, np int, replace bool, check bool) int {
 	if !check {
 		if method == "put" {
 
-			if nerr, status := WriteDocMetadata(&request1, document, replace); nerr > 0 {
-				gLog.Warning.Printf("Document %s is not written", document.DocId)
+			if nerr, status := WriteDocMetadata(&request1, document, replace); nerr > 0 && status != 412 {
+				gLog.Warning.Printf("Status Code %d - Document %s is not written", status, document.DocId)
 				return nerr
 			} else {
 				if status == 412 {
 					gLog.Warning.Printf("Document %s is not restored - use --replace=true  ou -r=true to replace the existing document", document.DocId)
-					return 1
+					/* continue  */
 				}
 			}
 		} else {
 			if nerr, status := DeleteDocMetadata(&request1, document); nerr > 0 {
 				gLog.Error.Printf("Document %s is not deleted - Status Code %d ", document.DocId,status)
 				return nerr
+			} else {
+				gLog.Info.Printf("Document %s is deleted - Status Code %d ", document.DocId,status)
 			}
 		}
 	} else {
