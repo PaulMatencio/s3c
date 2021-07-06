@@ -117,8 +117,7 @@ func _opById1(method string, pn string, np int, replace bool, check bool) int {
 				return nerr
 			} else {
 				if status == 412 {
-					gLog.Warning.Printf("Document %s is not restored - use --replace=true  ou -r=true to replace the existing document", document.DocId)
-					/* continue  */
+					gLog.Warning.Printf("Host: %s - Ring key/path %s already existed - Response status Code %d", request1.Hspool.Hosts()[0], request1.Path, status)
 				}
 			}
 		} else {
