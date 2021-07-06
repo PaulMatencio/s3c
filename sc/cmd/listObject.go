@@ -23,7 +23,7 @@ var (
 	}
 
 	loCmd = &cobra.Command{
-		Use:   "lo",
+		Use:   "lsObjV2",
 		Short: loshort,
 		Hidden: true,
 		Long: ``,
@@ -157,7 +157,7 @@ func listObjectV2(cmd *cobra.Command,args []string) {
 		Prefix : prefix,
 		MaxKey : maxKey,
 		Marker : marker,
-		Continuationoken:  token,
+		Continuationtoken:  token,
 		Delimiter: delimiter,
 	}
 	L:=1
@@ -188,7 +188,7 @@ func listObjectV2(cmd *cobra.Command,args []string) {
 		}
 		L++
 		if  *result.IsTruncated  && (maxLoop == 0 || L <= maxLoop) {
-			req.Continuationoken = token
+			req.Continuationtoken = token
 
 		} else {
 			gLog.Info.Printf("Total number of objects returned: %d",total)
