@@ -287,7 +287,13 @@ func backup_bucket() (string, error) {
 					if *v.Key != nextmarker {
 						gLog.Info.Printf("Key: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size, v.LastModified)
 						svc := req.Service
-						buck := mosesbc.SetBucketName(*v.Key, req.Bucket)
+
+						var buck string
+						if incr {
+							buck = mosesbc.SetBucketName(*v.Key, req.Bucket)
+						} else {
+							buck = req.Bucket
+						}
 						request := datatype.StatObjRequest{
 							Service: svc,
 							Bucket:  buck,
@@ -343,7 +349,12 @@ func backup_bucket() (string, error) {
 											*/
 											document.S3Meta = usermd
 											document.LastUpdated = timestamppb.Now()
-											buck1:= mosesbc.SetBucketName(pn, tgtBucket)
+											var buck1 string
+											if incr {
+												buck1= mosesbc.SetBucketName(pn, tgtBucket)
+											} else {
+												buck1 = tgtBucket
+											}
 											if _, err := writeS3(tgtS3, buck1, maxPartSize, document); err != nil {
 												gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
 												mt.Lock()
