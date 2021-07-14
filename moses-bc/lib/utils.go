@@ -155,6 +155,7 @@ func SetBucketName(prefix string,bucket string) string{
 			s = "05"
 		}
 	}
+	gLog.Trace.Printf("Set bucket name %s ",bucket+"_"+s)
 	return bucket+"_" +s
 }
 
