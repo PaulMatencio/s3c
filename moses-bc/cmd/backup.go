@@ -322,7 +322,14 @@ func backup_bucket() (string, error) {
 								if np, err = strconv.Atoi(userm.TotalPages); err == nil {
 									if errs, document := mosesbc.BackupAllBlob(pn, np, maxPage); len(errs) == 0 {
 										document.S3Meta = usermd
-										if _, err := writeS3(tgtS3, tgtBucket, maxPartSize, document); err != nil {
+										document.LastUpdated = timestamppb.Now()
+											var buck1 string
+											if incr {
+												buck1= mosesbc.SetBucketName(pn, tgtBucket)
+											} else {
+												buck1 = tgtBucket
+											}
+										if _, err := writeS3(tgtS3, buck1, maxPartSize, document); err != nil {
 											gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
 											mt.Lock()
 											gerrors += 1
