@@ -1,3 +1,4 @@
+
 // Copyright © 2021 NAME HERE <EMAIL ADDRESS>
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -89,4 +90,3 @@ func TestById(method string , bucket string, marker string,prefix string,maxKey 
 		gLog.Error.Printf("Failed to create a S3 source session")
 	}
 }
-

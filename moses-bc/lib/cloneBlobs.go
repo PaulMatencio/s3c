@@ -18,19 +18,19 @@ import (
 */
 
 
-func CloneBlob1(pn string, np int, maxPage int,replace bool) (int,*documentpb.Document){
+func Clone_blob(pn string, np int, maxPage int,replace bool) (int,*documentpb.Document){
 
 	if np <= maxPage {
-		return _cloneBlob1(pn,np,replace)
+		return clone_regular_blob(pn,np,replace)
 	} else {
-		return _cloneBig1(pn, np, maxPage,replace)
+		return clone_large_blob(pn, np, maxPage,replace)
 	}
 }
 
 /*
 document with  smaller pages number than the maxPage value
  */
-func _cloneBlob1(pn string, np int,replace bool) (int,*documentpb.Document){
+func clone_regular_blob(pn string, np int,replace bool) (int,*documentpb.Document){
 
 	var (
 		request = sproxyd.HttpRequest{
@@ -129,7 +129,7 @@ func _cloneBlob1(pn string, np int,replace bool) (int,*documentpb.Document){
 	get document of which  the number of pages > maxPages
 
 */
-func _cloneBig1(pn string, np int, maxPage int,replace bool) (int,*documentpb.Document){
+func clone_large_blob(pn string, np int, maxPage int,replace bool) (int,*documentpb.Document){
 	var (
 
 		start,q,r,end ,npages int
@@ -204,7 +204,7 @@ func _cloneBig1(pn string, np int, maxPage int,replace bool) (int,*documentpb.Do
 
 	for s := 1; s <= q; s++ {
 		start3 := time.Now()
-		nerr = _clonePart1(document, pn, np,start, end,replace)
+		nerr = clone_part_large_blob(document, pn, np,start, end,replace)
 		gLog.Info.Printf("Get pages range %d:%d for document %s - Elapsed time %v ",start,end,pn,time.Since(start3))
 		start = end + 1
 		end += maxPage
@@ -216,7 +216,7 @@ func _cloneBig1(pn string, np int, maxPage int,replace bool) (int,*documentpb.Do
 	if r > 0 {
 		start4 := time.Now()
 		start:= q*maxPage+1
-		nerr = _clonePart1(document, pn,np,start, np,replace)
+		nerr = clone_part_large_blob(document, pn,np,start, np,replace)
 		gLog.Info.Printf("Get pages range %d:%d for document %s - Elapsed time %v ",start,np,pn,time.Since(start4))
 	}
 	gLog.Info.Printf("Clone document %s - number of pages %d - Document size %d - Elapsed time %v",document.DocId,npages,document.Size,time.Since(start2))
@@ -224,7 +224,7 @@ func _cloneBig1(pn string, np int, maxPage int,replace bool) (int,*documentpb.Do
 }
 
 
-func _clonePart1(document *documentpb.Document, pn string, np int, start int, end int,replace bool) (int) {
+func clone_part_large_blob(document *documentpb.Document, pn string, np int, start int, end int,replace bool) (int) {
 
 	var (
 		//  sproxyd request for the source Ring

@@ -15,7 +15,6 @@
 package cmd
 
 import (
-	"bufio"
 	"encoding/json"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/paulmatencio/s3c/api"
@@ -31,10 +30,10 @@ import (
 
 var (
 	cloneCmd = &cobra.Command{
-		Use:   "clone",
+		Use:   "clone-bucket",
 		Short: "Command to clone Moses objects",
 		Long:  ``,
-		Run:   Clone,
+		Run:   Clone_bucket,
 	}
 	// s3Src, s3Tgt  datatype.CreateSession
 	reIndex bool
@@ -64,15 +63,14 @@ func init() {
 	initCloFlags(cloneCmd)
 }
 
-func Clone(cmd *cobra.Command, args []string) {
+func Clone_bucket(cmd *cobra.Command, args []string) {
 
-	var listpn *bufio.Scanner
-	mosesbc.SetSourceSproxyd("clone", srcUrl, driver,env)
-	mosesbc.SetTargetSproxyd("check", targetUrl, targetDriver,targetEnv)
+	mosesbc.SetSourceSproxyd("clone", srcUrl, driver, env)
+	mosesbc.SetTargetSproxyd("clone", targetUrl, targetDriver, targetEnv)
 
 	if len(srcBucket) == 0 {
 		if len(inFile) == 0 {
-			gLog.Warning.Printf("%s", missingsrcBucket)
+			gLog.Warning.Printf("%s", missingSrcBucket)
 			gLog.Warning.Printf("%s", missingiFile)
 			return
 		} else {
@@ -84,13 +82,42 @@ func Clone(cmd *cobra.Command, args []string) {
 	}
 
 	if len(tgtBucket) == 0 {
-		gLog.Warning.Printf("%s", missingtgtBucket)
+		gLog.Warning.Printf("%s", missingTgtBucket)
 		return
 	}
 
-	if err := mosesbc.CheckBucketName(srcBucket, tgtBucket); err != nil {
-		gLog.Warning.Printf("%v", err)
-		return
+	if len(prefix) > 0 {
+
+		if len(inFile) > 0 {
+			gLog.Warning.Println("--prefix  and --input-file are incompatible ; --input-file is ignored")
+		}
+		if len(srcBucket) > 0 {
+			if err, suf := mosesbc.GetBucketSuffix(srcBucket, prefix); err != nil {
+				gLog.Error.Printf("%v", err)
+				return
+			} else {
+				if len(suf) > 0 {
+					srcBucket += "-" + suf
+					gLog.Warning.Printf("A suffix %s is appended to the source Bucket %s", suf, srcBucket)
+				}
+			}
+		}
+		if err, suf := mosesbc.GetBucketSuffix(tgtBucket, prefix); err != nil {
+			gLog.Error.Printf("%v", err)
+			return
+		} else {
+			if len(suf) > 0 {
+				tgtBucket += "-" + suf
+				gLog.Warning.Printf("A suffix %s is appended to the target Bucket %s", suf, tgtBucket)
+			}
+		}
+	}
+	//  suffix of source and target buckets must be the same
+	if len(inFile) == 0 {
+		if err := mosesbc.CheckBucketName(srcBucket, tgtBucket); err != nil {
+			gLog.Warning.Printf("%v", err)
+			return
+		}
 	}
 
 	if srcS3 = mosesbc.CreateS3Session("clone", "source"); srcS3 == nil {
@@ -105,7 +132,7 @@ func Clone(cmd *cobra.Command, args []string) {
 		}
 	}
 	start := time.Now()
-	if nextMarker, err := _cloneBlobs(srcS3, tgtS3, listpn); err != nil {
+	if nextMarker, err := clone_bucket(); err != nil {
 		gLog.Error.Printf("error %v - Next marker %s", err, nextMarker)
 	} else {
 		gLog.Info.Printf("Next Marker %s", nextMarker)
@@ -113,8 +140,8 @@ func Clone(cmd *cobra.Command, args []string) {
 	gLog.Info.Printf("Total Elapsed time: %v", time.Since(start))
 }
 
-func _cloneBlobs(srcS3 *s3.S3, tgtS3 *s3.S3, listpn *bufio.Scanner) (string, error) {
-
+// func clone_bucket(srcS3 *s3.S3, tgtS3 *s3.S3, listpn *bufio.Scanner) (string, error) {
+func clone_bucket() (string, error) {
 	var (
 		nextmarker, token            string
 		N                            int
@@ -123,11 +150,11 @@ func _cloneBlobs(srcS3 *s3.S3, tgtS3 *s3.S3, listpn *bufio.Scanner) (string, err
 		re, si                       sync.Mutex
 	)
 	req1 := datatype.ListObjV2Request{
-		Service:          srcS3,
-		Bucket:           srcBucket,
-		Prefix:           prefix,
-		MaxKey:           int64(maxKey),
-		Marker:           marker,
+		Service:           srcS3,
+		Bucket:            srcBucket,
+		Prefix:            prefix,
+		MaxKey:            int64(maxKey),
+		Marker:            marker,
 		Continuationtoken: token,
 	}
 	gLog.Info.Println(req1)
@@ -140,7 +167,7 @@ func _cloneBlobs(srcS3 *s3.S3, tgtS3 *s3.S3, listpn *bufio.Scanner) (string, err
 			npages       int   = 0
 			docsizes     int64 = 0
 			gerrors      int   = 0
-			wg1 sync.WaitGroup
+			wg1          sync.WaitGroup
 		)
 		N++ // number of loop
 		if len(srcBucket) > 0 {
@@ -157,9 +184,10 @@ func _cloneBlobs(srcS3 *s3.S3, tgtS3 *s3.S3, listpn *bufio.Scanner) (string, err
 					if *v.Key != nextmarker {
 						ndocr += 1
 						svc1 := req1.Service
+						buck1 := mosesbc.SetBucketName(*v.Key, req1.Bucket)
 						request := datatype.StatObjRequest{
 							Service: svc1,
-							Bucket:  req1.Bucket,
+							Bucket:  buck1,
 							Key:     *v.Key,
 						}
 						wg1.Add(1)
@@ -181,7 +209,7 @@ func _cloneBlobs(srcS3 *s3.S3, tgtS3 *s3.S3, listpn *bufio.Scanner) (string, err
 								pn = rh.Key
 								if np, err = strconv.Atoi(userm.TotalPages); err == nil {
 									start3 := time.Now()
-									nerr, document := mosesbc.CloneBlob1(pn, np, maxPage, replace)
+									nerr, document := mosesbc.Clone_blob(pn, np, maxPage, replace)
 									if nerr == 0 {
 										si.Lock()
 										npages += int(document.NumberOfPages)
@@ -204,7 +232,7 @@ func _cloneBlobs(srcS3 *s3.S3, tgtS3 *s3.S3, listpn *bufio.Scanner) (string, err
 				if *result.IsTruncated {
 					nextmarker = *result.Contents[l-1].Key
 					token = *result.NextContinuationToken
-					gLog.Warning.Printf("Truncated %v - Next marker: %s  - Nextcontinuation token: %s", *result.IsTruncated, nextmarker,token)
+					gLog.Warning.Printf("Truncated %v - Next marker: %s  - Nextcontinuation token: %s", *result.IsTruncated, nextmarker, token)
 				}
 				// ndocs = ndocs - gerrors
 				gLog.Info.Printf("Number of cloned documents: %d of %d - Number of pages: %d  - Documents size: %d - Number of errors: %d -  Elapsed time: %v", ndocs, ndocr, npages, docsizes, gerrors, time.Since(start))

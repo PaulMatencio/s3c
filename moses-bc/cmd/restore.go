@@ -44,10 +44,19 @@ const CHUNKSIZE = 262144
 var (
 	pn, iDir   string
 	restoreCmd = &cobra.Command{
-		Use:   "restore",
-		Short: "Command to restore Moses",
-		Long:  ``,
-		Run:   Restore,
+		Use:   "restore-bucket",
+		Short: "Command to restore Moses documents which are previously backed up with the backup command",
+		Long: `Command to restore Moses documents which are previously backed up with the backup command
+	Examples
+	restore --prefix ES/123 --source-bucket meta-moses-bkp-pn-02 --target-bucket meta-moses-prod-pn-02 
+	will restore documents whose document id prefixed with  ES/123. 
+	
+	Use the suffix command to obtain the suffix of a  bucket for a given prefix. Ex suffix ES/123 will return 02
+
+	restore --source-bucket meta-moses-bkp-pn-02 --target-bucket meta-moses-prod-pn-02 will restore  
+	all the documents which are backed up and stored in the meta-moses-bkp-pn-02 bucket
+                 `,
+		Run: Restore_bucket,
 	}
 	replace bool
 )
@@ -76,41 +85,69 @@ func init() {
 	initResFlags(restoreCmd)
 }
 
-func Restore(cmd *cobra.Command, args []string) {
+func Restore_bucket(cmd *cobra.Command, args []string) {
 
 	var (
 		nextMarker string
 		err        error
 	)
 	start := time.Now()
-	mosesbc.SetTargetSproxyd("restore", targetUrl, targetDriver,targetEnv)
+	mosesbc.SetTargetSproxyd("restore", targetUrl, targetDriver, targetEnv)
 
 	if len(srcBucket) == 0 {
-		gLog.Warning.Printf("%s", missingsrcBucket)
+		gLog.Warning.Printf("%s", missingSrcBucket)
 		return
 	}
-	if bMedia == "S3" {
-		if len(tgtBucket) == 0 {
-			gLog.Warning.Printf("%s", missingtgtBucket)
-			return
+	if len(tgtBucket) == 0 {
+		gLog.Warning.Printf("%s", missingTgtBucket)
+		return
+	}
+	if len(prefix) > 0 {
+		if len(inFile) > 0 {
+			gLog.Warning.Println("--prefix  and --input-file are incompatible ; --input-file is ignored")
 		}
-		if err := mosesbc.CheckBucketName(srcBucket, tgtBucket); err != nil {
-			gLog.Warning.Printf("%v", err)
-			return
+		if len(srcBucket) > 0 {
+			if err, suf := mosesbc.GetBucketSuffix(srcBucket, prefix); err != nil {
+				gLog.Error.Printf("%v", err)
+				return
+			} else {
+				if len(suf) > 0 {
+					srcBucket += "-" + suf
+					gLog.Warning.Printf("A suffix %s is appended to the source Bucket %s", suf, srcBucket)
+				}
+			}
 		}
-		srcS3 = mosesbc.CreateS3Session("restore", "source")
-	} else {
-		if len(iDir) == 0 {
-			gLog.Warning.Printf("%s", "missing input directory")
+		if err, suf := mosesbc.GetBucketSuffix(tgtBucket, prefix); err != nil {
+			gLog.Error.Printf("%v", err)
+			return
+		} else {
+			if len(suf) > 0 {
+				tgtBucket += "-" + suf
+				gLog.Warning.Printf("A suffix %s is appended to the target Bucket %s", suf, tgtBucket)
+			}
+		}
+	}
+	// source and target buckets must have the same suffix
+	if err := mosesbc.CheckBucketName(srcBucket, tgtBucket); err != nil {
+		gLog.Warning.Printf("%v", err)
+		return
+	}
+	//
+	if len(inFile) > 0 {
+		if listpn, err = utils.Scanner(inFile); err != nil {
+			gLog.Error.Printf("Error %v  scanning %s ", err, inFile)
 			return
 		}
 	}
+
+	srcS3 = mosesbc.CreateS3Session("restore", "source")
+
 	//  create the output directory if it does not exist
 	utils.MakeDir(outDir)
 	//   bucket for indexing
 	tgtS3 = mosesbc.CreateS3Session("restore", "target")
 
-	if nextMarker, err = _restoreBlobs(marker, srcBucket, replace); err != nil {
+	if nextMarker, err = restore_bucket(); err != nil {
 		gLog.Error.Printf("error %v - Next marker %s", err, nextMarker)
 	} else {
 		gLog.Info.Printf("Next Marker %s", nextMarker)
@@ -118,8 +155,8 @@ func Restore(cmd *cobra.Command, args []string) {
 	gLog.Info.Printf("Total Elapsed time: %v", time.Since(start))
 }
 
-func _restoreBlobs(marker string, srcBucket string, replace bool) (string, error) {
-
+// func restoreBlob(marker string, srcBucket string, listpn *bufio.Scanner,replace bool) (string, error) {
+func restore_bucket() (string, error) {
 	var (
 		nextmarker, token     string
 		N                     int
@@ -130,12 +167,12 @@ func _restoreBlobs(marker string, srcBucket string, replace bool) (string, error
 	// mosesbc.SetSourceSproxyd("restore",srcUrl,driver)
 
 	req := datatype.ListObjV2Request{
-		Service:          srcS3,
-		Bucket:           srcBucket,
-		Prefix:           prefix,
-		MaxKey:           int64(maxKey),
-		Marker:           marker,
-		Delimiter:        delimiter,
+		Service:           srcS3,
+		Bucket:            srcBucket,
+		Prefix:            prefix,
+		MaxKey:            int64(maxKey),
+		Marker:            marker,
+		Delimiter:         delimiter,
 		Continuationtoken: token,
 	}
 	start0 := time.Now()
@@ -228,12 +265,7 @@ func _restoreBlobs(marker string, srcBucket string, replace bool) (string, error
 										    else -> PutBig1
 									*/
 									start4 := time.Now()
-									nerr := 0
-									if document.NumberOfPages <= int32(maxPage) {
-										nerr = mosesbc.RestBlob1(document, replace)
-									} else {
-										nerr = mosesbc.RestBig1(document, maxPage, replace)
-									}
+									nerr := mosesbc.RestoreAllBlob(document,maxPage,replace)
 									//  add the number of restored pages
 									si.Lock()
 									npages += (int)(document.NumberOfPages)

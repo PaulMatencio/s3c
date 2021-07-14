@@ -8,9 +8,15 @@ import (
 	"strconv"
 	"sync"
 )
-
+func RestoreAllBlob(document *documentpb.Document,  maxPage int,replace bool) (int){
+	if document.NumberOfPages <= int32(maxPage) {
+		return restore_regular_blob(document,replace)
+	} else {
+		 return restore_large_blob(document,maxPage,replace)
+	}
+}
 //  Put  sproxyd blobs
-func RestBlob1(document *documentpb.Document,replace bool) int {
+func restore_regular_blob(document *documentpb.Document,replace bool) int {
 	var (
 		request = sproxyd.HttpRequest{
 			Hspool: sproxyd.TargetHP, // IP of target sproxyd
@@ -56,7 +62,7 @@ func RestBlob1(document *documentpb.Document,replace bool) int {
 }
 
 
-func RestBig1(document *documentpb.Document,maxPage int,replace bool) int {
+func restore_large_blob(document *documentpb.Document,maxPage int,replace bool) int {
 	var (
 		np = int (document.NumberOfPages)
 		q     int = np  / maxPage
@@ -85,11 +91,8 @@ func RestBig1(document *documentpb.Document,maxPage int,replace bool) int {
 		}
 	}
 
-	// gLog.Warning.Printf("Big document %s  - number of pages %d ",document.GetDocId(),np)
-	// gLog.Trace.Printf("Docid: %s - number of pages: %d - document metadata: %s",document.DocId,document.NumberOfPages,document.Metadata)
-
 	for s := 1; s <= q; s++ {
-		perrors = _restPart1(&request,document,start, end,replace)
+		perrors = restore_part_large_blob(&request,document,start, end,replace)
 		start = end + 1
 		end += maxPage
 		if end > np {
@@ -97,13 +100,13 @@ func RestBig1(document *documentpb.Document,maxPage int,replace bool) int {
 		}
 	}
 	if r > 0 {
-		perrors = _restPart1(&request,document,q*maxPage+1 , np,replace)
+		perrors = restore_part_large_blob(&request,document,q*maxPage+1 , np,replace)
 	}
 	return perrors
 }
 
 
-func _restPart1(request *sproxyd.HttpRequest, document *documentpb.Document,start int,end int,replace bool) (int) {
+func restore_part_large_blob(request *sproxyd.HttpRequest, document *documentpb.Document,start int,end int,replace bool) (int) {
 
 	var (
 		perrors int

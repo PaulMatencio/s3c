@@ -27,16 +27,16 @@ type GetBlobResponse struct {
 */
 
 
-func BackBlob1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
+func BackupAllBlob(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 	if np <= maxPage {
-		return _backBlob1(pn,np)
+		return backup_regular_blob(pn,np)
 	} else {
-		return _backBig1(pn, np, maxPage)
+		return backup_large_blob(pn, np, maxPage)
 	}
 }
 
 //  document with  smaller pages number than maxPage
-func _backBlob1(pn string, np int) ( []error,*documentpb.Document){
+func backup_regular_blob(pn string, np int) ( []error,*documentpb.Document){
 	var (
 		request = sproxyd.HttpRequest{
 			Hspool: sproxyd.HP,
@@ -139,9 +139,8 @@ func _backBlob1(pn string, np int) ( []error,*documentpb.Document){
 
 /*
 	get document of which  the number of pages > maxPages
-
 */
-func _backBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
+func backup_large_blob(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 	var (
 
 		start,q,r,end ,npages int
@@ -207,7 +206,7 @@ func _backBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 
 	for s := 1; s <= q; s++ {
 		start3 := time.Now()
-		errs,document = _backPart1(document, pn, np,start, end)
+		errs,document = backup_part_large_blob(document, pn, np,start, end)
 		gLog.Info.Printf("Get pages range %d:%d for document %s - Elapsed time %v ",start,end,pn,time.Since(start3))
 		start = end + 1
 		end += maxPage
@@ -219,7 +218,7 @@ func _backBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 	if r > 0 {
 		start4 := time.Now()
 		start:= q*maxPage+1
-		errs,document = _backPart1(document, pn,np,start, np)
+		errs,document = backup_part_large_blob(document, pn,np,start, np)
 		gLog.Info.Printf("Get pages range %d:%d for document %s - Elapsed time %v ",start,np,pn,time.Since(start4))
 	}
 	gLog.Info.Printf("Backup document %s - number of pages %d - Document size %d - Elapsed time %v",document.DocId,npages,document.Size,time.Since(start2))
@@ -227,7 +226,7 @@ func _backBig1(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 }
 
 
-func _backPart1(document *documentpb.Document, pn string, np int, start int, end int) ([]error, *documentpb.Document) {
+func backup_part_large_blob(document *documentpb.Document, pn string, np int, start int, end int) ([]error, *documentpb.Document) {
 
 	var (
 		request = sproxyd.HttpRequest{

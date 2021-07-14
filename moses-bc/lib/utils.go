@@ -10,6 +10,7 @@ import (
 	"github.com/paulmatencio/s3c/sproxyd/lib"
 	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
 type  RingId struct {
@@ -141,4 +142,74 @@ func CheckPdfAndP0(pn string, usermd string ) (bool,bool){
 		}
 	}
 	return pdf,p0
+}
+
+
+func SetBucketName(prefix string,bucket string) string{
+	var s  string
+	if len(prefix)> 0 {
+		pref := strings.Split(prefix, "/")[0]
+		if pref != "XP" {
+			s = fmt.Sprintf("%02d", HashKey(pref, 5))
+		} else {
+			s = "05"
+		}
+	}
+	return bucket+"_" +s
+}
+
+func HasSuffix(bucket string) bool {
+	if  bucket[len(bucket)-2:len(bucket)] >= "00"  && bucket[len(bucket)-2:len(bucket)] <="05" {
+		return true
+	}
+	return false
+}
+
+func CheckBucketName(srcBucket string, tgtBucket string) (error) {
+	var err error
+	if srcBucket == tgtBucket {
+		return errors.New(fmt.Sprintf("Target bucket %s and source bucket %s are the same", tgtBucket, srcBucket))
+
+	} else {
+		if len(srcBucket) > 2 && len(tgtBucket)>  2 {
+			sl2 := srcBucket[len(srcBucket)-2:len(srcBucket)]
+			tl2 := tgtBucket[len(tgtBucket)-2:len(tgtBucket)]
+			if sl2 != tl2 {
+				return errors.New(fmt.Sprintf("The suffix <%s> of source bucket %s  and the suffix <%s> target bucket %s are different", sl2, srcBucket, tl2, tgtBucket))
+
+			}
+		}
+	}
+	return err
+}
+
+func GetBucketSuffix(bucket string, prefix string) (error,string) {
+	var (
+		err error
+		s  string
+	)
+	pref := strings.Split(prefix,"/")[0]
+	if pref != "XP" {
+		s = fmt.Sprintf("%02d", HashKey(pref, 5))
+	}  else {
+		s = "05"
+	}
+	suf := bucket[len(bucket)-2:len(bucket)]
+	if (suf >="00" && suf <="05") {
+		if suf != s {
+			return errors.New(fmt.Sprintf("For the given document id prefix %s, the suffix of the bucket %s should be %s\n\t\t\tYou can use the suffix commmand to detemine the suffix for a given prefix \n\t\t\tor just omit it,the correct suffix will be appended to the bucket name", prefix, bucket, s)), s
+		} else {
+			return err,""
+		}
+	}
+
+	return err,s
+}
+
+func HashKey(key string, modulo int) (int) {
+	v := 0;
+	for k :=0; k < len(key); k++ {
+		v += int(key[k])
+	}
+	return v % modulo
 }

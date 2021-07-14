@@ -15,7 +15,9 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
+	"github.com/aws/aws-sdk-go/service/s3"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/paulmatencio/s3c/gLog"
 	sproxyd "github.com/paulmatencio/s3c/sproxyd/lib"
@@ -41,24 +43,33 @@ const (
 
 var (
 	config string
-	bucket,levelDBUrl	 string
+	bucket,levelDBUrl,prefix	 string
 	verbose, Debug,autoCompletion 	 bool
 	loglevel,profiling, bucketNumber, retryNumber  int
 	waitTime time.Duration
-	source,target string
-	bMedia,bS3Url,bS3AccessKey,bS3SecretKey,metaUrl,metaAccessKey,metaSecretKey string
+	srcBucket, tgtBucket              string
+	srcEnv, tgtEnv 					 string
+	check        bool
+	listpn     *bufio.Scanner
+	tgtS3, srcS3 *s3.S3
 	// conTimeout,readTimeout,writeTimeout, copyTimeout,timeout time.Duration
-	missingBucket = "Missing bucket - please provide the bucket name"
-	missingPrefix = "Missing prefix  - please provide the prefix of the keys"
-	missingSource = "Missing source sproxyd urls, add sproxyd source urls in the config file"
-	missingTarget = "Missing target sproxyd urls, add sproxzd target urls in the confif file"
-	missingBS3url = "Missing Backup S3 url"
-	missingBS3ak = "Missing Backup S3 access key"
-	missingBS3sk = "Missing Backup S3 secret key"
-	missingMetaurl = "Missing source meta-moses S3 rest endpoint url"
-	missingMetaak = "Missing source meta-moses aws access key"
-	missingMetask = "Missing source meta-moses aws secret key"
+	invalidBucket = "Invalid bucket name, it should not contain a suffix"
+	missingInputFile = "Missing input file     --input-file"
 
+	missingSrcBucketAndIfile = "Either -ssource-bucket or --input-file is required"
+
+	missingSourceUrls = "Missing source sproxyd urls, add sproxyd source urls in the config file"
+	missingTargetUrls = "Missing target sproxyd urls, add sproxyd target urls in the confif file"
+	missingSrcS3Uri = "Missing source S3 uri"
+	missingSrcS3AccessKey = "Missing source S3 access key"
+	missingSourceS3SecretKey = "Missing source S3 access key"
+	missingTargetS3Uri = "Missing source S3 uri"
+	missingTargetS3AccessKey = "Missing source S3 access key"
+	missingTargetS3SecretKey = "Missing source S3 access key"
+	missingoDir      = "Missing output directory --output-directory"
+	missingiFile     = "Missing input file --input-file"
+	missingSrcBucket = "Missing source S3 bucket --source-bucket"
+	missingTgtBucket = "Missing target S3 bucket --target-bucket"
 
 )
 
@@ -88,7 +99,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&config,"config", "c","", "sc config file; default $HOME/.clone/config.yaml")
 	rootCmd.PersistentFlags().BoolVarP(&autoCompletion,"autoCompletion", "C",false, "generate bash auto completion")
 	rootCmd.PersistentFlags().IntVarP(&profiling,"profiling", "P",0, "display memory usage every P seconds")
-	rootCmd.PersistentFlags().StringVarP(&bMedia,"bMedia","","S3","backup media [S3|File]")
+	// rootCmd.PersistentFlags().StringVarP(&bMedia,"bMedia","","S3","backup media [S3|File]")
 
 	viper.BindPFlag("loglevel",rootCmd.PersistentFlags().Lookup("loglevel"))
 	viper.BindPFlag("autoCompletion",rootCmd.PersistentFlags().Lookup("autoCompletion"))
