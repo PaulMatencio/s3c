@@ -288,7 +288,7 @@ func backup_bucket() (string, error) {
 											mt.Unlock()
 										}
 									*/
-									nerr, document := BackupPn(usermd, np)
+									nerr, document := BackupPn( pn,np,usermd,maxPage)
 									if nerr > 0 {
 										mt.Lock()
 										gerrors += nerr
@@ -331,7 +331,7 @@ func backup_bucket() (string, error) {
 												mt.Unlock()
 											}
 										*/
-										nerr, document := BackupPn(usermd, np)
+										nerr, document := BackupPn( pn,np,usermd,maxPage)
 										if nerr > 0 {
 											mt.Lock()
 											gerrors += nerr
@@ -443,7 +443,7 @@ func ListPn(buf *bufio.Scanner, num int) (*s3.ListObjectsV2Output, error) {
 	return result, err
 }
 
-func BackupPn(usermd string, np int) (int, *documentpb.Document) {
+func BackupPn( pn string,np int,usermd string, maxPage int) (int, *documentpb.Document) {
 
 	var (
 		nerrs    = 0
