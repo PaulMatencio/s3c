@@ -259,7 +259,7 @@ func backup_bucket() (string, error) {
 								userm := UserMd{}
 								json.Unmarshal([]byte(usermd), &userm)
 								pn := rh.Key
-								if np, err = strconv.Atoi(userm.TotalPages); err == nil {
+								if np, err = strconv.Atoi(userm.TotalPages); err != nil {
 									/*
 										if errs, document := mosesbc.BackupAllBlob(pn, np, maxPage); len(errs) == 0 {
 											document.S3Meta = usermd
