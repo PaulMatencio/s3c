@@ -72,9 +72,9 @@ func initBkFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVarP(&maxPage, "maxPage", "", 50, "maximum number of concurrent moses pages to be concurrently procsessed")
 	cmd.Flags().IntVarP(&maxLoop, "maxLoop", "", 1, "maximum number of loop, 0 means no upper limit")
 	cmd.Flags().StringVarP(&inFile, "input-file", "i", "", "input file containing the list of objects - incremental")
-	cmd.Flags().StringVarP(&iBucket, "input-bucket", "", "", "input bucket containing the last updated objects - incremental")
+	cmd.Flags().StringVarP(&iBucket, "input-bucket", "", "", "input bucket containing the last uploaded objects - incremental")
 	// cmd.Flags().StringVarP(&outDir, "output-directory", "o", "", "output directory for --backupMedia = File")
-	cmd.Flags().StringVarP(&fromDate, "from-date", "", "1970-01-01T00:00:00Z", "backup objects with last modified from <yyyy-mm-ddThh:mm:ss>")
+	// cmd.Flags().StringVarP(&fromDate, "from-date", "", "1970-01-01T00:00:00Z", "backup objects with last modified from <yyyy-mm-ddThh:mm:ss>")
 	cmd.Flags().Int64VarP(&maxPartSize, "maxPartSize", "", 40, "Maximum partsize (MB)  for multipart upload")
 	cmd.Flags().StringVarP(&srcUrl, "source-sproxyd-url", "s", "", "source sproxyd endpoints  http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
 	cmd.Flags().StringVarP(&driver, "source-sproxyd-driver", "", "", "source sproxyd driver [bpchord|bparc]")
@@ -106,27 +106,44 @@ func Bucket_backup(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	if len(inFile) > 0 {
-		if listpn, err = utils.Scanner(inFile); err != nil {
-			gLog.Error.Printf("Error %v  scanning %s ", err, inFile)
+	if len(inFile) > 0 || len(iBucket) > 0 {
+
+		if len(inFile) > 0 && len(iBucket) > 0 {
+			gLog.Error.Printf("--input-file  and --input-bucket are mutually exclusive", inFile, iBucket)
 			return
 		}
+		/*
 		if mosesbc.HasSuffix(srcBucket) {
-			gLog.Error.Printf("Bucket %s should not have a suffix ", srcBucket)
+			gLog.Error.Printf("For incremental backup, the source bucket %s should not have a suffix", srcBucket)
 			return
 		}
 		if mosesbc.HasSuffix(tgtBucket) {
-			gLog.Error.Printf("Bucket %s should not have a suffix ", tgtBucket)
+			gLog.Error.Printf("For incremental backup, the target bucket %s should not have a suffix", tgtBucket)
 			return
 		}
-		if len(prefix) > 0 {
-			gLog.Warning.Printf("--prefix %s is ignored because of --input-file not empty", prefix)
-			prefix = ""
+		*/
+
+		/*
+			Prepare to Scan the input file
+		*/
+		if len(inFile) > 0 {
+			if listpn, err = utils.Scanner(inFile); err != nil {
+				gLog.Error.Printf("Error %v  scanning --input-file  %s ", err, inFile)
+				return
+			}
 		}
 		incr = true
 	}
 
+	if len(prefix) > 0 && len(inFile) == 0 && len(iBucket) == 0 {
+		gLog.Warning.Printf("--prefix %s is ignored for full backup", prefix)
+		prefix = ""
+	}
+
 	if len(prefix) > 0 {
+		/*
+			get the suffix of the bucket and append it to the source bucket
+		*/
 		if len(srcBucket) > 0 {
 			if err, suf := mosesbc.GetBucketSuffix(srcBucket, prefix); err != nil {
 				gLog.Error.Printf("%v", err)
@@ -138,7 +155,9 @@ func Bucket_backup(cmd *cobra.Command, args []string) {
 				}
 			}
 		}
-
+		/*
+			get the suffix of the bucket and append it to the target  bucket
+		*/
 		if err, suf := mosesbc.GetBucketSuffix(tgtBucket, prefix); err != nil {
 			gLog.Error.Printf("%v", err)
 			return
@@ -149,21 +168,33 @@ func Bucket_backup(cmd *cobra.Command, args []string) {
 			}
 		}
 	} else {
+		//  Full backup
 		if !incr && !mosesbc.HasSuffix(srcBucket) {
-			gLog.Error.Printf("Bucket %s does not have a suffix  00..05 ", srcBucket)
+			gLog.Error.Printf("Source bucket %s does not have a suffix. It should be  00..05 ", srcBucket)
+			return
+		}
+		if !incr && !mosesbc.HasSuffix(tgtBucket) {
+			gLog.Error.Printf("Target bucket %s does not have a suffix. It should be  00..05 ", tgtBucket)
 			return
 		}
 	}
 
+	// Check the name of both and target buckets
 	if err := mosesbc.CheckBucketName(srcBucket, tgtBucket); err != nil {
 		gLog.Warning.Printf("%v", err)
 		return
 	}
+
 	if frDate, err = time.Parse(time.RFC3339, fromDate); err != nil {
 		gLog.Error.Printf("Wrong date format %s", frDate)
 		return
 	}
-	//   prepare the backup environment
+
+	/*
+			Setup the source sproxyd   url , driver and environment ( moses data)
+		    Create a session to the the Source S3 cluster ( moses metadata )
+			Create a session to the the target  S3 cluster ( moses backup metadata + data)
+	*/
 	mosesbc.SetSourceSproxyd("backup", srcUrl, driver, env)
 	maxPartSize = maxPartSize * 1024 * 1024
 	srcS3 = mosesbc.CreateS3Session("backup", "source")
@@ -179,7 +210,9 @@ func Bucket_backup(cmd *cobra.Command, args []string) {
 
 }
 
-// func full_backup(marker string, srcS3 *s3.S3, srcBucket string, tgtS3 *s3.S3, tgtBucket string) (string, error) {
+/*
+	func backup_bucket(marker string, srcS3 *s3.S3, srcBucket string, tgtS3 *s3.S3, tgtBucket string) (string, error) {
+*/
 func backup_bucket() (string, error) {
 	var (
 		nextmarker, token     string
@@ -189,9 +222,10 @@ func backup_bucket() (string, error) {
 		mu                    sync.Mutex
 		mt                    sync.Mutex
 		incr                  bool = false
+		req, reql             datatype.ListObjV2Request
 	)
 
-	req := datatype.ListObjV2Request{
+	req = datatype.ListObjV2Request{
 		Service:           srcS3,
 		Bucket:            srcBucket,
 		Prefix:            prefix,
@@ -200,8 +234,18 @@ func backup_bucket() (string, error) {
 		Continuationtoken: token,
 	}
 
-	if len(inFile) > 0 {
+	if len(inFile) > 0 || len(iBucket) > 0 {
 		incr = true
+		if len(iBucket) > 0 {
+			reql = datatype.ListObjV2Request{
+				Service:           srcS3,
+				Bucket:            iBucket,
+				Prefix:            prefix,
+				MaxKey:            int64(maxKey),
+				Marker:            marker,
+				Continuationtoken: token,
+			}
+		}
 	}
 
 	for {
@@ -217,7 +261,11 @@ func backup_bucket() (string, error) {
 		if !incr {
 			result, err = api.ListObjectV2(req)
 		} else {
-			result, err = ListPn(listpn, int(maxKey))
+			if len(inFile) > 0 {
+				result, err = ListPn(listpn, int(maxKey))
+			} else {
+				result, err = api.ListObjectV2(reql)
+			}
 		}
 		if err == nil {
 			if l := len(result.Contents); l > 0 {
@@ -259,36 +307,8 @@ func backup_bucket() (string, error) {
 								userm := UserMd{}
 								json.Unmarshal([]byte(usermd), &userm)
 								pn := rh.Key
-								if np, err = strconv.Atoi(userm.TotalPages); err != nil {
-									/*
-										if errs, document := mosesbc.BackupAllBlob(pn, np, maxPage); len(errs) == 0 {
-											document.S3Meta = usermd
-											document.LastUpdated = timestamppb.Now()
-											var buck1 string
-											if incr {
-												buck1 = mosesbc.SetBucketName(pn, tgtBucket)
-											} else {
-												buck1 = tgtBucket
-											}
-											if _, err := writeS3(tgtS3, buck1, maxPartSize, document); err != nil {
-												gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
-												mt.Lock()
-												gerrors += 1
-												mt.Unlock()
-											} else {
-												docsize = (int)(document.Size)
-												npage = (int)(document.NumberOfPages)
-												// gLog.Trace.Printf("Docid: %s - Etag %v", document.DocId, so.ETag)
-											}
-											gLog.Trace.Printf("Docid: %s - number of pages: %d - Document metadata: %s", document.DocId, document.NumberOfPages, document.Metadata)
-										} else {
-											printErr(errs)
-											mt.Lock()
-											gerrors += len(errs)
-											mt.Unlock()
-										}
-									*/
-									nerr, document := BackupPn( pn,np,usermd,maxPage)
+								if np, err = strconv.Atoi(userm.TotalPages); err == nil {
+									nerr, document := BackupPn(pn, np, usermd, maxPage)
 									if nerr > 0 {
 										mt.Lock()
 										gerrors += nerr
@@ -301,37 +321,7 @@ func backup_bucket() (string, error) {
 								} else {
 									gLog.Error.Printf("Document %s - S3 Metadata has invalid number of pages in %s - Try to get it from the document user metadata ", pn, usermd)
 									if np, err, status = mosesbc.GetPageNumber(pn); err == nil {
-
-										/*
-											if errs, document := mosesbc.BackupAllBlob(pn, np, maxPage); len(errs) == 0 {
-												document.S3Meta = usermd
-												document.LastUpdated = timestamppb.Now()
-												var buck1 string
-												if incr {
-													buck1 = mosesbc.SetBucketName(pn, tgtBucket)
-												} else {
-													buck1 = tgtBucket
-												}
-												if _, err := writeS3(tgtS3, buck1, maxPartSize, document); err != nil {
-													gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
-													mt.Lock()
-													gerrors += 1
-													mt.Unlock()
-												} else {
-													docsize = (int)(document.Size)
-													npage = (int)(document.NumberOfPages)
-													// gLog.Trace.Printf("Docid: %s - Etag %v", document.DocId, so.ETag)
-												}
-
-											} else {
-
-												printErr(errs)
-												mt.Lock()
-												gerrors += len(errs)
-												mt.Unlock()
-											}
-										*/
-										nerr, document := BackupPn( pn,np,usermd,maxPage)
+										nerr, document := BackupPn(pn, np, usermd, maxPage)
 										if nerr > 0 {
 											mt.Lock()
 											gerrors += nerr
@@ -397,17 +387,6 @@ func printErr(errs []error) {
 	}
 }
 
-func writeS3(service *s3.S3, bucket string, maxPartSize int64, document *documentpb.Document) (interface{}, error) {
-
-	if maxPartSize > 0 && document.Size > maxPartSize {
-		gLog.Warning.Printf("Multipart upload %s - size %d - max part size %d", document.DocId, document.Size, maxPartSize)
-		return mosesbc.WriteS3Multipart(service, bucket, maxPartSize, document)
-	} else {
-		return mosesbc.WriteS3(service, bucket, document)
-	}
-
-}
-
 func ListPn(buf *bufio.Scanner, num int) (*s3.ListObjectsV2Output, error) {
 
 	var (
@@ -443,7 +422,7 @@ func ListPn(buf *bufio.Scanner, num int) (*s3.ListObjectsV2Output, error) {
 	return result, err
 }
 
-func BackupPn( pn string,np int,usermd string, maxPage int) (int, *documentpb.Document) {
+func BackupPn(pn string, np int, usermd string, maxPage int) (int, *documentpb.Document) {
 
 	var (
 		nerrs    = 0
@@ -467,7 +446,6 @@ func BackupPn( pn string,np int,usermd string, maxPage int) (int, *documentpb.Do
 			gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
 
 			nerrs += 1
-
 		}
 		/* else {
 			docsize = (int)(document.Size)
@@ -480,4 +458,13 @@ func BackupPn( pn string,np int,usermd string, maxPage int) (int, *documentpb.Do
 		nerrs += len(errs)
 	}
 	return nerrs, document
+}
+
+func writeS3(service *s3.S3, bucket string, maxPartSize int64, document *documentpb.Document) (interface{}, error) {
+	if maxPartSize > 0 && document.Size > maxPartSize {
+		gLog.Warning.Printf("Multipart upload %s - size %d - max part size %d", document.DocId, document.Size, maxPartSize)
+		return mosesbc.WriteS3Multipart(service, bucket, maxPartSize, document)
+	} else {
+		return mosesbc.WriteS3(service, bucket, document)
+	}
 }

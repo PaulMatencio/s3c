@@ -34,17 +34,16 @@ var (
 
 	np, status, srcUrl, targetUrl string
 	err                           error
-	driver, targetDriver         string
-	env, targetEnv    string
-
+	driver, targetDriver          string
+	env, targetEnv                string
 )
 
 func initCkFlags(cmd *cobra.Command) {
 
 	cmd.Flags().StringVarP(&pn, "pn", "k", "", "key of the the publication number cc/pn/kc; cc=country code;pn=publication number;kc=Kind code")
-	cmd.Flags().StringVarP(&srcBucket, "source-bucket", "", "", "name of source S3 bucket")
+	cmd.Flags().StringVarP(&srcBucket, "source-bucket", "", "", "name of source S3 bucket without its suffix 00..05")
 	// cmd.Flags().StringVarP(&tgtBucket, "target-bucket", "", "", "name of target S3 bucket")
-	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "key prefix")
+	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "prefix of  publication number ")
 	cmd.Flags().Int64VarP(&maxKey, "maxKey", "m", 20, "maximum number of documents (keys) to be backed up concurrently -Check --maxpage for maximum number of concurrent pages")
 	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key - Useful for rerun")
 	cmd.Flags().StringVarP(&delimiter, "delimiter", "d", "", "prefix  delimiter")
@@ -64,9 +63,9 @@ func init() {
 }
 
 func Check(cmd *cobra.Command, args []string) {
-	mosesbc.SetSourceSproxyd("check",srcUrl,driver,env)
-	mosesbc.SetTargetSproxyd("check",targetUrl,targetDriver,targetEnv)
-	gLog.Info.Println(sproxyd.TargetEnv,sproxyd.TargetDriver,sproxyd.TargetUrl)
+	mosesbc.SetSourceSproxyd("check", srcUrl, driver, env)
+	mosesbc.SetTargetSproxyd("check", targetUrl, targetDriver, targetEnv)
+	gLog.Info.Println(sproxyd.TargetEnv, sproxyd.TargetDriver, sproxyd.TargetUrl)
 	if len(pn) > 0 {
 		ChekBlob1(pn)
 	} else if len(prefix) > 0 {
@@ -74,7 +73,7 @@ func Check(cmd *cobra.Command, args []string) {
 			gLog.Error.Printf("Source S3  bucket is missing")
 			return
 		}
-		CheckBlobs(srcBucket,marker,prefix,maxKey,maxPage,maxLoop)
+		CheckBlobs(srcBucket, marker, prefix, maxKey, maxPage, maxLoop)
 	} else {
 		gLog.Error.Printf("Both publication number (pn)  and  prefix are missing")
 		return
@@ -83,7 +82,7 @@ func Check(cmd *cobra.Command, args []string) {
 
 /*
 	called by Check()  for a given publication number
- */
+*/
 func ChekBlob1(pn string) {
 	if np, err, status := mosesbc.GetPageNumber(pn); err == nil && status == 200 {
 		if np > 0 {
@@ -98,12 +97,22 @@ func ChekBlob1(pn string) {
 
 /*
 	called by Check() for a given prefix
-    the mSe etadata will be used to list all the publication for a given prefix
- */
+    the mose metadata buckets are used to list all the publication for a given prefix
+*/
 
-func CheckBlobs(bucket string, marker string,prefix string,maxKey int64,maxPage int,maxLoop int) {
+func CheckBlobs(bucket string, marker string, prefix string, maxKey int64, maxPage int, maxLoop int) {
 
-	if srcS3:= mosesbc.CreateS3Session("check","source"); srcS3 != nil {
+	if err, suf := mosesbc.GetBucketSuffix(bucket, prefix); err != nil {
+		gLog.Error.Printf("%v", err)
+		return
+	} else {
+		if len(suf) > 0 {
+			bucket += "-" + suf
+			gLog.Warning.Printf("A suffix %s is appended to the source Bucket %s", suf, bucket)
+		}
+	}
+
+	if srcS3 := mosesbc.CreateS3Session("check", "source"); srcS3 != nil {
 		request := datatype.ListObjRequest{
 			Service: srcS3,
 			Bucket:  bucket,
@@ -117,4 +126,3 @@ func CheckBlobs(bucket string, marker string,prefix string,maxKey int64,maxPage 
 		gLog.Error.Printf("Failed to create a S3 source session")
 	}
 }
-

@@ -38,7 +38,7 @@ var (
 func initPoIdFlags(cmd *cobra.Command) {
 
 	cmd.Flags().StringVarP(&pn, "pn", "k", "", "key of the the publication number cc/pn/kc; cc=country code;pn=publication number;kc=Kind code")
-	cmd.Flags().StringVarP(&srcBucket, "source-bucket", "", "", "name of source S3 bucket")
+	cmd.Flags().StringVarP(&srcBucket, "source-bucket", "", "", "name of source S3 bucket without its suffix 00..05")
 	cmd.Flags().StringVarP(&tgtBucket, "target-bucket", "", "", "name of target S3 bucket")
 	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "key prefix")
 	cmd.Flags().Int64VarP(&maxKey, "maxKey", "m", 20, "maximum number of documents (keys) to be backed up concurrently -Check --maxpage for maximum number of concurrent pages")
@@ -71,11 +71,22 @@ func Test(cmd *cobra.Command, args []string) {
 			return
 		}
 		TestById(strings.ToLower(method), srcBucket,marker,prefix,maxKey,maxLoop,check)
+	} else {
+		gLog.Error.Printf("--prefix is missing")
 	}
 }
 
 func TestById(method string , bucket string, marker string,prefix string,maxKey int64,maxLoop int,check bool) {
 
+	if err, suf := mosesbc.GetBucketSuffix(bucket, prefix); err != nil {
+		gLog.Error.Printf("%v", err)
+		return
+	} else {
+		if len(suf) > 0 {
+			bucket += "-" + suf
+			gLog.Warning.Printf("A suffix %s is appended to the source bucket %s", suf, bucket)
+		}
+	}
 	if srcS3:= mosesbc.CreateS3Session("check","source"); srcS3 != nil {
 		request := datatype.ListObjRequest{
 			Service: srcS3,
