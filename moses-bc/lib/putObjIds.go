@@ -111,7 +111,9 @@ func _opById1(method string, pn string, np int, replace bool, check bool) int {
 	document.Size = 0
 	if !check {
 		if method == "put" {
-
+			/*
+					depending on the target driver, the object will be written by id or by path
+			 */
 			if nerr, status := WriteDocMetadata(&request1, document, replace); nerr > 0 && status != 412 {
 				gLog.Warning.Printf("Status Code %d - Document %s is not written", status, document.DocId)
 				return nerr
@@ -121,6 +123,9 @@ func _opById1(method string, pn string, np int, replace bool, check bool) int {
 				}
 			}
 		} else {
+			/*
+					depending on the target driver, the object will be deleted by id or by path
+			 */
 			if nerr, status := DeleteDocMetadata(&request1, document); nerr > 0 {
 				gLog.Error.Printf("Document %s is not deleted - Status Code %d ", document.DocId,status)
 				return nerr
@@ -133,7 +138,7 @@ func _opById1(method string, pn string, np int, replace bool, check bool) int {
 	}
 
 	/*
-		Check document has a Clipping page
+		Check if document has a Clipping page
 	*/
 	if err, _, p0 = checkPdfP0(pn); err != nil {
 		return 1

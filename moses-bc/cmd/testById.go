@@ -29,6 +29,7 @@ var (
 		Use:   "test",
 		Short: "Command to put/get/delete objects by object Id",
 		Long:  `Clone the objets using their object Id. This is for for testing if the targert sproxdd driver chord can change`,
+		Hidden: true,
 		Run:   Test,
 	}
 	method string

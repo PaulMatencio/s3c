@@ -42,6 +42,7 @@ var (
 		Moses metadata buckets are split into 6 buckets ( -xx ) 
 		<bucket>-xx  xx=00..05
 		`,
+		Hidden: true,
 		Run: Bucket_backup,
 	}
 

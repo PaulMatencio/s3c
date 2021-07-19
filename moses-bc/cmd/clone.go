@@ -33,6 +33,7 @@ var (
 		Use:   "clone-bucket",
 		Short: "Command to clone Moses objects",
 		Long:  ``,
+		Hidden: true,
 		Run:   Clone_bucket,
 	}
 	// s3Src, s3Tgt  datatype.CreateSession
