@@ -20,6 +20,7 @@ import (
 	gLog "github.com/paulmatencio/s3c/gLog"
 	mosesbc "github.com/paulmatencio/s3c/moses-bc/lib"
 	"github.com/spf13/cobra"
+	"net/url"
 	"strings"
 )
 
@@ -82,8 +83,13 @@ func init() {
 }
 
 func Test(cmd *cobra.Command, args []string) {
-	mosesbc.SetSourceSproxyd("check",srcUrl,driver,env)
-	mosesbc.SetTargetSproxyd("check",targetUrl,targetDriver,targetEnv)
+	var err error
+	if err = mosesbc.SetSourceSproxyd("check",srcUrl,driver,env); err != nil {
+		return
+	}
+	if err = mosesbc.SetTargetSproxyd("check",targetUrl,targetDriver,targetEnv) ; err != nil {
+		return
+	}
 	if len(prefix) > 0 {
 		if len(srcBucket) == 0 {
 			gLog.Error.Printf("Source S3  bucket is missing")
@@ -124,6 +130,10 @@ func TestById(method string , bucket string, marker string,prefix string,maxKey 
 func GetPathByName(cmd *cobra.Command, args []string) {
 	if len(srcUrl)  == 0 {
 		gLog.Error.Println("missing --spoxyd-url [http://xx.xx.xx.xx:81/proxy]")
+		return
+	}
+	if _, err := url.ParseRequestURI(srcUrl); err != nil {
+		gLog.Error.Printf("Error %v parsing url %s",err,srcUrl)
 		return
 	}
 	if len(driver) == 0 {

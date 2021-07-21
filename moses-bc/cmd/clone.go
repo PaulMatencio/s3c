@@ -65,9 +65,13 @@ func init() {
 }
 
 func Clone_bucket(cmd *cobra.Command, args []string) {
-
-	mosesbc.SetSourceSproxyd("clone", srcUrl, driver, env)
-	mosesbc.SetTargetSproxyd("clone", targetUrl, targetDriver, targetEnv)
+	var err error
+	if err = mosesbc.SetSourceSproxyd("clone", srcUrl, driver, env); err != nil {
+		return
+	}
+	if err = mosesbc.SetTargetSproxyd("clone", targetUrl, targetDriver, targetEnv); err != nil {
+		return
+	}
 
 	if len(srcBucket) == 0 {
 		if len(inFile) == 0 {

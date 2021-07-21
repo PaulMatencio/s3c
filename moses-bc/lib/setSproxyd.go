@@ -9,24 +9,30 @@ import (
 	gLog "github.com/paulmatencio/s3c/gLog"
 	sproxyd "github.com/paulmatencio/s3c/sproxyd/lib"
 	"github.com/spf13/viper"
+	"net/url"
 )
 
 
-func SetSourceSproxyd(op string,srcUrl string,driver string,env string ) {
-
-	s_url := op + ".sproxyd.source.urls"
-	s_driver := op + ".sproxyd.source.driver"
-	s_env := op + ".sproxyd.source.env"
-
+func SetSourceSproxyd(op string,srcUrl string,driver string,env string ) (error){
+	var (
+	s_url = op + ".sproxyd.source.urls"
+	s_driver = op + ".sproxyd.source.driver"
+	s_env = op + ".sproxyd.source.env"
+	err error
+	)
 	if len(srcUrl) > 0 {
+		if _,err = url.ParseRequestURI(srcUrl); err  != nil {
+			return err
+		}
 		sproxyd.Url = srcUrl
+
 	} else {
 		if  urls := viper.GetString(s_url);len (urls) > 0 {
 			sproxyd.Url = urls
 			srcUrl = urls
 		} else {
 			gLog.Error.Println("Source sproxyd urls are missing , add check.sproxyd.source.urls to the config file")
-			return
+			return err
 		}
 	}
 
@@ -38,7 +44,7 @@ func SetSourceSproxyd(op string,srcUrl string,driver string,env string ) {
 			driver = drv
 		} else {
 			gLog.Error.Println("Source sproxyd driver is missing , add check.sproxyd.source.driver to the config file")
-			return
+			return err
 		}
 	}
 
@@ -49,7 +55,7 @@ func SetSourceSproxyd(op string,srcUrl string,driver string,env string ) {
 			sproxyd.Driver = env
 		} else {
 			gLog.Error.Println("Source sproxyd env  is missing , add check.sproxyd.source.env  to the config file")
-			return
+			return err
 		}
 	}
 
@@ -57,16 +63,21 @@ func SetSourceSproxyd(op string,srcUrl string,driver string,env string ) {
 
 	gLog.Trace.Printf("Connection timeout %v - read timeout %v - write timeoiut %v",sproxyd.ConnectionTimeout,sproxyd.ReadTimeout,sproxyd.WriteTimeout)
 	gLog.Trace.Printf("Source Host Pool: %v - Source Env: %s - Source Driver: %s", sproxyd.HP.Hosts(), sproxyd.Env, sproxyd.Driver)
-
+	return nil
 }
 
-func SetTargetSproxyd(op string,targetUrl string,targetDriver string, targetEnv string) {
-
-	t_url := op + ".sproxyd.target.urls"
-	t_driver := op + ".sproxyd.target.driver"
-	t_env := op + ".sproxyd.target.env"
+func SetTargetSproxyd(op string,targetUrl string,targetDriver string, targetEnv string) (error){
+	var (
+	t_url = op + ".sproxyd.target.urls"
+	t_driver = op + ".sproxyd.target.driver"
+	t_env = op + ".sproxyd.target.env"
+	err error
+	)
 
 	if len(targetUrl) > 0 {
+		if _,err = url.ParseRequestURI(targetUrl); err  != nil {
+			return err
+		}
 		sproxyd.TargetUrl = targetUrl
 	} else {
 		if  urls := viper.GetString(t_url);len (urls) > 0 {
@@ -74,7 +85,7 @@ func SetTargetSproxyd(op string,targetUrl string,targetDriver string, targetEnv 
 			targetUrl= urls
 		} else {
 			gLog.Error.Println("target sproxyd urls are missing , add check.sproxyd.target.urls to the config file")
-			return
+			return  err
 		}
 	}
 
@@ -86,7 +97,7 @@ func SetTargetSproxyd(op string,targetUrl string,targetDriver string, targetEnv 
 			targetDriver = drv
 		} else {
 			gLog.Error.Println("target sproxyd driver is missing , add check.sproxyd.target.driver to the config file")
-			return
+			return err
 		}
 	}
 
@@ -97,14 +108,14 @@ func SetTargetSproxyd(op string,targetUrl string,targetDriver string, targetEnv 
 			sproxyd.TargetEnv= env
 		} else {
 			gLog.Error.Println("Target sproxyd env is missing , add check.sproxyd.target.env to the config file")
-			return
+			return err
 		}
 	}
 
 	sproxyd.SetNewTargetProxydHost1(targetUrl, targetDriver)
 	gLog.Trace.Printf("Connection timeout %v - read timeout %v - write timeoiut %v",sproxyd.ConnectionTimeout,sproxyd.ReadTimeout,sproxyd.WriteTimeout)
 	gLog.Trace.Printf("Target Host Pool: %v -  Target Env: %s - Target Driver: %s", sproxyd.TargetHP.Hosts(), sproxyd.TargetEnv, sproxyd.TargetDriver)
-
+	return nil
 }
 
 func CreateS3Session(op string,location string) (*s3.S3) {

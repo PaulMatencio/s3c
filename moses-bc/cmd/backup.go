@@ -196,7 +196,10 @@ func Bucket_backup(cmd *cobra.Command, args []string) {
 		    Create a session to the the Source S3 cluster ( moses metadata )
 			Create a session to the the target  S3 cluster ( moses backup metadata + data)
 	*/
-	mosesbc.SetSourceSproxyd("backup", srcUrl, driver, env)
+
+	if err = mosesbc.SetSourceSproxyd("backup", srcUrl, driver, env); err != nil {
+		return
+	}
 	maxPartSize = maxPartSize * 1024 * 1024
 	srcS3 = mosesbc.CreateS3Session("backup", "source")
 	tgtS3 = mosesbc.CreateS3Session("backup", "target")

@@ -93,7 +93,10 @@ func Restore_bucket(cmd *cobra.Command, args []string) {
 		err        error
 	)
 	start := time.Now()
-	mosesbc.SetTargetSproxyd("restore", targetUrl, targetDriver, targetEnv)
+
+	if err = mosesbc.SetTargetSproxyd("restore", targetUrl, targetDriver, targetEnv);err == nil {
+		return
+	}
 
 	if len(srcBucket) == 0 {
 		gLog.Warning.Printf("%s", missingSrcBucket)
