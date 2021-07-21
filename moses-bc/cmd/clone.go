@@ -30,7 +30,7 @@ import (
 
 var (
 	cloneCmd = &cobra.Command{
-		Use:   "clone-bucket",
+		Use:   "_clone_",
 		Short: "Command to clone Moses objects",
 		Long:  ``,
 		Hidden: true,

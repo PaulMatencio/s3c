@@ -81,6 +81,8 @@ func GetObject(request sproxyd.HttpRequest, pn string) (error, string, *[]byte) 
 	return err, usermd, &body
 }
 
+
+
 func GetObjAndId(request sproxyd.HttpRequest, pn string) (RingId) {
 	var (
 		body   []byte

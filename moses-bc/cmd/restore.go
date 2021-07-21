@@ -44,7 +44,7 @@ const CHUNKSIZE = 262144
 var (
 	pn, iDir   string
 	restoreCmd = &cobra.Command{
-		Use:   "restore-bucket",
+		Use:   "_restore_",
 		Short: "Command to restore Moses documents which are previously backed up with the backup command",
 		Long: `Command to restore Moses documents which are previously backed up with the backup command
 	Examples

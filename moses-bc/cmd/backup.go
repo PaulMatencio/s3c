@@ -36,7 +36,7 @@ import (
 // listObjectCmd represents the listObject command
 var (
 	backupCmd = &cobra.Command{
-		Use:   "backup-bucket",
+		Use:   "_backup_",
 		Short: "Command to backup MOSES objects and indexes",
 		Long: `Command to backup MOSES objects and indexes
 		Moses metadata buckets are split into 6 buckets ( -xx ) 
