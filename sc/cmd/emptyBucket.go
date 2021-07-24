@@ -235,9 +235,10 @@ func deleteObjectVersions(cmd *cobra.Command,args []string) {
 					case rd := <-ch:
 						T++
 						if rd.Err != nil {
-							gLog.Error.Printf("Error %v deleting %s", rd.Err, rd.Key)
+							gLog.Error.Printf("Error %v deleting %s - VersionId %s ", rd.Err, rd.Key,*rd.Result.VersionId)
 						} else {
 							// lumber.Trace("Key %s is deleted", rd.Key)
+							gLog.Trace.Printf("Key %s - Version id %s - Deleted marker %s",rd.Key,*rd.Result.VersionId,*rd.Result.DeleteMarker)
 						}
 
 						rd = &Rd{} // reset the structure to free memory
