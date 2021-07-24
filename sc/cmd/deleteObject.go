@@ -52,7 +52,6 @@ func init() {
 
 	RootCmd.AddCommand(deleteObjectCmd)
 	RootCmd.AddCommand(delObjectCmd)
-
 	initDoFlags(deleteObjectCmd)
 	initDoFlags(delObjectCmd)
 
@@ -87,3 +86,4 @@ func deleteObject(cmd *cobra.Command, args []string) {
 	}
 	utils.Return(start)
 }
+

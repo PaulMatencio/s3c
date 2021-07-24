@@ -51,15 +51,15 @@ func initLoFlags(cmd *cobra.Command) {
 
 	cmd.Flags().StringVarP(&bucket,"bucket","b","","the name of the bucket")
 	cmd.Flags().StringVarP(&prefix,"prefix","p","","key prefix")
-	cmd.Flags().Int64VarP(&maxKey,"maxKey","m",100,"maximum number of keys to be processed concurrently")
+	cmd.Flags().Int64VarP(&maxKey,"max-key","m",100,"maximum number of keys to be processed concurrently")
 	cmd.Flags().StringVarP(&marker,"marker","M","","start processing from this key")
 	cmd.Flags().StringVarP(&delimiter,"delimiter","d","","key delimiter")
 	// cmd.Flags().BoolVarP(&loop,"loop","L",false,"loop until all keys are processed")
-	cmd.Flags().IntVarP(&maxLoop,"maxLoop","",1,"maximum number of loop, 0 means no upper limit")
+	cmd.Flags().IntVarP(&maxLoop,"max-loop","",1,"maximum number of loop, 0 means no upper limit")
 	// cmd.Flags().BoolVarP(&,"maxLoop","",false,"maximum number of loop")
-	cmd.Flags().BoolVarP(&full,"fullKey","F",false,"given prefix is a full documemt key")
+	// cmd.Flags().BoolVarP(&full,"fullKey","F",false,"given prefix is a full documemt key")
 
-	cmd.Flags().BoolVarP(&R,"reverse","R",false,"Reverse the prefix")
+	// cmd.Flags().BoolVarP(&R,"reverse","R",false,"Reverse the prefix")
 
 }
 func initLvFlags(cmd *cobra.Command) {
@@ -73,9 +73,9 @@ func initLvFlags(cmd *cobra.Command) {
 	// cmd.Flags().BoolVarP(&loop,"loop","L",false,"loop until all keys are processed")
 	cmd.Flags().IntVarP(&maxLoop,"max-loop","",1,"maximum number of loop, 0 means no upper limit")
 	// cmd.Flags().BoolVarP(&,"maxLoop","",false,"maximum number of loop")
-	cmd.Flags().BoolVarP(&full,"full-key","F",false,"given prefix is a full documemt key")
+	// cmd.Flags().BoolVarP(&full,"full-key","F",false,"given prefix is a full documemt key")
 
-	cmd.Flags().BoolVarP(&R,"reverse","R",false,"Reverse the prefix")
+	// cmd.Flags().BoolVarP(&R,"reverse","R",false,"Reverse the prefix")
 
 }
 func init() {
@@ -249,6 +249,7 @@ func listObjVersions(cmd *cobra.Command,args []string) {
 		Prefix : prefix,
 		MaxKey : maxKey,
 		KeyMarker : marker,
+		VersionIdMarker: versionId,
 		Delimiter: delimiter,
 	}
 	L:=1
@@ -262,7 +263,7 @@ func listObjVersions(cmd *cobra.Command,args []string) {
 			if l := len(result.Versions); l > 0 {
 
 				for _, v := range result.Versions {
-						gLog.Info.Printf("Key: %s - Size: %d  - Version id %s - LastModified: %v", *v.Key, *v.Size, *v.VersionId, v.LastModified)
+						gLog.Info.Printf("Key: %s - Size: %d  - Version id: %s - LastModified: %v - isLatest: %v" , *v.Key, *v.Size, *v.VersionId, v.LastModified,*v.IsLatest)
 						total += 1
 				}
 				if *result.IsTruncated {

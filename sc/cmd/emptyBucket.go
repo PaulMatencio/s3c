@@ -17,12 +17,6 @@ import (
 
 var (
 	ebshort = "Command to delete multiple objects  concurrently"
-	eBucketCmd = &cobra.Command{
-		Use:   "rmObjs",
-		Short: ebshort,
-		Long: ``,
-		Run: deleteObjects,
-	}
 
 	ebCmd = &cobra.Command{
 		Use:   "delObjs",
@@ -31,27 +25,22 @@ var (
 	// 	Hidden: true,
 		Run: deleteObjects,
 	}
-
-	ebCmd1 = &cobra.Command{
-		Use:   "dmo",
-		Short: ebshort,
+	dvCmd = &cobra.Command{
+		Use:   "delObjVersions",
+		Short: "Command to delete all objects versions",
 		Long: ``,
-		Hidden: true,
-		Run: deleteObjects,
+		Run: deleteObjectVersions,
 	}
 )
 
 
 func init() {
 
-	RootCmd.AddCommand(eBucketCmd)
+	RootCmd.AddCommand(dvCmd)
 	RootCmd.AddCommand(ebCmd)
-	RootCmd.AddCommand(ebCmd1)
 	RootCmd.MarkFlagRequired("bucket")
-
-	initLoFlags(eBucketCmd)
 	initLoFlags(ebCmd)
-	initLoFlags(ebCmd1)
+	initLvFlags(dvCmd)
 }
 
 func deleteObjects(cmd *cobra.Command,args []string) {
@@ -84,7 +73,7 @@ func deleteObjects(cmd *cobra.Command,args []string) {
 	}
 	ch:= make(chan *Rd)
 	var (
-		nextmarker string
+		nextMarker string
 		result  *s3.ListObjectsOutput
 		err error
 		// rd Rd
@@ -156,12 +145,12 @@ func deleteObjects(cmd *cobra.Command,args []string) {
         L++
 		if *result.IsTruncated {
 
-			nextmarker = *result.Contents[l-1].Key
-			gLog.Warning.Printf("Truncated %v  - Next marker : %s ", *result.IsTruncated, nextmarker)
+			nextMarker = *result.Contents[l-1].Key
+			gLog.Warning.Printf("Truncated %v  - Next marker : %s ", *result.IsTruncated, nextMarker)
 
 		}
 		if  *result.IsTruncated  && (maxLoop == 0 || L <= maxLoop) {
-			req.Marker = nextmarker
+			req.Marker = nextMarker
 
 		} else {
 			break
@@ -170,4 +159,125 @@ func deleteObjects(cmd *cobra.Command,args []string) {
 
 	utils.Return(start)
 }
+
+func deleteObjectVersions(cmd *cobra.Command,args []string) {
+
+	var (
+		start= utils.LumberPrefix(cmd)
+		N,T = 0,0
+	)
+
+	type  Rd struct {
+		Key string
+		Result   *s3.DeleteObjectOutput
+		Err error
+	}
+
+
+	if len(bucket) == 0 {
+
+		gLog.Warning.Printf("%s",missingBucket)
+		utils.Return(start)
+		return
+	}
+
+	req := datatype.ListObjVersionsRequest{
+		Service : s3.New(api.CreateSession()),
+		Bucket: bucket,
+		Prefix : prefix,
+		MaxKey : maxKey,
+		KeyMarker : marker,
+		VersionIdMarker: versionId,
+		Delimiter: delimiter,
+	}
+	ch:= make(chan *Rd)
+	var (
+		nextMarker string
+		nextVersionIdMarker string
+		result  *s3.ListObjectVersionsOutput
+		err error
+		l  int
+	)
+	for {
+		L:= 1
+		if result, err = api.ListObjectVersions(req); err == nil {
+
+			if l = len(result.Versions); l > 0 {
+
+				N = len(result.Versions)
+				T = 0
+
+				for _, v := range result.Versions {
+					//lumber.Info("Key: %s - Size: %d ", *v.Key, *v.Size)
+					//  delete the object
+					del := datatype.DeleteObjRequest{
+						Service: req.Service,
+						Bucket:  req.Bucket,
+						Key:     *v.Key,
+						VersionId: *v.VersionId,
+					}
+					go func(request datatype.DeleteObjRequest) {
+
+						rd := Rd{
+							Key : del.Key,
+						}
+						rd.Result, rd.Err = api.DeleteObjects(del)
+						del = datatype.DeleteObjRequest{} // reset the structure to free memory
+						ch <- &rd
+
+					}(del)
+
+				}
+
+				done:= false
+				for ok:=true;ok;ok=!done {
+					select {
+					case rd := <-ch:
+						T++
+						if rd.Err != nil {
+							gLog.Error.Printf("Error %v deleting %s", rd.Err, rd.Key)
+						} else {
+							// lumber.Trace("Key %s is deleted", rd.Key)
+						}
+
+						rd = &Rd{} // reset the structure to free memory
+
+						if T == N {
+							//utils.Return(start)
+							gLog.Info.Printf("Deleting .... %d objects ",N)
+							done = true
+						}
+
+					case <-time.After(50 * time.Millisecond):
+						fmt.Printf("w")
+					}
+				}
+
+			}  else {
+				gLog.Warning.Printf("Bucket %s is empty", bucket)
+			}
+		} else {
+			gLog.Error.Printf("ListObjects err %v",err)
+			break
+		}
+		L++
+		if *result.IsTruncated {
+
+			nextMarker = *result.Versions[l-1].Key
+			nextVersionIdMarker = *result.Versions[l-1].VersionId
+			gLog.Warning.Printf("Truncated %v  - Next marker : %s - Next versionId marker %s", *result.IsTruncated, nextMarker,nextVersionIdMarker)
+
+		}
+		if  *result.IsTruncated  && (maxLoop == 0 || L <= maxLoop) {
+			req.KeyMarker = nextMarker
+			req.VersionIdMarker =nextVersionIdMarker
+
+		} else {
+			break
+		}
+	}
+
+	utils.Return(start)
+}
+
 
