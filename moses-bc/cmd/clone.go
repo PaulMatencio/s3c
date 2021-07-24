@@ -31,8 +31,44 @@ import (
 var (
 	cloneCmd = &cobra.Command{
 		Use:   "_clone_",
-		Short: "Command to clone Moses objects",
-		Long:  ``,
+		Short: "Command to cloneMOSES objects and directories",
+		Long: `        
+        Command to clone Moses data and Moses directories
+      
+        Moses data are stored in Scality Ring native object storage accessed via sproxyd driver 
+        Moses directories are stored in S3 buckets. Each bucket name has a suffix ( <bucket-name>-xx ; xx=00..05)
+        
+        Usage: 
+        moses-bc --help or -h  to list all the commands
+        moses-bc  <command> -h or --help to list all the arguments related to a specific <command>
+  
+        Config file: 
+      	The Default config file is located $HOME/.clone/config.file 
+
+        Example of full cloning of documents listed in a moses directory 
+
+        Clone all the objects listed in the S3 --source-bucket meta-moses-prod-pn-01  to the S3 bucket meta-moses-osa-pn-01 
+     	
+        moses-bc -c $HOME/.clone/config.yaml _clone_ --source-bucket meta-moses-prod-pn-01 --target-bucket meta-moses-prod-bkup-pn-01
+        **  suffix is requird and both source and target bucket must have the same suffix, for instance -01 ** 
+
+        Example of cloning  of a specific --prefix 
+
+        moses-bc -c $HOME/.clone/config.yaml _clone_ --source-bucket meta-moses-prod-pn --prefix  FR/ 
+        --target-bucket meta-moses-osa-pn     ** bucket suffix is not required **
+		
+        Example of incremental cloning from YYY-MM-DDT10:00:00Z to YYY-MM-DDT012:00:00Z
+        
+        moses-bc -c $HOME/.clone/config.yaml _clone_ --input-bucket last-loaded-prod --prefix dd/mm/yy \
+        --from-date YYY-MM-DDT00:00:00Z --to-date YYY-MM-DDT00:00:00Z \
+        --target-bucket meta-moses-osa-pn    ** bucket suffix is not required  **
+
+        Example of incremental cloning  from an input file containing the new publication numbers
+
+        moses-bc -c $HOME/.clone/config.yaml _clone_ --input-file <file containing new publication number> --prefix dd/mm/yy \
+        --target-bucket meta-moses-prod-bkup-pn    ** bucket suffix is not required **
+         
+		`,
 		Hidden: true,
 		Run:   Clone_bucket,
 	}
@@ -42,14 +78,14 @@ var (
 
 func initCloFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&srcBucket, "source-bucket", "", "", "name of source s3 bucket")
-	cmd.Flags().StringVarP(&tgtBucket, "target-bucket", "", "", "name of the target s3 bucket if moeses reIndexing is required")
-	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "key's prefix; key= moses-document in the form of cc/pn/kc")
-	cmd.Flags().Int64VarP(&maxKey, "maxKey", "m", 20, "maximum number of moses documents  to be cloned concurrently")
+	cmd.Flags().StringVarP(&tgtBucket, "target-bucket", "", "", "name of the target s3 bucket if moses re-indexing is required")
+	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "key's prefix; key= moses document in the form of cc/pn/kc")
+	cmd.Flags().Int64VarP(&maxKey, "max-key", "m", 20, "maximum number of moses documents  to be cloned concurrently")
 	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key; key= moses-document in the form of cc/pn/kc")
-	cmd.Flags().IntVarP(&maxPage, "maxPage", "", 50, "maximum number of concurrent moses pages to be concurrently procsessed")
-	cmd.Flags().IntVarP(&maxLoop, "maxLoop", "", 1, "maximum number of loop, 0 means no upper limit")
+	cmd.Flags().IntVarP(&maxPage, "max-page", "", 50, "maximum number of concurrent moses pages to be concurrently procsessed")
+	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, "maximum number of loop, 0 means no upper limit")
 	cmd.Flags().BoolVarP(&replace, "replace", "r", false, "replace the existing target moses pages")
-	cmd.Flags().BoolVarP(&reIndex, "reIndex", "", false, "re-index the target moses documents")
+	cmd.Flags().BoolVarP(&reIndex, "re-index", "", false, "re-index the target moses documents in the target bucket")
 	cmd.Flags().StringVarP(&inFile, "input-file", "i", "", "input file containing the list of documents to clone")
 	cmd.Flags().StringVarP(&srcUrl, "source-sproxyd-url", "s", "", "source sproxyd endpoints  http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
 	cmd.Flags().StringVarP(&driver, "source-sproxyd-driver", "", "", "source sproxyd driver [bpchord|bparc]")
@@ -85,10 +121,11 @@ func Clone_bucket(cmd *cobra.Command, args []string) {
 			}
 		}
 	}
-
-	if len(tgtBucket) == 0 {
-		gLog.Warning.Printf("%s", missingTgtBucket)
-		return
+	if reIndex  {
+		if len(tgtBucket) == 0 {
+			gLog.Warning.Printf("%s", missingTgtBucket)
+			return
+		}
 	}
 
 	if len(prefix) > 0 {

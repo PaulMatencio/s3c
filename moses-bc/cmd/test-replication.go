@@ -20,7 +20,6 @@ import (
 	gLog "github.com/paulmatencio/s3c/gLog"
 	mosesbc "github.com/paulmatencio/s3c/moses-bc/lib"
 	"github.com/spf13/cobra"
-	"net/url"
 	"strings"
 )
 
@@ -32,15 +31,10 @@ var (
 		Short: "Command to put/get/delete objects by object Id",
 		Long:  `Command to put/get/delete objects objets using their Id. This is for for testing if the targert sproxdd driver chord can change`,
 		Hidden: true,
-		Run:   Test,
+		Run:   TestReplication,
 	}
-	getPathNameCmd = &cobra.Command{
-		Use:   "get-path-name",
-		Short: "Command to get path name for a given path id",
-		Long:  `Command to get path name for a given path id`,
-		Run:   GetPathByName,
-	}
-	method,pathId string
+
+	method string
 
 )
 
@@ -67,22 +61,13 @@ func initPoIdFlags(cmd *cobra.Command) {
 
 }
 
-func initGpnFlags(cmd *cobra.Command) {
 
-	cmd.Flags().StringVarP(&pathId, "path-id", "p", "", "Path id of the object")
-	cmd.Flags().StringVarP(&srcUrl, "sproxyd-url", "s", "", "sproxyd endpoints  http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
-	cmd.Flags().StringVarP(&driver, "sproxyd-driver", "", "", "sproxyd driver [bpchord|bparc]")
-	cmd.Flags().StringVarP(&env, "sproxyd-env", "", "", "sproxyd environment [prod|osa]")
-
-}
 func init() {
 	rootCmd.AddCommand(testCmd)
-	rootCmd.AddCommand(getPathNameCmd)
 	initPoIdFlags(testCmd)
-	initGpnFlags(getPathNameCmd)
 }
 
-func Test(cmd *cobra.Command, args []string) {
+func TestReplication(cmd *cobra.Command, args []string) {
 	var err error
 	if err = mosesbc.SetSourceSproxyd("check",srcUrl,driver,env); err != nil {
 		return
@@ -95,13 +80,13 @@ func Test(cmd *cobra.Command, args []string) {
 			gLog.Error.Printf("Source S3  bucket is missing")
 			return
 		}
-		TestById(strings.ToLower(method), srcBucket,marker,prefix,maxKey,maxLoop,check)
+		OpById(strings.ToLower(method), srcBucket,marker,prefix,maxKey,maxLoop,check)
 	} else {
 		gLog.Error.Printf("--prefix is missing")
 	}
 }
 
-func TestById(method string , bucket string, marker string,prefix string,maxKey int64,maxLoop int,check bool) {
+func OpById(method string , bucket string, marker string,prefix string,maxKey int64,maxLoop int,check bool) {
 
 	if err, suf := mosesbc.GetBucketSuffix(bucket, prefix); err != nil {
 		gLog.Error.Printf("%v", err)
@@ -127,40 +112,3 @@ func TestById(method string , bucket string, marker string,prefix string,maxKey 
 	}
 }
 
-func GetPathByName(cmd *cobra.Command, args []string) {
-	if len(srcUrl)  == 0 {
-		gLog.Error.Println("missing --spoxyd-url [http://xx.xx.xx.xx:81/proxy]")
-		return
-	}
-	if _, err := url.ParseRequestURI(srcUrl); err != nil {
-		gLog.Error.Printf("Error %v parsing url %s",err,srcUrl)
-		return
-	}
-	if len(driver) == 0 {
-		gLog.Error.Println("missing --spoxyd-driver [chord|arc]")
-		driver ="chord"
-		gLog.Info.Printf("using --sproxyd-driver %s",driver)
-
-	} else {
-		if driver[0:2] == "bp" {
-			gLog.Error.Printf("Driver %s  should be [chord|arc]",driver)
-			return
-		}
-	}
-	if len(env) == 0 {
-		gLog.Error.Println("missing --sproxyd-env [prod|osa]")
-		env = "prod"
-		gLog.Info.Printf("using --sproxyd-env %s ",env)
-	}
-
-	if len(pathId)== 0 {
-		gLog.Error.Println("missing --path-id")
-		return
-	}
-	mosesbc.SetSourceSproxyd("check",srcUrl,driver,env)
-	if err,pathName,status := mosesbc.GetPathName(pathId); err == nil {
-		gLog.Info.Printf("Get Path Name for path Id %s  -> path name %s ",pathId,pathName)
-	} else {
-		gLog.Error.Printf("Get Path Name for path id %s ->  Err %v - Status Code %d",pathId, err,status)
-	}
-}

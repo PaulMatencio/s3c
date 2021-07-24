@@ -44,7 +44,18 @@ func ListObjectV2(req datatype.ListObjV2Request)  ( *s3.ListObjectsV2Output, err
 
 }
 
+func ListObjectVersions( req datatype.ListObjVersionsRequest)  ( *s3.ListObjectVersionsOutput, error) {
 
+	input := &s3.ListObjectVersionsInput{
+		Bucket: aws.String(req.Bucket),
+		Prefix: aws.String(req.Prefix),
+		MaxKeys: aws.Int64(req.MaxKey),
+		Delimiter: aws.String(req.Delimiter),
+		KeyMarker: aws.String(req.KeyMarker),
+		VersionIdMarker: aws.String(req.VersionIdMarker),
+	}
+	return  req.Service.ListObjectVersions(input);
+}
 
 
 

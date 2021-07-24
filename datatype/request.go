@@ -98,6 +98,15 @@ type ListObjV2Request struct {
 	Marker        string
 	Delimiter     string
 }
+type ListObjVersionsRequest struct {
+	Service 	*s3.S3
+	Bucket       string
+	Prefix       string
+	MaxKey	      int64
+	KeyMarker       string
+	VersionIdMarker string
+	Delimiter     string
+}
 
 type ListMultipartObjRequest struct {
 	Service 	*s3.S3
@@ -138,6 +147,7 @@ type DeleteObjRequest struct {
 	Service 	*s3.S3
 	Bucket       string
 	Key          string
+	VersionId	string
 }
 
 type StatObjRequest struct {

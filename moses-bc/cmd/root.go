@@ -54,18 +54,22 @@ var (
 	tgtS3, srcS3 *s3.S3
 	// conTimeout,readTimeout,writeTimeout, copyTimeout,timeout time.Duration
 	invalidBucket = "Invalid bucket name, it should not contain a suffix"
-	missingInputFile = "Missing input file     --input-file"
+	missingInputFile = "Missing input file  --input-file"
 
-	missingSrcBucketAndIfile = "Either -ssource-bucket or --input-file is required"
+	missingSrcBucketAndIfile = "Either --source-bucket or --input-file is required"
 
-	missingSourceUrls = "Missing source sproxyd urls, add sproxyd source urls in the config file"
-	missingTargetUrls = "Missing target sproxyd urls, add sproxyd target urls in the confif file"
-	missingSrcS3Uri = "Missing source S3 uri"
-	missingSrcS3AccessKey = "Missing source S3 access key"
-	missingSourceS3SecretKey = "Missing source S3 access key"
-	missingTargetS3Uri = "Missing source S3 uri"
-	missingTargetS3AccessKey = "Missing source S3 access key"
-	missingTargetS3SecretKey = "Missing source S3 access key"
+	missingSourceUrls = "Missing  --source-sproxyd-url or add xx.sproxyd.source.urls in the config.yaml file - xx = [backup|clone|restore|check]"
+	missingSourceEnv = "Missing  --source-sproxyd-env or add xx.sproxyd.source.env [prod|osa] in the config.yaml file - xx = [backup|clone|restore|check]"
+	missingSourceDriver = "Missing  --source-sproxyd-driver or add xx.sproxyd.source.driver [bpchord|bparc] in the config.yaml file - xx = [backup|clone|restore|check]"
+	MissingTargetUrls = "Missing  --target-sproxyd-url or add xx.sproxyd.target.urls in the config.yaml file - xx = [backup|clone|restore|check]"
+	missingTargetEnv = "Missing  --target-sproxyd-env or add xx.sproxyd.target.env [prod|osa] in the config.yaml file - xx = [backup|clone|restore|check]"
+	missingTargetDriver = "Missing  --target-sproxyd-driver or add xx.sproxyd.target.drive [bpchord|bparc] in the config.yaml file - xx = [backup|clone|restore|check]"
+	missingSrcS3Uri = "Missing source S3 uri, add xx.s3.source.url in the config.yaml file - xx = [backup|clone|restore|check]"
+	missingSrcS3AccessKey = "Missing source S3 access key, add xx.s3.source.credential.access_key_id in the config.yaml file - xx = [backup|clone|restore|check]"
+	missingSourceS3SecretKey = "Missing source S3 secret key, add xx.s3.source.credential.secret_access_key in the config.yaml file - xx = [backup|clone|restore|check]"
+	missingTargetS3Uri = "Missing source S3 uri, add xx.s3.target.url in the config.yaml file - xx = [backup|clone|restore|check]"
+	missingTargetS3AccessKey = "Missing target S3 access key, add xx.s3.target.credential.access_key_id in the config.yaml file - xx = [backup|clone|restore|check]"
+	missingTargetS3SecretKey = "Missing  target S3 secret key, add xx.s3.target.credential.secret_access_key in the config.yaml file - xx = [backup|clone|restore|check]"
 	missingoDir      = "Missing output directory --output-directory"
 	missingiFile     = "Missing input file --input-file"
 	missingSrcBucket = "Missing source S3 bucket --source-bucket"
@@ -99,12 +103,10 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&config,"config", "c","", "sc config file; default $HOME/.clone/config.yaml")
 	rootCmd.PersistentFlags().BoolVarP(&autoCompletion,"autoCompletion", "C",false, "generate bash auto completion")
 	rootCmd.PersistentFlags().IntVarP(&profiling,"profiling", "P",0, "display memory usage every P seconds")
-	// rootCmd.PersistentFlags().StringVarP(&bMedia,"bMedia","","S3","backup media [S3|File]")
 
 	viper.BindPFlag("loglevel",rootCmd.PersistentFlags().Lookup("loglevel"))
 	viper.BindPFlag("autoCompletion",rootCmd.PersistentFlags().Lookup("autoCompletion"))
 	viper.BindPFlag("profiling",rootCmd.PersistentFlags().Lookup("profiling"))
-	viper.BindPFlag("bMedia",rootCmd.PersistentFlags().Lookup("bMedia"))
 	cobra.OnInitialize(initConfig)
 }
 

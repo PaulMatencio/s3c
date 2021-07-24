@@ -37,10 +37,44 @@ import (
 var (
 	backupCmd = &cobra.Command{
 		Use:   "_backup_",
-		Short: "Command to backup MOSES objects and indexes",
-		Long: `Command to backup MOSES objects and indexes
-		Moses metadata buckets are split into 6 buckets ( -xx ) 
-		<bucket>-xx  xx=00..05
+		Short: "Command to backup MOSES objects and directories",
+		Long: `        
+        Command to backup Moses data and Moses directories
+      
+        Moses data are stored in Scality Ring native object storage accessed via sproxyd driver 
+        Moses directories are stored in S3 buckets. Each bucket name has a suffix ( <bucket-name>-xx ; xx=00..05)
+        
+        Usage: 
+        moses-bc --help or -h  to list all the commands
+        moses-bc  <command> -h or --help to list all the arguments related to a specific <command>
+  
+        Config file: 
+      	The Default config file is located $HOME/.clone/config.file 
+
+        Example of full backup: 
+
+        Backup all the objects listed in the S3 --source-bucket meta-moses-prod-pn-01  to the S3 bucket meta-moses-prod-bkup-pn-01 
+     	
+        moses-bc -c $HOME/.clone/config.yaml _backup_ --source-bucket meta-moses-prod-pn-01 \ 
+        --target-bucket meta-moses-prod-bkup-pn-01 --max-loop 0
+        **  suffix is requird and both source and target bucket must have the same suffix, for instance -01 ** 
+
+        Example of backup of all document name started with a specific --prefix 
+
+        moses-bc -c $HOME/.clone/config.yaml _backup_ --source-bucket meta-moses-prod-pn --prefix  FR/ 
+        --target-bucket meta-moses-prod-bkup-pn   --max-loop 0   ** bucket suffix is not required **
+		
+        Example of an incremental backup of all documents created between  YYY-MM-DDT10:00:00Z and  YYY-MM-DDT012:00:00Z
+        
+        moses-bc -c $HOME/.clone/config.yaml _backup_ --input-bucket last-loaded-prod --prefix dd/mm/yy \
+        --from-date YYY-MM-DDT00:00:00Z --to-date YYY-MM-DDT00:00:00Z \
+        --target-bucket meta-moses-prod-bkup-pn  --max-loop 0  ** bucket suffix is not required  **
+
+        Example of an incremental backup of all publication numbers listed in the --input-file
+
+        moses-bc -c $HOME/.clone/config.yaml _backup_ --input-file <file containing a list of publication numbers>  \
+        --target-bucket meta-moses-prod-bkup-pn  --max-loop 0   ** bucket suffix is not required **
+         
 		`,
 		Hidden: true,
 		Run: Bucket_backup,
@@ -68,15 +102,15 @@ func initBkFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&srcBucket, "source-bucket", "", "", "name of source s3 bucket")
 	cmd.Flags().StringVarP(&tgtBucket, "target-bucket", "", "", "name of the target s3 bucket")
 	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "key's prefix; key= moses-document in the form of cc/pn/kc")
-	cmd.Flags().Int64VarP(&maxKey, "maxKey", "m", 20, "maximum number of moses documents  to be cloned concurrently")
+	cmd.Flags().Int64VarP(&maxKey, "max-key", "m", 20, "maximum number of moses documents  to be cloned concurrently")
 	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key; key= moses-document in the form of cc/pn/kc")
-	cmd.Flags().IntVarP(&maxPage, "maxPage", "", 50, "maximum number of concurrent moses pages to be concurrently procsessed")
-	cmd.Flags().IntVarP(&maxLoop, "maxLoop", "", 1, "maximum number of loop, 0 means no upper limit")
-	cmd.Flags().StringVarP(&inFile, "input-file", "i", "", "input file containing the list of objects - incremental")
-	cmd.Flags().StringVarP(&iBucket, "input-bucket", "", "", "input bucket containing the last uploaded objects - incremental")
+	cmd.Flags().IntVarP(&maxPage, "max-page", "", 50, "maximum number of concurrent moses pages to be concurrently processed")
+	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, "maximum number of loop, 0 means no upper limit")
+	cmd.Flags().StringVarP(&inFile, "input-file", "i", "", "input file containing the list of objects for incremental backup")
+	cmd.Flags().StringVarP(&iBucket, "input-bucket", "", "", "input bucket containing the last uploaded objects for incremental backup")
 	// cmd.Flags().StringVarP(&outDir, "output-directory", "o", "", "output directory for --backupMedia = File")
-	// cmd.Flags().StringVarP(&fromDate, "from-date", "", "1970-01-01T00:00:00Z", "backup objects with last modified from <yyyy-mm-ddThh:mm:ss>")
-	cmd.Flags().Int64VarP(&maxPartSize, "maxPartSize", "", 40, "Maximum partsize (MB)  for multipart upload")
+	cmd.Flags().StringVarP(&fromDate, "from-date", "", "1970-01-01T00:00:00Z", "backup objects with last modified from <yyyy-mm-ddThh:mm:ss>")
+	cmd.Flags().Int64VarP(&maxPartSize, "max-part-size", "", 40, "maximum partition size (MB) for multipart upload")
 	cmd.Flags().StringVarP(&srcUrl, "source-sproxyd-url", "s", "", "source sproxyd endpoints  http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
 	cmd.Flags().StringVarP(&driver, "source-sproxyd-driver", "", "", "source sproxyd driver [bpchord|bparc]")
 	cmd.Flags().StringVarP(&env, "source-sproxyd-env", "", "", "source sproxyd environment [prod|osa]")
@@ -180,19 +214,22 @@ func Bucket_backup(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	// Check the name of both and target buckets
+	// Check  the suffix of both and target buckets
 	if err := mosesbc.CheckBucketName(srcBucket, tgtBucket); err != nil {
 		gLog.Warning.Printf("%v", err)
 		return
 	}
 
-	if frDate, err = time.Parse(time.RFC3339, fromDate); err != nil {
-		gLog.Error.Printf("Wrong date format %s", frDate)
-		return
+	// validate fram date format
+	if len(fromDate) > 0 {
+		if frDate, err = time.Parse(time.RFC3339, fromDate); err != nil {
+			gLog.Error.Printf("Wrong date format %s", fromDate)
+			return
+		}
 	}
 
 	/*
-			Setup the source sproxyd   url , driver and environment ( moses data)
+			Setup the source sproxyd url, driver and environment ( moses data)
 		    Create a session to the the Source S3 cluster ( moses metadata )
 			Create a session to the the target  S3 cluster ( moses backup metadata + data)
 	*/
