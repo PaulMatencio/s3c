@@ -262,13 +262,16 @@ func listObjVersions(cmd *cobra.Command,args []string) {
 			if l := len(result.Versions); l > 0 {
 
 				for _, v := range result.Versions {
-						gLog.Info.Printf("Key: %s - Size: %d  - Version id %s - LastModified: %v", *v.Key, *v.Size, v.VersionId, v.LastModified)
+						gLog.Info.Printf("Key: %s - Size: %d  - Version id %s - LastModified: %v", *v.Key, *v.Size, *v.VersionId, v.LastModified)
 						total += 1
 				}
 				if *result.IsTruncated {
-					// nextmarker = *result.Contents[l-1].Key
-					nextMarker = *result.NextKeyMarker
-					nextVersionIdMarker = *result.VersionIdMarker
+					nextMarker = *result.Versions[l-1].Key
+					// nextMarker = *result.NextKeyMarker
+					// nextVersionIdMarker = *result.VersionIdMarker
+					nextVersionIdMarker = *result.Versions[l-1].VersionId
+
+
 					gLog.Warning.Printf("Truncated %v  - Next marker : %s ", *result.IsTruncated, nextMarker)
 				}
 			}
