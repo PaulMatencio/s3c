@@ -86,7 +86,7 @@ func Check(cmd *cobra.Command, args []string) {
 		}
 		CheckBlobs(srcBucket, marker, prefix, maxKey, maxPage, maxLoop)
 	} else {
-		gLog.Error.Printf("Both publication number --pn   and  --prefix arguments are missing. Please specify either --pn or --prefix")
+		gLog.Error.Printf("Both publication number --pn   and  --prefix arguments are missing. Please specify either --pn or --prefix or --help for help")
 		return
 	}
 }
