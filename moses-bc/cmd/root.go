@@ -58,22 +58,22 @@ var (
 
 	missingSrcBucketAndIfile = "Either --source-bucket or --input-file is required"
 
-	missingSourceUrls = "Missing  --source-sproxyd-url or add xx.sproxyd.source.urls in the config.yaml file - xx = [backup|clone|restore|check]"
-	missingSourceEnv = "Missing  --source-sproxyd-env or add xx.sproxyd.source.env [prod|osa] in the config.yaml file - xx = [backup|clone|restore|check]"
-	missingSourceDriver = "Missing  --source-sproxyd-driver or add xx.sproxyd.source.driver [bpchord|bparc] in the config.yaml file - xx = [backup|clone|restore|check]"
-	MissingTargetUrls = "Missing  --target-sproxyd-url or add xx.sproxyd.target.urls in the config.yaml file - xx = [backup|clone|restore|check]"
-	missingTargetEnv = "Missing  --target-sproxyd-env or add xx.sproxyd.target.env [prod|osa] in the config.yaml file - xx = [backup|clone|restore|check]"
-	missingTargetDriver = "Missing  --target-sproxyd-driver or add xx.sproxyd.target.drive [bpchord|bparc] in the config.yaml file - xx = [backup|clone|restore|check]"
+	missingSourceUrls = "Missing  --source-sproxyd-url argument or add xx.sproxyd.source.urls in the config.yaml file - xx = [backup|clone|restore|check]"
+	missingSourceEnv = "Missing  --source-sproxyd-env argument or add xx.sproxyd.source.env [prod|osa] in the config.yaml file - xx = [backup|clone|restore|check]"
+	missingSourceDriver = "Missing  --source-sproxyd-driver argument  or add xx.sproxyd.source.driver [bpchord|bparc] in the config.yaml file - xx = [backup|clone|restore|check]"
+	MissingTargetUrls = "Missing  --target-sproxyd-url argument or add xx.sproxyd.target.urls in the config.yaml file - xx = [backup|clone|restore|check]"
+	missingTargetEnv = "Missing  --target-sproxyd-env argument or add xx.sproxyd.target.env [prod|osa] in the config.yaml file - xx = [backup|clone|restore|check]"
+	missingTargetDriver = "Missing  --target-sproxyd-driver argument or add xx.sproxyd.target.drive [bpchord|bparc] in the config.yaml file - xx = [backup|clone|restore|check]"
 	missingSrcS3Uri = "Missing source S3 uri, add xx.s3.source.url in the config.yaml file - xx = [backup|clone|restore|check]"
 	missingSrcS3AccessKey = "Missing source S3 access key, add xx.s3.source.credential.access_key_id in the config.yaml file - xx = [backup|clone|restore|check]"
 	missingSourceS3SecretKey = "Missing source S3 secret key, add xx.s3.source.credential.secret_access_key in the config.yaml file - xx = [backup|clone|restore|check]"
 	missingTargetS3Uri = "Missing source S3 uri, add xx.s3.target.url in the config.yaml file - xx = [backup|clone|restore|check]"
 	missingTargetS3AccessKey = "Missing target S3 access key, add xx.s3.target.credential.access_key_id in the config.yaml file - xx = [backup|clone|restore|check]"
 	missingTargetS3SecretKey = "Missing  target S3 secret key, add xx.s3.target.credential.secret_access_key in the config.yaml file - xx = [backup|clone|restore|check]"
-	missingoDir      = "Missing output directory --output-directory"
-	missingiFile     = "Missing input file --input-file"
-	missingSrcBucket = "Missing source S3 bucket --source-bucket"
-	missingTgtBucket = "Missing target S3 bucket --target-bucket"
+	missingoDir      = "Missing output directory --output-directory argument. Use  --help or -h for help"
+	missingiFile     = "Missing input file --input-file argument. Use  --help or -h for help "
+	missingSrcBucket = "Missing source S3 bucket --source-bucket argument. Use  --help or -h for help"
+	missingTgtBucket = "Missing target S3 bucket --target-bucket argumnt. Use  --help or -h for help"
 
 )
 

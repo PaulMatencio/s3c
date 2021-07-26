@@ -77,7 +77,7 @@ var (
          
 		`,
 		Hidden: true,
-		Run: Bucket_backup,
+		Run:    Bucket_backup,
 	}
 
 	inFile, outDir, iBucket, delimiter string
@@ -99,15 +99,15 @@ type UserMd struct {
 
 func initBkFlags(cmd *cobra.Command) {
 
-	cmd.Flags().StringVarP(&srcBucket, "source-bucket", "", "", "name of source s3 bucket")
-	cmd.Flags().StringVarP(&tgtBucket, "target-bucket", "", "", "name of the target s3 bucket")
-	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "key's prefix; key= moses-document in the form of cc/pn/kc")
+	cmd.Flags().StringVarP(&srcBucket, "source-bucket", "", "", "name of source s3 bucket. Ex: meta-moses-prod-pn-xx, suffix xx is only required for bucket backup")
+	cmd.Flags().StringVarP(&tgtBucket, "target-bucket", "", "", "name of the target s3 bucket. Ex: meta-moses-prod-bkp-pn-xx, xx must be the same as source-bucket")
+	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "prefix of a Moses document in the form of cc/pn/kc. Ex: FR/1234")
 	cmd.Flags().Int64VarP(&maxKey, "max-key", "m", 20, "maximum number of moses documents  to be cloned concurrently")
 	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key; key= moses-document in the form of cc/pn/kc")
 	cmd.Flags().IntVarP(&maxPage, "max-page", "", 50, "maximum number of concurrent moses pages to be concurrently processed")
 	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, "maximum number of loop, 0 means no upper limit")
-	cmd.Flags().StringVarP(&inFile, "input-file", "i", "", "input file containing the list of objects for incremental backup")
-	cmd.Flags().StringVarP(&iBucket, "input-bucket", "", "", "input bucket containing the last uploaded objects for incremental backup")
+	cmd.Flags().StringVarP(&inFile, "input-file", "i", "", "input file containing the list of moses documents for incremental backup")
+	cmd.Flags().StringVarP(&iBucket, "input-bucket", "", "", "input bucket containing the last uploaded documents for incremental backup - Ex: meta-moses-prod-last-loaded")
 	// cmd.Flags().StringVarP(&outDir, "output-directory", "o", "", "output directory for --backupMedia = File")
 	cmd.Flags().StringVarP(&fromDate, "from-date", "", "1970-01-01T00:00:00Z", "backup objects with last modified from <yyyy-mm-ddThh:mm:ss>")
 	cmd.Flags().Int64VarP(&maxPartSize, "max-part-size", "", 40, "maximum partition size (MB) for multipart upload")
@@ -131,6 +131,7 @@ func Bucket_backup(cmd *cobra.Command, args []string) {
 	)
 	start := time.Now()
 	incr = false //  full backup of moses backup
+
 	if len(srcBucket) == 0 {
 		gLog.Error.Printf(missingSrcBucket)
 		return
@@ -147,16 +148,6 @@ func Bucket_backup(cmd *cobra.Command, args []string) {
 			gLog.Error.Printf("--input-file  and --input-bucket are mutually exclusive", inFile, iBucket)
 			return
 		}
-		/*
-		if mosesbc.HasSuffix(srcBucket) {
-			gLog.Error.Printf("For incremental backup, the source bucket %s should not have a suffix", srcBucket)
-			return
-		}
-		if mosesbc.HasSuffix(tgtBucket) {
-			gLog.Error.Printf("For incremental backup, the target bucket %s should not have a suffix", tgtBucket)
-			return
-		}
-		*/
 
 		/*
 			Prepare to Scan the input file
@@ -168,28 +159,39 @@ func Bucket_backup(cmd *cobra.Command, args []string) {
 			}
 		}
 		incr = true
-	}
+		// bucket must not  have a suffix
+		if mosesbc.HasSuffix(srcBucket) {
+			gLog.Error.Printf("Source bucket %s must not have a suffix", srcBucket)
+			return
+		}
+		if mosesbc.HasSuffix(tgtBucket) {
+			gLog.Error.Printf("target bucket %s must not have a suffix", tgtBucket)
+			return
+		}
 
-	if len(prefix) > 0 && len(inFile) == 0 && len(iBucket) == 0 {
-		gLog.Warning.Printf("--prefix %s is ignored for full backup", prefix)
-		prefix = ""
 	}
+	/*
+		if len(prefix) > 0 && len(inFile) == 0 && len(iBucket) == 0 {
+			gLog.Warning.Printf("--prefix %s is ignored for full backup", prefix)
+			prefix = ""
+		}
+	*/
 
 	if len(prefix) > 0 {
 		/*
 			get the suffix of the bucket and append it to the source bucket
 		*/
-		if len(srcBucket) > 0 {
-			if err, suf := mosesbc.GetBucketSuffix(srcBucket, prefix); err != nil {
-				gLog.Error.Printf("%v", err)
-				return
-			} else {
-				if len(suf) > 0 {
-					srcBucket += "-" + suf
-					gLog.Warning.Printf("A suffix %s is appended to the source Bucket %s", suf, srcBucket)
-				}
+
+		if err, suf := mosesbc.GetBucketSuffix(srcBucket, prefix); err != nil {
+			gLog.Error.Printf("%v", err)
+			return
+		} else {
+			if len(suf) > 0 {
+				srcBucket += "-" + suf
+				gLog.Warning.Printf("A suffix %s is appended to the source Bucket %s", suf, srcBucket)
 			}
 		}
+
 		/*
 			get the suffix of the bucket and append it to the target  bucket
 		*/
@@ -238,8 +240,16 @@ func Bucket_backup(cmd *cobra.Command, args []string) {
 		return
 	}
 	maxPartSize = maxPartSize * 1024 * 1024
-	srcS3 = mosesbc.CreateS3Session("backup", "source")
-	tgtS3 = mosesbc.CreateS3Session("backup", "target")
+	// srcS3 = mosesbc.CreateS3Session("backup", "source")
+	if srcS3 = mosesbc.CreateS3Session("backup", "source"); srcS3 == nil {
+		gLog.Error.Printf("Failed to create a S3 source session")
+		return
+	}
+	// tgtS3 = mosesbc.CreateS3Session("backup", "target")
+	if tgtS3 = mosesbc.CreateS3Session("backup", "target"); tgtS3 == nil {
+		gLog.Error.Printf("Failed to create a S3 target session")
+		return
+	}
 
 	// start the backup
 	if nextmarker, err = backup_bucket(); err != nil {
@@ -311,12 +321,10 @@ func backup_bucket() (string, error) {
 		if err == nil {
 			if l := len(result.Contents); l > 0 {
 				var wg1 sync.WaitGroup
-				// wg1.Add(len(result.Contents))
 				for _, v := range result.Contents {
 					if *v.Key != nextmarker {
 						gLog.Info.Printf("Key: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size, v.LastModified)
 						svc := req.Service
-
 						var buck string
 						if incr {
 							buck = mosesbc.SetBucketName(*v.Key, req.Bucket)
@@ -331,7 +339,6 @@ func backup_bucket() (string, error) {
 						ndocs += 1
 						wg1.Add(1)
 						go func(request datatype.StatObjRequest) {
-
 							var (
 								rh = datatype.Rh{
 									Key: request.Key,
@@ -340,9 +347,7 @@ func backup_bucket() (string, error) {
 								err                        error
 								usermd                     string
 							)
-
 							defer wg1.Done()
-
 							rh.Result, rh.Err = api.StatObject(request)
 							if usermd, err = utils.GetUserMeta(rh.Result.Metadata); err == nil {
 								userm := UserMd{}
@@ -485,14 +490,12 @@ func BackupPn(pn string, np int, usermd string, maxPage int) (int, *documentpb.D
 		}
 		if _, err := writeS3(tgtS3, buck1, maxPartSize, document); err != nil {
 			gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
-
 			nerrs += 1
 		}
-		/* else {
-			docsize = (int)(document.Size)
-			npage = (int)(document.NumberOfPages)
-		}
-		*/
+		/*
+			version management can be implement here
+			list all the versions and delete the oldest one
+		 */
 
 	} else {
 		printErr(errs)

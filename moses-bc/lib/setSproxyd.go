@@ -36,7 +36,9 @@ func SetSourceSproxyd(op string, srcUrl string, driver string, env string) error
 			srcUrl = urls
 		} else {
 			// gLog.Error.Println("--source-url sproxyd urls are missing , add check.sproxyd.source.urls to the config file")
-			gLog.Error.Printf("%s", missingSourceUrls)
+			// gLog.Error.Printf("%s", missingSourceUrls)
+			err = errors.New(fmt.Sprintf("%s", missingSourceUrls))
+			gLog.Error.Printf("%v",err)
 			return err
 		}
 	}
@@ -48,7 +50,9 @@ func SetSourceSproxyd(op string, srcUrl string, driver string, env string) error
 			sproxyd.Driver = drv
 			driver = drv
 		} else {
-			gLog.Error.Printf("%s", missingSourceDriver)
+			err = errors.New(fmt.Sprintf("%s", missingSourceDriver))
+			gLog.Error.Printf("%v",err)
+			//gLog.Error.Printf("%s", missingSourceDriver)
 			return err
 		}
 	}
@@ -59,7 +63,9 @@ func SetSourceSproxyd(op string, srcUrl string, driver string, env string) error
 		if env := viper.GetString(s_env); len(env) > 0 {
 			sproxyd.Env = env
 		} else {
-			gLog.Error.Printf("%s", missingSourceEnv)
+			// gLog.Error.Printf("%s", missingSourceEnv)
+			err = errors.New(fmt.Sprintf("%s", missingSourceEnv))
+			gLog.Error.Printf("%v",err)
 			return err
 		}
 	}
@@ -93,7 +99,8 @@ func SetTargetSproxyd(op string, targetUrl string, targetDriver string, targetEn
 			sproxyd.TargetUrl = urls
 			targetUrl = urls
 		} else {
-			gLog.Error.Printf("%s", missingTargetUrls)
+			err = errors.New(fmt.Sprintf("%s", missingTargetUrls))
+			gLog.Error.Printf("%v",err)
 			return err
 		}
 	}
@@ -105,7 +112,9 @@ func SetTargetSproxyd(op string, targetUrl string, targetDriver string, targetEn
 			sproxyd.TargetDriver = drv
 			targetDriver = drv
 		} else {
-			gLog.Error.Printf("%s", missingTargetDriver)
+			// gLog.Error.Printf("%s", missingTargetDriver)
+			err = errors.New(fmt.Sprintf("%s", missingTargetDriver))
+			gLog.Error.Printf("%v",err)
 			return err
 		}
 	}
@@ -116,7 +125,9 @@ func SetTargetSproxyd(op string, targetUrl string, targetDriver string, targetEn
 		if env := viper.GetString(t_env); len(env) > 0 {
 			sproxyd.TargetEnv = env
 		} else {
-			gLog.Error.Printf("%s", missingTargetEnv)
+			// gLog.Error.Printf("%s", missingTargetEnv)
+			err = errors.New(fmt.Sprintf("%s", missingTargetEnv))
+			gLog.Error.Printf("%v",err)
 			return err
 		}
 	}
