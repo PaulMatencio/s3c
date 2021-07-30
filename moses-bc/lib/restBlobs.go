@@ -134,7 +134,7 @@ func restore_part_large_blob(request *sproxyd.HttpRequest, document *documentpb.
 	}
 	wg1.Wait()
 	request.Client.CloseIdleConnections()
-	gLog.Trace.Printf("Writedoc document %s  starting slot: %d - endingslot: %d  completed",document.DocId,start,end)
+	gLog.Trace.Printf("Writedoc document %s  starting slot: %d - ending slot: %d  completed",document.DocId,start,end)
 	return perrors
 
 }

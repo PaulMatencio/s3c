@@ -267,7 +267,7 @@ func createS3Session(location string) (error, *s3.S3) {
 	if location != "source" &&  location != "target" {
 		return errors.New("location must be [source|target]"),nil
 	}
-	if s3 := mosesbc.CreateS3Session("list", location); s3 == nil {
+	if s3 := mosesbc.CreateS3Session("list", location); s3 != nil {
 		return nil,s3
 	} else {
 		return errors.New(fmt.Sprintf("Failed to create a session for %s S3",location)),nil

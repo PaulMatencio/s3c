@@ -71,17 +71,17 @@ func WriteS3(service *s3.S3, bucket string, document *documentpb.Document) (*s3.
 		var (
 			usermd    = document.GetS3Meta()
 			versionId = document.VersionId
-			metadata   = make(map[string]*string)
+			metadata  = make(map[string]*string)
 		)
 		metadata["Usermd"] = &usermd
 		metadata["VersionId"] = &versionId
 
 		req := datatype.PutObjRequest3{
-			Service:  service,
-			Bucket:   bucket,
-			Key:      document.DocId,
-			Buffer:   bytes.NewBuffer(data), // convert []byte into *bytes.Buffer
-			Metadata: metadata, 				// user metadata
+			Service:     service,
+			Bucket:      bucket,
+			Key:         document.DocId,
+			Buffer:      bytes.NewBuffer(data), // convert []byte into *bytes.Buffer
+			Metadata:    metadata,              // user metadata
 			ContentType: http.DetectContentType(data),
 		}
 		return api.PutObject3(req)
@@ -123,10 +123,10 @@ func WriteS3Multipart(service *s3.S3, bucket string, maxPartSize int64, document
 	metadata["VersionId"] = &document.VersionId
 
 	create := datatype.CreateMultipartUploadRequest{
-		Service:     service,
-		Bucket:      bucket,
-		Key:         key,
-		Metadata:    metadata,
+		Service:  service,
+		Bucket:   bucket,
+		Key:      key,
+		Metadata: metadata,
 		// VersionId:   document.VersionId,
 		ContentType: http.DetectContentType(buffer),
 	}
@@ -260,6 +260,7 @@ func WriteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Documen
 		err     error
 		resp    *http.Response
 	)
+
 	if sproxyd.TargetDriver[0:2] == "bp" {
 		request.Path = sproxyd.TargetEnv + "/" + pn
 	} else {
@@ -278,11 +279,11 @@ func WriteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Documen
 			defer resp.Body.Close()
 			switch resp.StatusCode {
 			case 200:
-				gLog.Trace.Printf("Path/Key %s/%s has been written", request.Path, resp.Header["X-Scal-Ring-Key"])
+				gLog.Trace.Printf("Path/Key %s/%s has been written - http status code %d", request.Path, resp.Header["X-Scal-Ring-Key"], resp.StatusCode)
 			case 412:
-				gLog.Warning.Printf("Path/Key %s/%s already existed", request.Path, resp.Header["X-Scal-Ring-Key"])
+				gLog.Warning.Printf("Path/Key %s/%s already existed - http status code %d", request.Path, resp.Header["X-Scal-Ring-Key"], resp.StatusCode)
 			default:
-				gLog.Error.Printf("putObj Path/key %s/%s - resp.Status %d", request.Path, resp.Header["X-Scal-Ring-Key"], resp.StatusCode)
+				gLog.Error.Printf("putObj Path/key %s/%s - http Status code %d", request.Path, resp.Header["X-Scal-Ring-Key"], resp.StatusCode)
 				perrors++
 			}
 			return perrors, resp.StatusCode
@@ -293,8 +294,8 @@ func WriteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Documen
 func DeleteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Document) (int, int) {
 
 	var (
-		pn   = document.GetDocId()
-		perr = 0
+		pn      = document.GetDocId()
+		perrors = 0
 	)
 
 	if sproxyd.TargetDriver[0:2] == "bp" {
@@ -306,7 +307,7 @@ func DeleteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Docume
 	gLog.Trace.Printf("deleting pn %s - Path %s ", pn, request.Path)
 	if resp, err := sproxyd.Deleteobject(request); err != nil {
 		gLog.Error.Printf("Error %v - deleting  %s", err)
-		perr++
+		perrors++
 	} else {
 		if resp != nil {
 			defer resp.Body.Close()
@@ -317,12 +318,12 @@ func DeleteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Docume
 				gLog.Warning.Printf("Host: %s - Ring Key/path %s does not exist - Response status %d ", request.Hspool.Hosts()[0], request.Path, resp.StatusCode)
 			default:
 				gLog.Error.Printf("Host: %s Delete Ring key/path %s - Response status %d", request.Hspool.Hosts()[0], request.Path, resp.StatusCode)
-				perr++
+				perrors++
 			}
-			return perr, resp.StatusCode
+			return perrors, resp.StatusCode
 		}
 	}
-	return perr, -1
+	return perrors, -1
 }
 
 /*
@@ -350,11 +351,11 @@ func WriteDocPage(request sproxyd.HttpRequest, pg *documentpb.Page, replace bool
 			defer resp.Body.Close()
 			switch resp.StatusCode {
 			case 200:
-				gLog.Trace.Printf("Path/Key %s/%s has been written", request.Path, resp.Header["X-Scal-Ring-Key"])
+				gLog.Trace.Printf("Path/Key %s/%s has been written - http status code %d", request.Path, resp.Header["X-Scal-Ring-Key"], resp.StatusCode)
 			case 412:
-				gLog.Warning.Printf("Path/Key %s/%s already existed", request.Path, resp.Header["X-Scal-Ring-Key"])
+				gLog.Warning.Printf("Path/Key %s/%s already existed - http status code %d", request.Path, resp.Header["X-Scal-Ring-Key"], resp.StatusCode)
 			default:
-				gLog.Error.Printf("putObj Path/key %s/%s - resp.Status %d", request.Path, resp.Header["X-Scal-Ring-Key"], resp.Status)
+				gLog.Error.Printf("putObj Path/key %s/%s - http Status code %d", request.Path, resp.Header["X-Scal-Ring-Key"], resp.StatusCode)
 				perrors++
 			}
 			return perrors, resp.StatusCode
@@ -402,11 +403,11 @@ func WriteDocPdf( /*request *sproxyd.HttpRequest */ pd *documentpb.Pdf, replace 
 			defer resp.Body.Close()
 			switch resp.StatusCode {
 			case 200:
-				gLog.Trace.Printf("Path/Key %s/%s has been written", request.Path, resp.Header["X-Scal-Ring-Key"])
+				gLog.Trace.Printf("Path/Key %s/%s has been written - http status code %d", request.Path, resp.Header["X-Scal-Ring-Key"], resp.StatusCode)
 			case 412:
-				gLog.Warning.Printf("Path/Key %s/%s already existed", request.Path, resp.Header["X-Scal-Ring-Key"])
+				gLog.Warning.Printf("Path/Key %s/%s already existed - http status code %d", request.Path, resp.Header["X-Scal-Ring-Key"], resp.StatusCode)
 			default:
-				gLog.Error.Printf("putObj Path/key %s/%s - resp.Status %d", request.Path, resp.Header["X-Scal-Ring-Key"], resp.Status)
+				gLog.Error.Printf("putObj Path/key %s/%s - http Status code %d", request.Path, resp.Header["X-Scal-Ring-Key"], resp.StatusCode)
 				perrors++
 			}
 			return perrors, resp.StatusCode
