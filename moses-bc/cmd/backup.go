@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"bufio"
+	"encoding/base64"
 	"encoding/json"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/paulmatencio/protobuf-doc/src/document/documentpb"
@@ -512,11 +513,11 @@ func BackupPn(pn string, np int, usermd string, versionId string, maxPage int) (
 	if errs, document = mosesbc.BackupAllBlob(pn, np, maxPage); len(errs) == 0 {
 
 		/*
-			Add  s3 moses metadata to the document even if it may be  invalid from the source
+			Add  s3 moses metadata to the document even if it may be  invalid in the source bucket
 			the purpose of the backup is not to fix source data
 		*/
 
-		document.S3Meta = usermd
+		document.S3Meta = base64.StdEncoding.EncodeToString([]byte(usermd))
 		document.VersionId = versionId
 		document.LastUpdated = timestamppb.Now()
 		var buck1 string
@@ -542,6 +543,7 @@ func BackupPn(pn string, np int, usermd string, versionId string, maxPage int) (
 }
 
 func writeS3(service *s3.S3, bucket string, maxPartSize int64, document *documentpb.Document) (interface{}, error) {
+
 	if maxPartSize > 0 && document.Size > maxPartSize {
 		gLog.Warning.Printf("Multipart upload %s - size %d - max part size %d", document.DocId, document.Size, maxPartSize)
 		return mosesbc.WriteS3Multipart(service, bucket, maxPartSize, document)
