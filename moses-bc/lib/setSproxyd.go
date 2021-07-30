@@ -3,9 +3,6 @@ package lib
 import (
 	"errors"
 	"fmt"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/paulmatencio/s3c/api"
-	"github.com/paulmatencio/s3c/datatype"
 	gLog "github.com/paulmatencio/s3c/gLog"
 	sproxyd "github.com/paulmatencio/s3c/sproxyd/lib"
 	"github.com/spf13/viper"
@@ -138,37 +135,4 @@ func SetTargetSproxyd(op string, targetUrl string, targetDriver string, targetEn
 	return nil
 }
 
-func CreateS3Session(op string, location string) *s3.S3 {
-	var (
-		url       string
-		accessKey string
-		secretKey string
-		session   datatype.CreateSession
-	)
 
-	c := op + ".s3." + location + ".url"
-	if url = viper.GetString(c); len(url) == 0 {
-		gLog.Error.Println(errors.New(fmt.Sprintf("missing %s in the config file", c)))
-		return nil
-	}
-	c = op + ".s3." + location + ".credential.access_key_id"
-	if accessKey = viper.GetString(c); len(accessKey) == 0 {
-		gLog.Error.Println(errors.New(fmt.Sprintf("missing %s in the config file", c)))
-		return nil
-	}
-	c = op + ".s3." + location + ".credential.secret_access_key"
-	if secretKey = viper.GetString(c); len(secretKey) == 0 {
-		gLog.Error.Println(errors.New(fmt.Sprintf("missing %s in the config file", c)))
-		return nil
-	}
-
-	// gLog.Info.Println(metaUrl,metaAccessKey,metaSecretKey)
-	session = datatype.CreateSession{
-		Region:    viper.GetString("check.s3.source.region"),
-		EndPoint:  url,
-		AccessKey: accessKey,
-		SecretKey: secretKey,
-	}
-
-	return s3.New(api.CreateSession2(session))
-}

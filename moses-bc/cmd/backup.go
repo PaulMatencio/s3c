@@ -23,6 +23,7 @@ import (
 	"github.com/paulmatencio/s3c/api"
 	"github.com/paulmatencio/s3c/datatype"
 	mosesbc "github.com/paulmatencio/s3c/moses-bc/lib"
+	"github.com/spf13/viper"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	// "github.com/golang/protobuf/proto"
@@ -163,7 +164,11 @@ func Bucket_backup(cmd *cobra.Command, args []string) {
 				gLog.Error.Printf("Error %v  scanning --input-file  %s ", err, inFile)
 				return
 			}
-			// maxVersions = viper.GetInt("backup.MaximumNumberOfVersions")
+
+			if  maxv:= viper.GetInt("backup.maximumNumberOfVersions");maxv  > 0 {
+				maxVersions = maxv
+			}
+
 		}
 		incr = true
 		// bucket must not  have a suffix
