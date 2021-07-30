@@ -453,7 +453,7 @@ func backup_bucket() (string, error) {
 			// req1.Marker = nextmarker
 			req.Continuationtoken = token
 		} else {
-			gLog.Info.Printf("Total number of backed up documents: %d - total number of pages: %d  - Total document size: %d - Total number of deletes %d -  Total number of errors: %d", tdocs, tpages, tsizes, tdeletes, terrors)
+			gLog.Info.Printf("Total number of backed up documents: %d - total number of pages: %d  - Total document size: %d - Total number of older versions deleted %d -  Total number of errors: %d", tdocs, tpages, tsizes, tdeletes, terrors)
 			break
 		}
 	}

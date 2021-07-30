@@ -222,7 +222,7 @@ func restore_bucket() (string, error) {
 								re.Lock()
 								gerrors += errs
 								re.Unlock()
-							} 
+							}
 							si.Lock()
 							npages += pages
 							docsizes += sizes
