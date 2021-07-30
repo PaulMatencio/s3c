@@ -450,15 +450,17 @@ func indexDocument(document *documentpb.Document, tgtBucket string, svc *s3.S3) 
 		data     = make([]byte, 0, 0) // empty byte array
 		// s3meta = base64.StdEncoding.EncodeToString(([]byte(document.S3Meta)))
 	)
-	gLog.Info.Println(document.S3Meta)
-	putReq := datatype.PutObjRequest{
+	// gLog.Info.Println(document.S3Meta)
+	metadata := make(map[string]*string)
+	metadata["Usermd"] = &document.S3Meta
+	putReq := datatype.PutObjRequest3{
 		Service: svc,
 		Bucket:  tgtBucket,
 		Key:     document.GetDocId(),
 		Buffer:  bytes.NewBuffer(data), // convert []byte into *bytes.Buffer
-		Meta:    []byte(document.S3Meta),
+		Metadata:    metadata,
 	}
-	return api.PutObject(putReq)
+	return api.PutObject3(putReq)
 }
 
 /*
