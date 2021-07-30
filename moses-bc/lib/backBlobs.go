@@ -172,7 +172,6 @@ func backup_large_blob(pn string, np int, maxPage int) ([]error,*documentpb.Docu
 	/*
 		if document has a pdf
 		retrieve the pdf and add it to  the document
-
 	*/
 
 	pdf,p0 := CheckPdfAndP0(pn,usermd)
@@ -207,7 +206,7 @@ func backup_large_blob(pn string, np int, maxPage int) ([]error,*documentpb.Docu
 	for s := 1; s <= q; s++ {
 		start3 := time.Now()
 		errs,document = backup_part_large_blob(document, pn, np,start, end)
-		gLog.Info.Printf("Get pages range %d:%d for document %s - Elapsed time %v ",start,end,pn,time.Since(start3))
+		gLog.Info.Printf("Get pages range %d-%d for document %s - Elapsed time %v ",start,end,pn,time.Since(start3))
 		start = end + 1
 		end += maxPage
 		if end > np {
@@ -225,7 +224,7 @@ func backup_large_blob(pn string, np int, maxPage int) ([]error,*documentpb.Docu
 	return errs,document
 }
 
-
+//  document with the number of pages > maxPages
 func backup_part_large_blob(document *documentpb.Document, pn string, np int, start int, end int) ([]error, *documentpb.Document) {
 
 	var (
@@ -245,6 +244,7 @@ func backup_part_large_blob(document *documentpb.Document, pn string, np int, st
 	)
 
 	// gLog.Info.Printf("Getpart of pn %s - start-page %d - end-page %d ", pn, start, end)
+
 	for k := start; k <= end; k++ {
 		request.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
 		go func(request sproxyd.HttpRequest, k int) {

@@ -133,7 +133,10 @@ func Clone_bucket(cmd *cobra.Command, args []string) {
 			gLog.Error.Printf("--input-file  and --input-bucket are mutually exclusive", inFile, iBucket)
 			return
 		}
-
+		if len(prefix) > 0 {
+				gLog.Warning.Printf("Prefix is ignored with --input-file or --input-bucket ")
+				prefix = ""
+		}
 		/*
 			Prepare to Scan the input file
 		*/

@@ -20,7 +20,9 @@ type GetObjRequest struct {
 	Service 	*s3.S3
 	Bucket 		string
 	Key    		string
+	VersionId   string
 }
+
 
 type GetMultipartObjRequest struct {
 
@@ -61,6 +63,7 @@ type PutObjRequest struct {
 	Buffer       *bytes.Buffer
 	Usermd      map[string]string
 	Meta        []byte
+	VersionId   string
 }
 
 type PutObjRequest3 struct {
@@ -69,6 +72,7 @@ type PutObjRequest3 struct {
 	Key          string
 	Buffer       *bytes.Buffer
 	Metadata     map[string]*string
+	ContentType  string
 }
 
 
@@ -165,8 +169,6 @@ type StatObjRequestV2 struct {
 	Key          string
 }
 
-
-
 type StatBucketRequest struct {
 	Service 	*s3.S3
 	Bucket      string
@@ -223,6 +225,8 @@ type CreateMultipartUploadRequest struct {
 	 Service     *s3.S3
 	 Bucket      string
 	 Key         string
+	 Metadata    map[string]*string
+	 VersionId   string
 	 ContentType string
 }
 

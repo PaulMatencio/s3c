@@ -216,3 +216,16 @@ func HashKey(key string, modulo int) (int) {
 	}
 	return v % modulo
 }
+
+func ParseLog(line string ) (error, string, string ){
+	gLog.Trace.Println(line)
+	if len(line) > 0 {
+		L := strings.Split(line, " ")
+		gLog.Trace.Println(L)
+		if len(L) ==  2 {
+			gLog.Trace.Printf("Method %s Key %s",L[0],L[1])
+			return nil, L[0], L[1]
+		}
+	}
+	return errors.New(fmt.Sprintf("Invalid input parameter  <method> <key> in %s",line)),"",""
+}

@@ -44,7 +44,7 @@ type Resp struct {
 }
 
 /*
-	Wrote document to file
+	Write document to file
 */
 func WriteDirectory(pn string, document *documentpb.Document, outdir string) (error, int) {
 	var (
@@ -52,7 +52,6 @@ func WriteDirectory(pn string, document *documentpb.Document, outdir string) (er
 		bytes []byte
 	)
 	if bytes, err = proto.Marshal(document); err == nil {
-		//gLog.Info.Printf("Document %s  - length %d ",pn, len(bytes))
 		pn = strings.Replace(pn, "/", "_", -1)
 		ofn := filepath.Join(outdir, pn)
 		if f, err := os.OpenFile(ofn, os.O_WRONLY|os.O_CREATE, 0600); err == nil {
@@ -65,19 +64,27 @@ func WriteDirectory(pn string, document *documentpb.Document, outdir string) (er
 }
 
 /*
-	Wrote document to S3
+	Write document to S3
 */
 func WriteS3(service *s3.S3, bucket string, document *documentpb.Document) (*s3.PutObjectOutput, error) {
 	if data, err := proto.Marshal(document); err == nil {
-		meta := document.GetS3Meta()
-		req := datatype.PutObjRequest{
-			Service: service,
-			Bucket:  bucket,
-			Key:     document.DocId,
-			Buffer:  bytes.NewBuffer(data), // convert []byte into *bytes.Buffer
-			Meta:    []byte(meta),
+		var (
+			usermd    = document.GetS3Meta()
+			versionId = document.VersionId
+			metadata   = make(map[string]*string)
+		)
+		metadata["Usermd"] = &usermd
+		metadata["VersionId"] = &versionId
+
+		req := datatype.PutObjRequest3{
+			Service:  service,
+			Bucket:   bucket,
+			Key:      document.DocId,
+			Buffer:   bytes.NewBuffer(data), // convert []byte into *bytes.Buffer
+			Metadata: metadata, 				// user metadata
+			ContentType: http.DetectContentType(data),
 		}
-		return api.PutObject(req)
+		return api.PutObject3(req)
 	} else {
 		return nil, err
 	}
@@ -92,18 +99,19 @@ func WriteS3Multipart(service *s3.S3, bucket string, maxPartSize int64, document
 		documentSize              int64
 		completedParts            []*s3.CompletedPart
 		// buffer                                 = document.GetObject()
-		key    = document.GetDocId()
-		buffer []byte
-		err    error
-		resp   *s3.CreateMultipartUploadOutput
-		errs   []error
+		key      = document.GetDocId()
+		buffer   []byte
+		err      error
+		resp     *s3.CreateMultipartUploadOutput
+		errs     []error
+		metadata = make(map[string]*string)
 	)
 	/*
-		if retryNumber :=utils.GetRetryNumber(*viper.GetViper()); retryNumber == 0 {
+		if retryNumber := utils.GetRetryNumber(*viper.GetViper()); retryNumber == 0 {
 		 	retryNumber = mosesbc.RETRY
 		}
 
-		if waitTime :=utils.GetWaitTime(*viper.GetViper()); waitTime == 0 {
+		if waitTime :=  utils.GetWaitTime(*viper.GetViper()); waitTime == 0 {
 		 	waitTime = mosesbc.WaitTime
 		}
 	*/
@@ -111,12 +119,16 @@ func WriteS3Multipart(service *s3.S3, bucket string, maxPartSize int64, document
 		return errs, err
 	}
 	documentSize = int64(len(buffer))
-	fType := http.DetectContentType(buffer)
+	metadata["Usermd"] = &document.Metadata
+	metadata["VersionId"] = &document.VersionId
+
 	create := datatype.CreateMultipartUploadRequest{
 		Service:     service,
 		Bucket:      bucket,
 		Key:         key,
-		ContentType: fType,
+		Metadata:    metadata,
+		// VersionId:   document.VersionId,
+		ContentType: http.DetectContentType(buffer),
 	}
 
 	if resp, err = api.CreateMultipartUpload(create); err == nil {
@@ -251,7 +263,7 @@ func WriteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Documen
 	if sproxyd.TargetDriver[0:2] == "bp" {
 		request.Path = sproxyd.TargetEnv + "/" + pn
 	} else {
-		request.Path = pn /*   pn is the Ring key   */
+		request.Path = pn /*   pn is object key   */
 	}
 
 	request.ReqHeader = map[string]string{}
@@ -262,7 +274,6 @@ func WriteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Documen
 		gLog.Error.Printf("Error %v - Put Document object %s", err, pn)
 		perrors++
 	} else {
-
 		if resp != nil {
 			defer resp.Body.Close()
 			switch resp.StatusCode {
@@ -279,10 +290,10 @@ func WriteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Documen
 	}
 	return perrors, -1
 }
-func DeleteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Document) (int,int) {
+func DeleteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Document) (int, int) {
 
 	var (
-		pn      = document.GetDocId()
+		pn   = document.GetDocId()
 		perr = 0
 	)
 
@@ -308,10 +319,10 @@ func DeleteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Docume
 				gLog.Error.Printf("Host: %s Delete Ring key/path %s - Response status %d", request.Hspool.Hosts()[0], request.Path, resp.StatusCode)
 				perr++
 			}
-			return perr,resp.StatusCode
+			return perr, resp.StatusCode
 		}
 	}
-	return perr,-1
+	return perr, -1
 }
 
 /*

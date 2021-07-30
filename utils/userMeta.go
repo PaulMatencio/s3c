@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"github.com/paulmatencio/s3c/gLog"
 	"io/ioutil"
 	"os"
@@ -20,6 +21,20 @@ func GetUserMeta(metad map[string]*string) (string,error) {
 		u,err =  base64.StdEncoding.DecodeString(*v)
 		return string(u),err
 	} else {
+		return "",err
+	}
+}
+
+func GetVersionId(metad map[string]*string) (string,error) {
+
+	var (
+		err error
+	)
+
+	if v,ok := metad["VersionId"];ok {
+		return *v,nil
+	} else {
+		err = errors.New("VersionId does not exist")
 		return "",err
 	}
 }
@@ -52,6 +67,7 @@ func BuildUserMeta(meta []byte) (map[string]*string) {
 	}
 	return metad
 }
+
 
 func AddMoreUserMeta(metad map[string]string,source string) (map[string]string) {
 	metad["Source"] = source

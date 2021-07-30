@@ -12,32 +12,31 @@ import (
 	"time"
 )
 
-
 var (
-	gmshort = "Command to retieve some of the metadata of specific or every object in the bucket"
+	gmshort  = "Command to retieve some of the metadata of specific or every object in the bucket"
 	gmetaCmd = &cobra.Command{
-		Use:   "statObjects",
-		Short: gmshort,
-		Long: ``,
+		Use:    "statObjects",
+		Short:  gmshort,
+		Long:   ``,
 		Hidden: true,
-		Run: statObjects,
+		Run:    statObjects,
 	}
 
 	gmCmd = &cobra.Command{
 		Use:   "statObjs",
 		Short: gmshort,
-		Long: ``,
-		Run: statObjects,
+		Long:  ``,
+		Run:   statObjects,
 	}
 
 	hmCmd = &cobra.Command{
 		Use:   "headObjs",
 		Short: gmshort,
-		Long: ``,
-		Run: statObjects,
+		Long:  ``,
+		Run:   statObjects,
 	}
-
 )
+
 /*
 type  Rd struct {
 	Key string
@@ -56,34 +55,33 @@ func init() {
 	initLoFlags(gmetaCmd)
 	initLoFlags(gmCmd)
 	initLoFlags(hmCmd)
-	gmetaCmd.Flags().StringVarP(&odir,"odir","O","","the output directory relative to the home directory")
-	gmCmd.Flags().StringVarP(&odir,"odir","O","","the output directory relative to the home directory")
-	hmCmd.Flags().StringVarP(&odir,"odir","O","","the output directory relative to the home directory")
+	gmetaCmd.Flags().StringVarP(&odir, "odir", "O", "", "the output directory relative to the home directory")
+	gmCmd.Flags().StringVarP(&odir, "odir", "O", "", "the output directory relative to the home directory")
+	hmCmd.Flags().StringVarP(&odir, "odir", "O", "", "the output directory relative to the home directory")
 }
 
-
-func statObjects(cmd *cobra.Command,args []string) {
+func statObjects(cmd *cobra.Command, args []string) {
 
 	var (
-		start= utils.LumberPrefix(cmd)
-		N,T = 0,0
+		start       = utils.LumberPrefix(cmd)
+		N, T        = 0, 0
 		total int64 = 0
 	)
-	
+
 	if len(bucket) == 0 {
 
-		gLog.Warning.Printf("%s",missingBucket)
+		gLog.Warning.Printf("%s", missingBucket)
 		utils.Return(start)
 		return
 	}
 
-	if len(odir) >0 {
-		pdir = filepath.Join(utils.GetHomeDir(),odir)
+	if len(odir) > 0 {
+		pdir = filepath.Join(utils.GetHomeDir(), odir)
 		utils.MakeDir(pdir)
 	}
 	// if prefix is a full document key
 	if full {
-		bucket = bucket +"-"+fmt.Sprintf("%02d",utils.HashKey(prefix,bucketNumber))
+		bucket = bucket + "-" + fmt.Sprintf("%02d", utils.HashKey(prefix, bucketNumber))
 	}
 
 	if R {
@@ -91,24 +89,24 @@ func statObjects(cmd *cobra.Command,args []string) {
 	}
 
 	req := datatype.ListObjRequest{
-		Service : s3.New(api.CreateSession()),
-		Bucket: bucket,
-		Prefix : prefix,
-		MaxKey : maxKey,
-		Marker : marker,
+		Service: s3.New(api.CreateSession()),
+		Bucket:  bucket,
+		Prefix:  prefix,
+		MaxKey:  maxKey,
+		Marker:  marker,
 	}
 	// ch:= make(chan *datatype.Rh)
-	ch:= make(chan int)
+	ch := make(chan int)
 	var (
 		nextmarker string
-		result  *s3.ListObjectsOutput
-		err error
+		result     *s3.ListObjectsOutput
+		err        error
 		// rd Rd
-		l  int
+		l int
 	)
 
-    svc  := s3.New(api.CreateSession()) // create another service point for  getting metadata
-	L:= 1
+	svc := s3.New(api.CreateSession()) // create another service point for  getting metadata
+	L := 1
 	for {
 
 		if result, err = api.ListObject(req); err == nil {
@@ -130,10 +128,13 @@ func statObjects(cmd *cobra.Command,args []string) {
 					go func(request datatype.StatObjRequest) {
 
 						rh := datatype.Rh{
-							Key : head.Key,
+							Key: head.Key,
 						}
 
 						rh.Result, rh.Err = api.StatObject(head)
+						if len(*rh.Result.VersionId) > 0 {
+							gLog.Info.Printf("Version id %s", *rh.Result.VersionId)
+						}
 						procStatResult(&rh)
 
 						// ch <- &rh
@@ -143,16 +144,16 @@ func statObjects(cmd *cobra.Command,args []string) {
 
 				}
 
-				done:= false
+				done := false
 
-				for ok:=true;ok;ok=!done {
+				for ok := true; ok; ok = !done {
 
 					select {
-					case  <-ch:
+					case <-ch:
 						T++
 						// procStatResult(rd)
 						if T == N {
-							gLog.Info.Printf("Getting metadata of %d objects ",N)
+							gLog.Info.Printf("Getting metadata of %d objects ", N)
 							done = true
 						}
 					case <-time.After(50 * time.Millisecond):
@@ -163,7 +164,7 @@ func statObjects(cmd *cobra.Command,args []string) {
 			}
 
 		} else {
-			gLog.Error.Printf("ListObjects err %v",err)
+			gLog.Error.Printf("ListObjects err %v", err)
 			break
 		}
 		L++
@@ -174,15 +175,13 @@ func statObjects(cmd *cobra.Command,args []string) {
 			gLog.Warning.Printf("Truncated %v  - Next marker : %s ", *result.IsTruncated, nextmarker)
 		}
 
-		if  *result.IsTruncated  && (maxLoop == 0 || L <= maxLoop) {
+		if *result.IsTruncated && (maxLoop == 0 || L <= maxLoop) {
 			req.Marker = nextmarker
 		} else {
-			gLog.Info.Printf("Total number of objects returned: %d",total)
+			gLog.Info.Printf("Total number of objects returned: %d", total)
 			break
 		}
 	}
 
 	utils.Return(start)
 }
-
-
