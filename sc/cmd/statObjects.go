@@ -132,9 +132,11 @@ func statObjects(cmd *cobra.Command, args []string) {
 						}
 
 						rh.Result, rh.Err = api.StatObject(head)
-						if len(*rh.Result.VersionId) > 0 {
+
+						if rh.Result.VersionId != nil   {
 							gLog.Info.Printf("Version id %s", *rh.Result.VersionId)
 						}
+
 						procStatResult(&rh)
 
 						// ch <- &rh

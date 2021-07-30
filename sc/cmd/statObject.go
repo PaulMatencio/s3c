@@ -94,7 +94,7 @@ func statObject(cmd *cobra.Command,args []string) {
 	if err != nil {
 		procS3Error(err)
 	} else {
-		if len(*result.VersionId) >0 {
+		if result.VersionId != nil  {
 			gLog.Info.Printf("Version id %s", *result.VersionId)
 		}
 		procS3Meta(key, result.Metadata)

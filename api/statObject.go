@@ -1,7 +1,8 @@
 package api
+
 import (
-	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/paulmatencio/s3c/datatype"
 	"github.com/paulmatencio/s3c/gLog"
 	awsauth "github.com/smartystreets/go-aws-auth"
@@ -11,7 +12,6 @@ import (
 func StatObject(req datatype.StatObjRequest) (*s3.HeadObjectOutput,error){
 
 	input := &s3.HeadObjectInput{
-
 		Bucket: aws.String(req.Bucket),
 		Key:    aws.String(req.Key),
 	}
