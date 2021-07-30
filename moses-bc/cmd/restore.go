@@ -18,12 +18,12 @@ import (
 	"bytes"
 	"encoding/json"
 
+	base64 "encoding/base64"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/paulmatencio/protobuf-doc/src/document/documentpb"
 	base64j "github.com/paulmatencio/ring/user/base64j"
-	base64 "encoding/base64"
 	"github.com/paulmatencio/s3c/api"
 	"github.com/paulmatencio/s3c/datatype"
 	"github.com/paulmatencio/s3c/gLog"
@@ -449,8 +449,9 @@ func restore_pn(request datatype.GetObjRequest, replace bool) (int, int, int) {
 func indexDocument(document *documentpb.Document, tgtBucket string, svc *s3.S3) (*s3.PutObjectOutput, error) {
 	var (
 		data     = make([]byte, 0, 0) // empty byte array
-		s3meta = base64.StdEncoding.EncodeToString([]byte([]byte(document.S3Meta)))
+		s3meta = base64.StdEncoding.EncodeToString(([]byte(document.S3Meta)))
 	)
+	gLog.Info.Println(document.S3Meta)
 	putReq := datatype.PutObjRequest{
 		Service: svc,
 		Bucket:  tgtBucket,
