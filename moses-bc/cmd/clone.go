@@ -287,12 +287,17 @@ func clone_bucket() (string, error) {
 		if err == nil {
 			if l := len(result.Contents); l > 0 {
 				start := time.Now()
+				var buck1 string
 				for _, v := range result.Contents {
 					if *v.Key != nextmarker {
 						ndocr += 1
 						// retrieve the source bucket
 						svc1 := req.Service
-						buck1 := mosesbc.SetBucketName(*v.Key, req.Bucket)
+						if incr {
+							buck1 = mosesbc.SetBucketName(*v.Key, req.Bucket)
+						} else {
+							buck1 = req.Bucket
+						}
 						request := datatype.StatObjRequest{
 							Service: svc1,
 							Bucket:  buck1,
@@ -310,28 +315,33 @@ func clone_bucket() (string, error) {
 								pn     string
 							)
 							defer wg1.Done()
-							rh.Result, rh.Err = api.StatObject(request)
-							if usermd, err = utils.GetUserMeta(rh.Result.Metadata); err == nil {
-								userm := UserMd{}
-								json.Unmarshal([]byte(usermd), &userm)
-								pn = rh.Key
-								if np, err = strconv.Atoi(userm.TotalPages); err == nil {
-									start3 := time.Now()
-									nerr, document := mosesbc.Clone_blob(pn, np, maxPage, replace)
-									if nerr == 0 {
-										si.Lock()
-										npages += int(document.NumberOfPages)
-										docsizes += document.Size
-										ndocs += 1
-										si.Unlock()
-										gLog.Info.Printf("Document id %s is cloned - Number of pages %d - Document size %d - Number of errors %d - Elapsed time %v ", document.DocId, document.NumberOfPages, document.Size, nerr, time.Since(start3))
-									} else {
-										re.Lock()
-										gerrors += nerr
-										re.Unlock()
-										gLog.Info.Printf("Document id %s is not fully cloned - Number of pages %d - Document size %d - Number of errors %d - Elapsed time %v ", document.DocId, document.NumberOfPages, document.Size, nerr, time.Since(start3))
+							if rh.Result, rh.Err = api.StatObject(request); rh.Err == nil {
+								if usermd, err = utils.GetUserMeta(rh.Result.Metadata); err == nil {
+									userm := UserMd{}
+									json.Unmarshal([]byte(usermd), &userm)
+									pn = rh.Key
+									if np, err = strconv.Atoi(userm.TotalPages); err == nil {
+										start3 := time.Now()
+										nerr, document := mosesbc.Clone_blob(pn, np, maxPage, replace)
+										if nerr == 0 {
+											si.Lock()
+											npages += int(document.NumberOfPages)
+											docsizes += document.Size
+											ndocs += 1
+											si.Unlock()
+											gLog.Info.Printf("Document id %s is cloned - Number of pages %d - Document size %d - Number of errors %d - Elapsed time %v ", document.DocId, document.NumberOfPages, document.Size, nerr, time.Since(start3))
+										} else {
+											re.Lock()
+											gerrors += nerr
+											re.Unlock()
+											gLog.Info.Printf("Document id %s is not fully cloned - Number of pages %d - Document size %d - Number of errors %d - Elapsed time %v ", document.DocId, document.NumberOfPages, document.Size, nerr, time.Since(start3))
+										}
 									}
+								} else {
+									gLog.Error.Printf("%v", err)
 								}
+							} else {
+								gLog.Error.Printf("%v", rh.Err)
 							}
 						}(request, replace)
 					}
