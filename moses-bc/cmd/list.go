@@ -18,28 +18,27 @@ import (
 var (
 	loshort       = "Command to list objects in a given bucket"
 	listObjectCmd = &cobra.Command{
-		Use:   "list-objects",
-		Short: loshort,
-		Long:  ``,
-		Hidden: true,
-		Run: listObjectV2,
-	}
-	/*
-	loCmd = &cobra.Command{
-		Use:    "list-objects-v2",
+		Use:    "list-objects",
 		Short:  loshort,
-		Hidden: true,
 		Long:   ``,
+		Hidden: true,
 		Run:    listObjectV2,
 	}
-	*/
+
+	lbCmd = &cobra.Command{
+		Use:    "list-buckets",
+		Short:  "list Buckets of a given S3 location",
+		Hidden: true,
+		Long:   ``,
+		Run:    listBucket,
+	}
 
 	lvCmd = &cobra.Command{
-		Use:   "list-object-versions",
-		Short: "Command to list objects and their versions in a given bucket",
-		Long:  ``,
+		Use:    "list-object-versions",
+		Short:  "Command to list objects and their versions in a given bucket",
+		Long:   ``,
 		Hidden: true,
-		Run:   listObjVersions,
+		Run:    listObjVersions,
 	}
 	location string
 )
@@ -65,12 +64,17 @@ func initLvFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, "maximum number of loop, 0 means no upper limit")
 	cmd.Flags().StringVarP(&location, "location", "", "target", "S3 location - possible value [source|target]")
 }
+
+func initLbFlags(cmd *cobra.Command) {
+	cmd.Flags().StringVarP(&location, "location", "", "backup", "S3 location - possible value [source|backup|clone]")
+}
+
 func init() {
 	rootCmd.AddCommand(listObjectCmd)
-	//rootCmd.AddCommand(loCmd)
+	rootCmd.AddCommand(lbCmd)
 	rootCmd.AddCommand(lvCmd)
 	initLoFlags(listObjectCmd)
-	// initLoFlags(loCmd)
+	initLbFlags(lbCmd)
 	initLvFlags(lvCmd)
 }
 
@@ -79,7 +83,7 @@ func listObject(cmd *cobra.Command, args []string) {
 		total      int64 = 0
 		nextmarker string
 		req        datatype.ListObjRequest
-		service         *s3.S3
+		service    *s3.S3
 	)
 
 	if len(bucket) == 0 {
@@ -87,7 +91,7 @@ func listObject(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	if err,service = createS3Session(location); err == nil {
+	if err, service = createS3Session(location); err == nil {
 		req = datatype.ListObjRequest{
 			Service:   service,
 			Bucket:    bucket,
@@ -97,7 +101,7 @@ func listObject(cmd *cobra.Command, args []string) {
 			Delimiter: delimiter,
 		}
 	} else {
-		gLog.Error.Printf("%v",err )
+		gLog.Error.Printf("%v", err)
 		return
 	}
 
@@ -144,7 +148,7 @@ func listObjectV2(cmd *cobra.Command, args []string) {
 		token      string
 		nextmarker string
 		req        datatype.ListObjV2Request
-		service        *s3.S3
+		service    *s3.S3
 	)
 
 	if len(bucket) == 0 {
@@ -153,7 +157,7 @@ func listObjectV2(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	if err,service = createS3Session(location); err == nil {
+	if err, service = createS3Session(location); err == nil {
 		req = datatype.ListObjV2Request{
 			Service:           service,
 			Bucket:            bucket,
@@ -164,7 +168,7 @@ func listObjectV2(cmd *cobra.Command, args []string) {
 			Delimiter:         delimiter,
 		}
 	} else {
-		gLog.Error.Printf("%v",err )
+		gLog.Error.Printf("%v", err)
 		return
 	}
 	L := 1
@@ -208,7 +212,7 @@ func listObjVersions(cmd *cobra.Command, args []string) {
 		total               int64 = 0
 		nextMarker          string
 		nextVersionIdMarker string
-		service                  *s3.S3
+		service             *s3.S3
 		req                 datatype.ListObjVersionsRequest
 	)
 
@@ -216,7 +220,7 @@ func listObjVersions(cmd *cobra.Command, args []string) {
 		gLog.Warning.Printf("%s", missingBucket)
 		return
 	}
-	if err,service = createS3Session(location); err == nil {
+	if err, service = createS3Session(location); err == nil {
 		req = datatype.ListObjVersionsRequest{
 			Service:         service,
 			Bucket:          bucket,
@@ -227,7 +231,7 @@ func listObjVersions(cmd *cobra.Command, args []string) {
 			Delimiter:       delimiter,
 		}
 	} else {
-		gLog.Error.Printf("%v",err )
+		gLog.Error.Printf("%v", err)
 		return
 	}
 	L := 1
@@ -266,16 +270,35 @@ func listObjVersions(cmd *cobra.Command, args []string) {
 	}
 }
 
+func listBucket(cmd *cobra.Command, args []string) {
+
+	if err, service = createS3Session(location); err != nil {
+		gLog.Error.Printf("%v", err)
+		return
+	}
+	req := datatype.ListBucketRequest{
+		Service: service,
+	}
+	if result, err := api.ListBucket(req); err != nil {
+		gLog.Error.Printf("%v", err)
+	} else {
+		gLog.Info.Printf("Owner of the buckets: %s", result.Owner)
+		for _, v := range result.Buckets {
+			gLog.Info.Printf("Bucket Name: %s - Creation date: %s", *v.Name, v.CreationDate)
+		}
+	}
+}
+
 func createS3Session(location string) (error, *s3.S3) {
 
-	if location != "source" &&  location != "backup" && location != "clone"  {
-		return errors.New("location must be [source|backup|clone]"),nil
+	if location != "source" && location != "backup" && location != "clone" {
+		return errors.New("location must be [source|backup|clone]"), nil
 	}
 
 	if s3 := mosesbc.CreateS3Session("list", location); s3 != nil {
-		return nil,s3
+		return nil, s3
 	} else {
-		return errors.New(fmt.Sprintf("Failed to create a session for %s S3",location)),nil
+		return errors.New(fmt.Sprintf("Failed to create a session for %s S3", location)), nil
 	}
 
 }
