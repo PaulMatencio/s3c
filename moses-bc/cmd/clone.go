@@ -21,6 +21,7 @@ import (
 	"github.com/paulmatencio/s3c/datatype"
 	"github.com/paulmatencio/s3c/gLog"
 	mosesbc "github.com/paulmatencio/s3c/moses-bc/lib"
+	sproxyd "github.com/paulmatencio/s3c/sproxyd/lib"
 	"github.com/paulmatencio/s3c/utils"
 	"github.com/spf13/cobra"
 	"strconv"
@@ -102,13 +103,18 @@ func init() {
 }
 
 func Clone_bucket(cmd *cobra.Command, args []string) {
+
 	var err error
 	if err = mosesbc.SetSourceSproxyd("clone", srcUrl, driver, env); err != nil {
+		gLog.Error.Printf("%v",err)
 		return
 	}
 	if err = mosesbc.SetTargetSproxyd("clone", targetUrl, targetDriver, targetEnv); err != nil {
+		gLog.Error.Printf("%v",err)
 		return
 	}
+	gLog.Info.Printf("Source Env: %s - Source Driver: %s - Source Url: %s",sproxyd.Env, sproxyd.Driver, sproxyd.Url)
+	gLog.Info.Printf("Target Env: %s - Target Driver: %s - Target Url: %s",sproxyd.TargetEnv, sproxyd.TargetDriver, sproxyd.TargetUrl)
 
 	if len(srcBucket) == 0 {
 		gLog.Error.Printf(missingSrcBucket)
