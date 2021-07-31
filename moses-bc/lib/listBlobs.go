@@ -150,7 +150,6 @@ func _listBlob1(pn string, np int) int {
 
 			} else {
 				gLog.Error.Printf("error %v getting object %s", err, pn)
-				resp.Body.Close()
 				me.Lock()
 				nerrors += 1
 				me.Unlock()
@@ -251,8 +250,7 @@ func _ListPart1(pn string, np int, start int, end int) int {
 				usermd string
 				size int64
 			)
-
-			if err, usermd, size = GetHeader(request, pn); err == nil {
+			if err, usermd, size = GetHeader(request); err == nil {
 				if md, err = base64.Decode64(usermd); err != nil {
 						gLog.Warning.Printf("Invalid user metadata %s", usermd)
 				}
@@ -284,7 +282,7 @@ func listPdf(pn string) (error, bool) {
 		size   int64
 	)
 
-	if err, usermd, size = GetHeader(request, pn); err == nil {
+	if err, usermd, size = GetHeader(request); err == nil {
 		if md, err = base64.Decode64(usermd); err != nil {
 						gLog.Warning.Printf("Invalid user metadata %s", usermd)
 				}

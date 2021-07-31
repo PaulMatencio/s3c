@@ -44,7 +44,7 @@ func GetMetadata(request sproxyd.HttpRequest, pn string) (error, string) {
 	return err, usermd
 }
 
-func GetHeader(request sproxyd.HttpRequest, pn string) (error, string,int64) {
+func GetHeader(request sproxyd.HttpRequest) (error, string,int64) {
 
 	var (
 		usermd string
@@ -52,7 +52,7 @@ func GetHeader(request sproxyd.HttpRequest, pn string) (error, string,int64) {
 		resp *http.Response
 		err  error
 	)
-	request.Path = sproxyd.Env + "/" + pn
+	// request.Path = sproxyd.Env + "/" + pn
 	if resp, err = sproxyd.GetMetadata(&request); err != nil {
 		return err, usermd,0
 	}
@@ -64,7 +64,7 @@ func GetHeader(request sproxyd.HttpRequest, pn string) (error, string,int64) {
 	if _, ok := resp.Header["X-Scal-Usermd"]; ok {
 		usermd = resp.Header["X-Scal-Usermd"][0]
 	} else {
-		err = errors.New(fmt.Sprintf("Docid %d does not have user metadata ", pn))
+		err = errors.New(fmt.Sprintf("Page %s does not have user metadata ", request.Path))
 	}
 	return err, usermd,resp.ContentLength
 }

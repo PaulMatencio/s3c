@@ -169,7 +169,6 @@ func _checkBlob1(pn string, np int) int {
 				}
 			} else {
 				gLog.Error.Printf("error %v getting object %s", err, pn)
-				resp.Body.Close()
 				me.Lock()
 				nerrors += 1
 				me.Unlock()
