@@ -70,7 +70,6 @@ func initBlFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&delimiter, "delimiter", "d", "", "key delimiter")
 	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, "maximum number of loop, 0 means no upper limit")
 	cmd.Flags().StringVarP(&location, "location", "", "backup", "S3 location - possible value [source|backup|clone]")
-	cmd.Flags().StringVarP(&srcUrl, "source-sproxyd-url", "s", "", "source sproxyd endpoints  http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
 	/*
 	cmd.Flags().StringVarP(&srcUrl, "source-sproxyd-url", "s", "", "source sproxyd endpoints  http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
 	cmd.Flags().StringVarP(&targetUrl, "target-sproxyd-url", "t", "", "target sproxyd endpoint URL http://xx.xx.xx.xx:81/proxy,http:// ...")
@@ -126,7 +125,9 @@ func listBlobs(cmd *cobra.Command, args []string) {
 			}
 		}
 	}
-
+	srcUrl =""
+	driver =""
+	env =""
 	if err = mosesbc.SetLocationSproxyd("list", location,srcUrl, driver, env); err != nil {
 		gLog.Error.Printf("%v",err)
 		return
