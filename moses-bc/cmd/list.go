@@ -16,7 +16,7 @@ import (
 
 // listObjectCmd represents the listObject command
 var (
-	loshort       = "Command to list objects in a given bucket"
+	loshort       = "Command to list objects  of a given bucket"
 	listObjectCmd = &cobra.Command{
 		Use:    "list-objects",
 		Short:  loshort,
@@ -27,7 +27,7 @@ var (
 
 	lbCmd = &cobra.Command{
 		Use:    "list-buckets",
-		Short:  "list Buckets of a given S3 location",
+		Short:  "list buckets of a given S3 location",
 		Hidden: true,
 		Long:   ``,
 		Run:    listBucket,
@@ -35,7 +35,7 @@ var (
 
 	lvCmd = &cobra.Command{
 		Use:    "list-object-versions",
-		Short:  "Command to list objects and their versions in a given bucket",
+		Short:  "Command to list objects and their versions of a given bucket",
 		Long:   ``,
 		Hidden: true,
 		Run:    listObjVersions,

@@ -151,12 +151,11 @@ func statObjects(cmd *cobra.Command, args []string) {
 			}
 
 		} else {
-			gLog.Error.Printf("ListObjects err %v", err)
+			gLog.Error.Printf("List-objects error %v  - use list-buckets to list the buckets", err)
 			break
 		}
 		L++
 		if *result.IsTruncated {
-
 			nextmarker = *result.Contents[l-1].Key
 			//nextmarker = *result.NextMarker
 			gLog.Warning.Printf("Truncated %v  - Next marker : %s ", *result.IsTruncated, nextmarker)
