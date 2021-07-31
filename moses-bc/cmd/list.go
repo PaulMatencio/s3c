@@ -1,12 +1,12 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/paulmatencio/s3c/gLog"
 	mosesbc "github.com/paulmatencio/s3c/moses-bc/lib"
-
-	"errors"
+	sproxyd "github.com/paulmatencio/s3c/sproxyd/lib"
 	// "github.com/golang/gLog"
 	"github.com/paulmatencio/s3c/api"
 	"github.com/paulmatencio/s3c/datatype"
@@ -60,8 +60,21 @@ func initLoFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, "maximum number of loop, 0 means no upper limit")
 	cmd.Flags().StringVarP(&location, "location", "", "backup", "S3 location - possible value [source|backup|clone]")
 }
-func initLvFlags(cmd *cobra.Command) {
 
+func initBlFlags(cmd *cobra.Command) {
+
+	cmd.Flags().StringVarP(&bucket, "bucket", "b", "", "the name of the bucket")
+	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "key prefix")
+	cmd.Flags().Int64VarP(&maxKey, "max-key", "m", 100, "maximum number of keys to be processed concurrently")
+	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key")
+	cmd.Flags().StringVarP(&delimiter, "delimiter", "d", "", "key delimiter")
+	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, "maximum number of loop, 0 means no upper limit")
+	cmd.Flags().StringVarP(&location, "location", "", "backup", "S3 location - possible value [source|backup|clone]")
+	cmd.Flags().StringVarP(&srcUrl, "source-sproxyd-url", "s", "", "source sproxyd endpoints  http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
+	cmd.Flags().StringVarP(&targetUrl, "target-sproxyd-url", "t", "", "target sproxyd endpoint URL http://xx.xx.xx.xx:81/proxy,http:// ...")
+	cmd.Flags().StringVarP(&driver, "source-sproxyd-driver", "", "", "source sproxyd driver [bpchord|bparc]")
+}
+func initLvFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&bucket, "bucket", "b", "", "the name of the bucket")
 	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "key prefix")
 	cmd.Flags().Int64VarP(&maxKey, "max-key", "m", 100, "maximum number of keys to be processed concurrently")
@@ -82,7 +95,7 @@ func init() {
 	rootCmd.AddCommand(lbCmd)
 	rootCmd.AddCommand(lvCmd)
 	initLoFlags(listObjectCmd)
-	initLoFlags(listBlobCmd)
+	initBlFlags(listBlobCmd)
 	initLbFlags(lbCmd)
 	initLvFlags(lvCmd)
 }
@@ -110,6 +123,11 @@ func listBlobs(cmd *cobra.Command, args []string) {
 			}
 		}
 	}
+	if err = mosesbc.SetLocationSproxyd("list", "source",srcUrl, driver, env); err != nil {
+		gLog.Error.Printf("%v",err)
+		return
+	}
+	gLog.Info.Printf("Source Env: %s - Source Driver: %s - Source Url: %s",sproxyd.Env, sproxyd.Driver, sproxyd.Url)
 
 	if err, service = createS3Session(location); err == nil {
 		req = datatype.ListObjRequest{
