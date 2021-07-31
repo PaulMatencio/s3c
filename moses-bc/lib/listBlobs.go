@@ -144,10 +144,8 @@ func _listBlob1(pn string, np int) int {
 					usermd = resp.Header["X-Scal-Usermd"][0]
 					if md, err = base64.Decode64(usermd); err != nil {
 						gLog.Warning.Printf("Invalid user metadata %s", usermd)
-					} else {
-						gLog.Trace.Printf("User metadata %s", string(md))
 					}
-					gLog.Info.Printf("key %s  - User metadata %s - Content length %d", request1.Path, md, resp.ContentLength)
+					gLog.Info.Printf("key %s  - User metadata %s - Content length %d", request1.Path, string(md), resp.ContentLength)
 				}
 
 			} else {
@@ -237,9 +235,7 @@ func _ListPart1(pn string, np int, start int, end int) int {
 			},
 		}
 		nerrors int = 0
-		size    int64
 		err     error
-		usermd  string
 		wg2     sync.WaitGroup
 	)
 
@@ -248,12 +244,21 @@ func _ListPart1(pn string, np int, start int, end int) int {
 	for k := start; k <= end; k++ {
 		wg2.Add(1)
 		request.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
-		go func(request1 sproxyd.HttpRequest, pn string, np int, k int) {
+		go func(request sproxyd.HttpRequest, pn string, np int, k int) {
 			defer wg2.Done()
-			if err, usermd, size = GetHeader(request1, pn); err == nil {
-				gLog.Info.Printf("key %s  - User metadata %s - Content length %d", pn, usermd, size)
+			var (
+				md []byte
+				usermd string
+				size int64
+			)
+
+			if err, usermd, size = GetHeader(request, pn); err == nil {
+				if md, err = base64.Decode64(usermd); err != nil {
+						gLog.Warning.Printf("Invalid user metadata %s", usermd)
+				}
+				gLog.Info.Printf("key %s  - User metadata %s - Content length %d", request.Path, string(md), size)
 			} else {
-				gLog.Error.Printf("Error %v while getting metadata of %s", err, request1.Path)
+				gLog.Error.Printf("Error %v while getting metadata of %s", err, request.Path)
 			}
 		}(request, pn, np, k)
 	}
@@ -275,11 +280,15 @@ func listPdf(pn string) (error, bool) {
 		}
 		err    error
 		usermd string
+		md []byte
 		size   int64
 	)
 
 	if err, usermd, size = GetHeader(request, pn); err == nil {
-		gLog.Info.Printf("Key %s - User metadata %s - Content length %d", request.Path, usermd, size)
+		if md, err = base64.Decode64(usermd); err != nil {
+						gLog.Warning.Printf("Invalid user metadata %s", usermd)
+				}
+		gLog.Info.Printf("Key %s - User metadata %s - Content length %d", request.Path, md, size)
 
 	} else {
 		gLog.Error.Printf("Error %v Getting  metadata of %s", err, request.Path)
