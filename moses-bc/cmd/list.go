@@ -126,7 +126,7 @@ func listBlobs(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	if err = mosesbc.SetLocationSproxyd("list", "source",srcUrl, driver, env); err != nil {
+	if err = mosesbc.SetLocationSproxyd("list", location,srcUrl, driver, env); err != nil {
 		gLog.Error.Printf("%v",err)
 		return
 	}
