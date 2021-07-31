@@ -16,15 +16,15 @@ import (
 
 // listObjectCmd represents the listObject command
 var (
-	loshort       = "Command to list multiple objects in a given bucket"
+	loshort       = "Command to list objects in a given bucket"
 	listObjectCmd = &cobra.Command{
 		Use:   "list-objects",
 		Short: loshort,
 		Long:  ``,
-		// Hidden: true,
-		Run: listObject,
+		Hidden: true,
+		Run: listObjectV2,
 	}
-
+	/*
 	loCmd = &cobra.Command{
 		Use:    "list-objects-v2",
 		Short:  loshort,
@@ -32,10 +32,13 @@ var (
 		Long:   ``,
 		Run:    listObjectV2,
 	}
+	*/
+
 	lvCmd = &cobra.Command{
 		Use:   "list-object-versions",
 		Short: "Command to list objects and their versions in a given bucket",
 		Long:  ``,
+		Hidden: true,
 		Run:   listObjVersions,
 	}
 	location string
@@ -49,7 +52,7 @@ func initLoFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key")
 	cmd.Flags().StringVarP(&delimiter, "delimiter", "d", "", "key delimiter")
 	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, "maximum number of loop, 0 means no upper limit")
-	cmd.Flags().StringVarP(&location, "location", "", "target", "S3 location - possible value [source|target]")
+	cmd.Flags().StringVarP(&location, "location", "", "backup", "S3 location - possible value [source|backup|clone]")
 }
 func initLvFlags(cmd *cobra.Command) {
 
@@ -64,10 +67,10 @@ func initLvFlags(cmd *cobra.Command) {
 }
 func init() {
 	rootCmd.AddCommand(listObjectCmd)
-	rootCmd.AddCommand(loCmd)
+	//rootCmd.AddCommand(loCmd)
 	rootCmd.AddCommand(lvCmd)
 	initLoFlags(listObjectCmd)
-	initLoFlags(loCmd)
+	// initLoFlags(loCmd)
 	initLvFlags(lvCmd)
 }
 
@@ -76,15 +79,17 @@ func listObject(cmd *cobra.Command, args []string) {
 		total      int64 = 0
 		nextmarker string
 		req        datatype.ListObjRequest
-		S3         *s3.S3
+		service         *s3.S3
 	)
+
 	if len(bucket) == 0 {
 		gLog.Warning.Printf("%s", missingBucket)
 		return
 	}
-	if err,S3 = createS3Session(location); err == nil {
+
+	if err,service = createS3Session(location); err == nil {
 		req = datatype.ListObjRequest{
-			Service:   S3,
+			Service:   service,
 			Bucket:    bucket,
 			Prefix:    prefix,
 			MaxKey:    maxKey,
@@ -139,7 +144,7 @@ func listObjectV2(cmd *cobra.Command, args []string) {
 		token      string
 		nextmarker string
 		req        datatype.ListObjV2Request
-		S3         *s3.S3
+		service        *s3.S3
 	)
 
 	if len(bucket) == 0 {
@@ -148,9 +153,9 @@ func listObjectV2(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	if err,S3 = createS3Session(location); err == nil {
+	if err,service = createS3Session(location); err == nil {
 		req = datatype.ListObjV2Request{
-			Service:           S3,
+			Service:           service,
 			Bucket:            bucket,
 			Prefix:            prefix,
 			MaxKey:            maxKey,
@@ -196,7 +201,6 @@ func listObjectV2(cmd *cobra.Command, args []string) {
 			break
 		}
 	}
-
 }
 
 func listObjVersions(cmd *cobra.Command, args []string) {
@@ -204,7 +208,7 @@ func listObjVersions(cmd *cobra.Command, args []string) {
 		total               int64 = 0
 		nextMarker          string
 		nextVersionIdMarker string
-		S3                  *s3.S3
+		service                  *s3.S3
 		req                 datatype.ListObjVersionsRequest
 	)
 
@@ -212,9 +216,9 @@ func listObjVersions(cmd *cobra.Command, args []string) {
 		gLog.Warning.Printf("%s", missingBucket)
 		return
 	}
-	if err,S3 = createS3Session(location); err == nil {
+	if err,service = createS3Session(location); err == nil {
 		req = datatype.ListObjVersionsRequest{
-			Service:         S3,
+			Service:         service,
 			Bucket:          bucket,
 			Prefix:          prefix,
 			MaxKey:          maxKey,
@@ -264,9 +268,10 @@ func listObjVersions(cmd *cobra.Command, args []string) {
 
 func createS3Session(location string) (error, *s3.S3) {
 
-	if location != "source" &&  location != "target" {
-		return errors.New("location must be [source|target]"),nil
+	if location != "source" &&  location != "backup" && location != "clone"  {
+		return errors.New("location must be [source|backup|clone]"),nil
 	}
+
 	if s3 := mosesbc.CreateS3Session("list", location); s3 != nil {
 		return nil,s3
 	} else {
