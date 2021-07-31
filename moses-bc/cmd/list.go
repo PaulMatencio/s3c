@@ -70,9 +70,11 @@ func initBlFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&delimiter, "delimiter", "d", "", "key delimiter")
 	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, "maximum number of loop, 0 means no upper limit")
 	cmd.Flags().StringVarP(&location, "location", "", "backup", "S3 location - possible value [source|backup|clone]")
+	/*
 	cmd.Flags().StringVarP(&srcUrl, "source-sproxyd-url", "s", "", "source sproxyd endpoints  http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
 	cmd.Flags().StringVarP(&targetUrl, "target-sproxyd-url", "t", "", "target sproxyd endpoint URL http://xx.xx.xx.xx:81/proxy,http:// ...")
 	cmd.Flags().StringVarP(&driver, "source-sproxyd-driver", "", "", "source sproxyd driver [bpchord|bparc]")
+	 */
 }
 func initLvFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&bucket, "bucket", "b", "", "the name of the bucket")
@@ -123,10 +125,12 @@ func listBlobs(cmd *cobra.Command, args []string) {
 			}
 		}
 	}
+
 	if err = mosesbc.SetLocationSproxyd("list", "source",srcUrl, driver, env); err != nil {
 		gLog.Error.Printf("%v",err)
 		return
 	}
+
 	gLog.Info.Printf("Source Env: %s - Source Driver: %s - Source Url: %s",sproxyd.Env, sproxyd.Driver, sproxyd.Url)
 
 	if err, service = createS3Session(location); err == nil {
@@ -143,8 +147,6 @@ func listBlobs(cmd *cobra.Command, args []string) {
 		gLog.Error.Printf("%v", err)
 		return
 	}
-
-
 }
 
 func listObjectV2(cmd *cobra.Command, args []string) {

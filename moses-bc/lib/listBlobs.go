@@ -147,7 +147,7 @@ func _listBlob1(pn string, np int) int {
 					} else {
 						gLog.Trace.Printf("User metadata %s", string(md))
 					}
-					gLog.Info.Printf("key %s  - User metadata %s - Content length %d", pn, usermd, resp.ContentLength)
+					gLog.Info.Printf("key %s  - User metadata %s - Content length %d", request1.Path, md, resp.ContentLength)
 				}
 
 			} else {
@@ -279,7 +279,7 @@ func listPdf(pn string) (error, bool) {
 	)
 
 	if err, usermd, size = GetHeader(request, pn); err == nil {
-		gLog.Info.Printf("Key %s - User metadata %s - Content length %d", pn, usermd, size)
+		gLog.Info.Printf("Key %s - User metadata %s - Content length %d", request.Path, usermd, size)
 
 	} else {
 		gLog.Error.Printf("Error %v Getting  metadata of %s", err, request.Path)
