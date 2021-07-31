@@ -69,6 +69,7 @@ func initBlFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key")
 	cmd.Flags().StringVarP(&delimiter, "delimiter", "d", "", "key delimiter")
 	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, "maximum number of loop, 0 means no upper limit")
+	cmd.Flags().IntVarP(&maxPage, "max-page", "", 50, "maximum number of concurrent pages per document. check  --max-key for maximum number of concurrent documents")
 	cmd.Flags().StringVarP(&location, "location", "", "backup", "S3 location - possible value [source|backup|clone]")
 	/*
 	cmd.Flags().StringVarP(&srcUrl, "source-sproxyd-url", "s", "", "source sproxyd endpoints  http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
