@@ -15,6 +15,7 @@ import (
 )
 
 // listObjectCmd represents the listObject command
+
 var (
 	loshort       = "Command to list objects  of a given bucket"
 	listObjectCmd = &cobra.Command{
@@ -24,7 +25,13 @@ var (
 		Hidden: true,
 		Run:    listObjectV2,
 	}
-
+	listBlobCmd = &cobra.Command{
+		Use:    "list-blobs",
+		Short:  loshort,
+		Long:   ``,
+		Hidden: true,
+		Run:    listBlobs,
+	}
 	lbCmd = &cobra.Command{
 		Use:    "list-buckets",
 		Short:  "list buckets of a given S3 location",
@@ -71,17 +78,18 @@ func initLbFlags(cmd *cobra.Command) {
 
 func init() {
 	rootCmd.AddCommand(listObjectCmd)
+	rootCmd.AddCommand(listBlobCmd)
 	rootCmd.AddCommand(lbCmd)
 	rootCmd.AddCommand(lvCmd)
 	initLoFlags(listObjectCmd)
+	initLoFlags(listBlobCmd)
 	initLbFlags(lbCmd)
 	initLvFlags(lvCmd)
 }
 
-func listObject(cmd *cobra.Command, args []string) {
+func listBlobs(cmd *cobra.Command, args []string) {
+
 	var (
-		total      int64 = 0
-		nextmarker string
 		req        datatype.ListObjRequest
 		service    *s3.S3
 	)
@@ -89,6 +97,18 @@ func listObject(cmd *cobra.Command, args []string) {
 	if len(bucket) == 0 {
 		gLog.Warning.Printf("%s", missingBucket)
 		return
+	}
+
+	if len(prefix)> 0 {
+		if err, suf := mosesbc.GetBucketSuffix(bucket, prefix); err != nil {
+			gLog.Error.Printf("%v", err)
+			return
+		} else {
+			if len(suf) > 0 {
+				bucket += "-" + suf
+				gLog.Warning.Printf("A suffix %s is appended to the source Bucket %s", suf, bucket)
+			}
+		}
 	}
 
 	if err, service = createS3Session(location); err == nil {
@@ -100,48 +120,17 @@ func listObject(cmd *cobra.Command, args []string) {
 			Marker:    marker,
 			Delimiter: delimiter,
 		}
+		mosesbc.ListBlobs(req, maxLoop, maxPage)
 	} else {
 		gLog.Error.Printf("%v", err)
 		return
 	}
 
-	L := 1
-	for {
-		var (
-			result *s3.ListObjectsOutput
-			err    error
-		)
-		if result, err = api.ListObject(req); err == nil {
-			if l := len(result.Contents); l > 0 {
-
-				for _, v := range result.Contents {
-					if *v.Key != nextmarker {
-						gLog.Info.Printf("Key: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size, v.LastModified)
-						total += 1
-					}
-				}
-				if *result.IsTruncated {
-					nextmarker = *result.Contents[l-1].Key
-					// nextmarker = *result.NextMarker
-					gLog.Warning.Printf("Truncated %v  - Next marker : %s ", *result.IsTruncated, nextmarker)
-				}
-			}
-		} else {
-			gLog.Error.Printf("%v", err)
-			break
-		}
-		L++
-		if *result.IsTruncated && (maxLoop == 0 || L <= maxLoop) {
-			req.Marker = nextmarker
-		} else {
-			gLog.Info.Printf("Total number of objects returned: %d", total)
-			break
-		}
-	}
 
 }
 
 func listObjectV2(cmd *cobra.Command, args []string) {
+
 	var (
 		start            = utils.LumberPrefix(cmd)
 		total      int64 = 0
@@ -207,6 +196,7 @@ func listObjectV2(cmd *cobra.Command, args []string) {
 	}
 }
 
+
 func listObjVersions(cmd *cobra.Command, args []string) {
 	var (
 		total               int64 = 0
@@ -242,7 +232,6 @@ func listObjVersions(cmd *cobra.Command, args []string) {
 		)
 		if result, err = api.ListObjectVersions(req); err == nil {
 			if l := len(result.Versions); l > 0 {
-
 				for _, v := range result.Versions {
 					gLog.Info.Printf("Key: %s - Size: %d  - Version id: %s - LastModified: %v - isLatest: %v", *v.Key, *v.Size, *v.VersionId, v.LastModified, *v.IsLatest)
 					total += 1
@@ -270,8 +259,8 @@ func listObjVersions(cmd *cobra.Command, args []string) {
 	}
 }
 
-func listBucket(cmd *cobra.Command, args []string) {
 
+func listBucket(cmd *cobra.Command, args []string) {
 	if err, service = createS3Session(location); err != nil {
 		gLog.Error.Printf("%v", err)
 		return
@@ -294,7 +283,6 @@ func createS3Session(location string) (error, *s3.S3) {
 	if location != "source" && location != "backup" && location != "clone" {
 		return errors.New("location must be [source|backup|clone]"), nil
 	}
-
 	if s3 := mosesbc.CreateS3Session("list", location); s3 != nil {
 		return nil, s3
 	} else {
