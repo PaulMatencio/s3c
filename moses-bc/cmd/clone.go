@@ -254,7 +254,7 @@ func clone_bucket() (string, error) {
 		Marker:            marker,
 		Continuationtoken: token,
 	}
-	// gLog.Info.Println(req)
+
 	if len(inFile) > 0 || len(iBucket) > 0 {
 		incr = true
 		if len(iBucket) > 0 {
@@ -313,7 +313,6 @@ func clone_bucket() (string, error) {
 						ndocs +=1
 						go func(request datatype.StatObjRequest, replace bool) {
 							defer wg1.Done()
-							clone_pn(request,replace)
 							pages, sizes, errs,docs := clone_pn(request, replace)
 							if errs > 0 {
 								re.Lock()
