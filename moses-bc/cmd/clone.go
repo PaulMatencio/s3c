@@ -85,7 +85,7 @@ func initCloFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key; key= moses-document in the form of cc/pn/kc")
 	cmd.Flags().IntVarP(&maxPage, "max-page", "", 50, "maximum number of concurrent moses pages to be concurrently procsessed")
 	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, "maximum number of loop, 0 means no upper limit")
-	cmd.Flags().BoolVarP(&replace, "replace", "r", false, "replace the existing target moses pages")
+	cmd.Flags().BoolVarP(&replace, "replace", "r", false, "replace the existing target moses pages if exist")
 	cmd.Flags().BoolVarP(&reIndex, "re-index", "", false, "re-index the target moses documents in the target bucket")
 	cmd.Flags().StringVarP(&inFile, "input-file", "i", "", "input file containing the list of documents to clone")
 	cmd.Flags().StringVarP(&iBucket, "input-bucket", "", "", "input bucket containing the last uploaded objects for incremental backup")
@@ -106,15 +106,15 @@ func Clone_bucket(cmd *cobra.Command, args []string) {
 
 	var err error
 	if err = mosesbc.SetSourceSproxyd("clone", srcUrl, driver, env); err != nil {
-		gLog.Error.Printf("%v",err)
+		gLog.Error.Printf("%v", err)
 		return
 	}
 	if err = mosesbc.SetTargetSproxyd("clone", targetUrl, targetDriver, targetEnv); err != nil {
-		gLog.Error.Printf("%v",err)
+		gLog.Error.Printf("%v", err)
 		return
 	}
-	gLog.Info.Printf("Source Env: %s - Source Driver: %s - Source Url: %s",sproxyd.Env, sproxyd.Driver, sproxyd.Url)
-	gLog.Info.Printf("Target Env: %s - Target Driver: %s - Target Url: %s",sproxyd.TargetEnv, sproxyd.TargetDriver, sproxyd.TargetUrl)
+	gLog.Info.Printf("Source Env: %s - Source Driver: %s - Source Url: %s", sproxyd.Env, sproxyd.Driver, sproxyd.Url)
+	gLog.Info.Printf("Target Env: %s - Target Driver: %s - Target Url: %s", sproxyd.TargetEnv, sproxyd.TargetDriver, sproxyd.TargetUrl)
 
 	if len(srcBucket) == 0 {
 		gLog.Error.Printf(missingSrcBucket)
@@ -140,8 +140,8 @@ func Clone_bucket(cmd *cobra.Command, args []string) {
 			return
 		}
 		if len(prefix) > 0 {
-				gLog.Warning.Printf("Prefix is ignored with --input-file or --input-bucket ")
-				prefix = ""
+			gLog.Warning.Printf("Prefix is ignored with --input-file or --input-bucket ")
+			prefix = ""
 		}
 		/*
 			Prepare to Scan the input file
@@ -285,9 +285,9 @@ func clone_bucket() (string, error) {
 			result, err = api.ListObjectV2(req) // full copy
 		} else {
 			if len(inFile) > 0 {
-				result, err = ListPn(listpn, int(maxKey))   // copy documents listed in --input-file
+				result, err = ListPn(listpn, int(maxKey)) // copy documents listed in --input-file
 			} else {
-				result, err = api.ListObjectV2(reql)   // copy documents listed in the --input-bucket
+				result, err = api.ListObjectV2(reql) // copy documents listed in the --input-bucket
 			}
 		}
 		if err == nil {
@@ -310,7 +310,22 @@ func clone_bucket() (string, error) {
 							Key:     *v.Key,
 						}
 						wg1.Add(1)
+						ndocs +=1
 						go func(request datatype.StatObjRequest, replace bool) {
+							defer wg1.Done()
+							clone_pn(request,replace)
+							pages, sizes, errs,docs := clone_pn(request, replace)
+							if errs > 0 {
+								re.Lock()
+								gerrors += errs
+								re.Unlock()
+							}
+							si.Lock()
+							npages += pages
+							docsizes += int64(sizes)
+							ndocs += docs
+							si.Unlock()
+							/*
 							var (
 								rh = datatype.Rh{
 									Key: request.Key,
@@ -320,7 +335,7 @@ func clone_bucket() (string, error) {
 								np     int
 								pn     string
 							)
-							defer wg1.Done()
+
 							if rh.Result, rh.Err = api.StatObject(request); rh.Err == nil {
 								if usermd, err = utils.GetUserMeta(rh.Result.Metadata); err == nil {
 									userm := UserMd{}
@@ -336,6 +351,16 @@ func clone_bucket() (string, error) {
 											ndocs += 1
 											si.Unlock()
 											gLog.Info.Printf("Document id %s is cloned - Number of pages %d - Document size %d - Number of errors %d - Elapsed time %v ", document.DocId, document.NumberOfPages, document.Size, nerr, time.Since(start3))
+
+											if reIndex {
+												start5 := time.Now()
+												if _, err = indexDocument(document, tgtBucket, tgtS3); err != nil {
+													gLog.Error.Printf("Error %v while indexing the  document id %s into  bucket %s", err, document.DocId, tgtBucket)
+													gerrors += 1
+												} else {
+													gLog.Info.Printf("Document id %s is now indexed in the bucket %s - Elapsed time %v", document.DocId, tgtBucket, time.Since(start5))
+												}
+											}
 										} else {
 											re.Lock()
 											gerrors += nerr
@@ -349,6 +374,7 @@ func clone_bucket() (string, error) {
 							} else {
 								gLog.Error.Printf("%v", rh.Err)
 							}
+							*/
 						}(request, replace)
 					}
 				}
@@ -380,4 +406,54 @@ func clone_bucket() (string, error) {
 		}
 	}
 	return nextmarker, nil
+}
+
+func clone_pn(request datatype.StatObjRequest, replace bool) (int, int, int,int) {
+	var (
+		rh = datatype.Rh{
+			Key: request.Key,
+		}
+		err                    error
+		usermd                 string
+		np                     int
+		pn                     string
+		npages, ndocs, nerrors int
+		docsizes               int64
+	)
+	// defer wg1.Done()
+	if rh.Result, rh.Err = api.StatObject(request); rh.Err == nil {
+		if usermd, err = utils.GetUserMeta(rh.Result.Metadata); err == nil {
+			userm := UserMd{}
+			json.Unmarshal([]byte(usermd), &userm)
+			pn = rh.Key
+			if np, err = strconv.Atoi(userm.TotalPages); err == nil {
+				start3 := time.Now()
+				nerr, document := mosesbc.Clone_blob(pn, np, maxPage, replace)
+				if nerr == 0 {
+					npages = int(document.NumberOfPages)
+					docsizes = document.Size
+					ndocs += 1
+					gLog.Info.Printf("Document id %s is cloned - Number of pages %d - Document size %d - Number of errors %d - Elapsed time %v ", document.DocId, document.NumberOfPages, document.Size, nerr, time.Since(start3))
+					/* start  indexing */
+					if reIndex {
+						start5 := time.Now()
+						if _, err = mosesbc.IndexDocument(document, tgtBucket, tgtS3); err != nil {
+							gLog.Error.Printf("Error %v while indexing the  document id %s into  bucket %s", err, document.DocId, tgtBucket)
+							nerrors = 1
+						} else {
+							gLog.Info.Printf("Document id %s is now indexed in the bucket %s - Elapsed time %v", document.DocId, tgtBucket, time.Since(start5))
+						}
+					}
+				} else {
+					nerrors = nerr
+					gLog.Info.Printf("Document id %s is not fully cloned - Number of pages %d - Document size %d - Number of errors %d - Elapsed time %v ", document.DocId, document.NumberOfPages, document.Size, nerr, time.Since(start3))
+				}
+			}
+		} else {
+			gLog.Error.Printf("%v", err)
+		}
+	} else {
+		gLog.Error.Printf("%v", rh.Err)
+	}
+	return npages, int(docsizes), nerrors,ndocs
 }

@@ -15,14 +15,11 @@
 package cmd
 
 import (
-	"bytes"
 	"encoding/json"
 
-	"fmt"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/paulmatencio/protobuf-doc/src/document/documentpb"
-	base64j "github.com/paulmatencio/ring/user/base64j"
 	"github.com/paulmatencio/s3c/api"
 	"github.com/paulmatencio/s3c/datatype"
 	"github.com/paulmatencio/s3c/gLog"
@@ -30,9 +27,6 @@ import (
 	"github.com/paulmatencio/s3c/utils"
 	"github.com/spf13/cobra"
 
-	"os"
-	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 )
@@ -70,11 +64,11 @@ func initResFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key")
 	cmd.Flags().StringVarP(&delimiter, "delimiter", "d", "", "key delimiter")
 	cmd.Flags().StringVarP(&pn, "key", "k", "", "publication number to be restored")
-	cmd.Flags().StringVarP(&versionId, "versionId", "", "", "Version id of the publication number to be restored - default the last version willbe restored ")
+	cmd.Flags().StringVarP(&versionId, "versionId", "", "", "Version id of the publication number to be restored - default the last version will be restored ")
 	cmd.Flags().StringVarP(&inFile, "input-file", "i", "", "input file containing the list of documents to restore")
 	cmd.Flags().IntVarP(&maxPage, "max-page", "", 50, "maximum number of concurrent pages ")
 	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, "maximum number of loop, 0 means no upper limit")
-	cmd.Flags().BoolVarP(&replace, "replace", "r", false, "replace existing pages")
+	cmd.Flags().BoolVarP(&replace, "replace", "r", false, "replace existing pages if exist")
 	cmd.Flags().Int64VarP(&maxPartSize, "max-part-size", "", 40, "Maximum partsize (MB) for multipart download")
 	cmd.Flags().StringVarP(&targetDriver, "target-sproxyd-driver", "", "", "target sproxyd driver [bpchord|bparc]")
 	cmd.Flags().StringVarP(&targetUrl, "target-sproxyd-url", "t", "", "target sproxyd endpoint URL http://xx.xx.xx.xx:81/proxy,http:// ...")
@@ -346,7 +340,7 @@ func restore_pn(request datatype.GetObjRequest, replace bool) (int, int, int) {
 		result   *s3.GetObjectOutput
 		npages   int = 0
 		docsizes int = 0
-		gerrors  int = 0
+		nerrors  int = 0
 		usermd   string
 		document *documentpb.Document
 		start2   = time.Now()
@@ -358,11 +352,11 @@ func restore_pn(request datatype.GetObjRequest, replace bool) (int, int, int) {
 				gLog.Warning.Printf("Error: [%v]  Error: [%v]", s3.ErrCodeNoSuchKey, aerr.Error())
 			default:
 				gLog.Error.Printf("Error: %v", aerr.Error())
-				gerrors += 1
+				nerrors += 1
 			}
 		} else {
 			gLog.Error.Printf("Error:%v", err.Error())
-			gerrors += 1
+			nerrors += 1
 		}
 	} else {
 		defer result.Body.Close()
@@ -401,11 +395,10 @@ func restore_pn(request datatype.GetObjRequest, replace bool) (int, int, int) {
 				    else -> PutBig1
 			*/
 			start4 := time.Now()
-			nerr := mosesbc.RestoreAllBlob(document, maxPage, replace)
-			//  add the number of restored pages
 
-			npages += (int)(document.NumberOfPages)
-			docsizes += int(document.Size)
+			nerr := mosesbc.RestoreAllBlob(document, maxPage, replace)
+			npages = (int)(document.NumberOfPages)
+			docsizes = int(document.Size)
 
 			/*
 				Check the number of returned errors
@@ -414,16 +407,15 @@ func restore_pn(request datatype.GetObjRequest, replace bool) (int, int, int) {
 
 			if nerr > 0 {
 				gLog.Info.Printf("Document id %s is not fully restored  because of %d errors - Number of pages %d - Document size %d - Elapsed time %v ", document.DocId, nerr, document.NumberOfPages, document.Size, time.Since(start4))
-
-				gerrors += nerr
-
+				nerrors = nerr
 			} else {
 				gLog.Info.Printf("Document id %s is fully restored - Number of pages %d - Document size %d - Elapsed time %v ", document.DocId, document.NumberOfPages, document.Size, time.Since(start4))
 				/* start  indexing */
 				start5 := time.Now()
-				if _, err = indexDocument(document, tgtBucket, tgtS3); err != nil {
+				if _, err = mosesbc.IndexDocument(document, tgtBucket, tgtS3); err != nil {
 					gLog.Error.Printf("Error %v while indexing the  document id %s into  bucket %s", err, document.DocId, tgtBucket)
-					gerrors += 1
+					nerrors = 1
+
 				} else {
 					gLog.Info.Printf("Document id %s is now indexed in the bucket %s - Elapsed time %v", document.DocId, tgtBucket, time.Since(start5))
 				}
@@ -435,16 +427,16 @@ func restore_pn(request datatype.GetObjRequest, replace bool) (int, int, int) {
 
 		} else {
 			gLog.Error.Printf("Error %v when retrieving the document %s", err, request.Key)
-			gerrors += 1
+			nerrors = 1
 
 		}
 	}
-	return npages, docsizes, gerrors
+	return npages, docsizes, nerrors
 }
 
 /*
 	Index the document with S3 bucket
-*/
+
 func indexDocument(document *documentpb.Document, tgtBucket string, svc *s3.S3) (*s3.PutObjectOutput, error) {
 	var (
 		data     = make([]byte, 0, 0) // empty byte array
@@ -462,71 +454,6 @@ func indexDocument(document *documentpb.Document, tgtBucket string, svc *s3.S3) 
 	}
 	return api.PutObject3(putReq)
 }
-
-/*
-	Write the document to file( pages + meta dada)
-	To be completed ( page 0 and pdf are not yet taken into account
 */
-func WriteDocumentToFile(document *documentpb.Document, pn string, outDir string) {
 
-	var (
-		err    error
-		usermd []byte
-	)
 
-	gLog.Info.Printf("Document id %s - Page Numnber %d ", document.DocId, document.PageNumber)
-	if usermd, err = base64j.Decode64(document.GetMetadata()); err == nil {
-		gLog.Info.Printf("Document metadata %s", string(usermd))
-	}
-	// write document metadata
-	pnm := pn + ".md"
-	if fi, err := os.OpenFile(filepath.Join(outDir, pnm), os.O_WRONLY|os.O_CREATE, 0600); err == nil {
-		defer fi.Close()
-		if _, err := fi.Write(usermd); err != nil {
-			fmt.Printf("Error %v writing Document metadat %s", err, pnm)
-		}
-	}
-
-	// write s3 moses meta
-	pnm = pn + ".meta"
-	if fi, err := os.OpenFile(filepath.Join(outDir, pnm), os.O_WRONLY|os.O_CREATE, 0600); err == nil {
-		defer fi.Close()
-		if _, err := fi.Write([]byte(document.GetS3Meta())); err != nil {
-			fmt.Printf("Error %v writing s3 moses metada %s", err, pnm)
-		} else {
-			gLog.Error.Println(err)
-		}
-	}
-
-	pages := document.GetPage()
-	gLog.Info.Printf("Number of pages %d", len(pages))
-	if len(pages) != int(document.NumberOfPages) {
-		gLog.Error.Printf("Backup of document is inconsistent %s  %d - %d ", pn, len(pages), document.NumberOfPages)
-		return
-	}
-	for _, page := range pages {
-		pfd := strings.Replace(pn, "/", "_", -1) + "_" + fmt.Sprintf("%04d", page.GetPageNumber())
-		if fi, err := os.OpenFile(filepath.Join(outDir, pfd), os.O_WRONLY|os.O_CREATE, 0600); err == nil {
-			defer fi.Close()
-			bytes := page.GetObject()
-			if _, err := fi.Write(bytes); err != nil {
-				fmt.Printf("Error %v writing file %s to output directory %s", err, pfd, outDir)
-			}
-		} else {
-			gLog.Error.Printf("Error opening file %s/%s", outDir, pfd)
-		}
-		pfm := pfd + ".md"
-		if fm, err := os.OpenFile(filepath.Join(outDir, pfm), os.O_WRONLY|os.O_CREATE, 0600); err == nil {
-			defer fm.Close()
-			if usermd, err := base64j.Decode64(page.GetMetadata()); err == nil {
-				if _, err := fm.Write(usermd); err != nil {
-					fmt.Printf("Error %v writing page %s", err, pfm)
-				}
-			} else {
-				gLog.Error.Printf("Error %v decoding user metadata", err)
-			}
-		} else {
-			gLog.Error.Printf("Error opening file %s/%s", outDir, pfm)
-		}
-	}
-}

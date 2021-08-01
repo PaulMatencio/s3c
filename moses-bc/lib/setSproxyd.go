@@ -66,9 +66,8 @@ func SetSourceSproxyd(op string, srcUrl string, driver string, env string) error
 			return err
 		}
 	}
-	gLog.Trace.Println(srcUrl,driver)
-	sproxyd.SetNewProxydHost1(srcUrl, driver)
 
+	sproxyd.SetNewProxydHost1(srcUrl, driver)
 	gLog.Trace.Printf("Connection timeout %v - read timeout %v - write timeoiut %v", sproxyd.ConnectionTimeout, sproxyd.ReadTimeout, sproxyd.WriteTimeout)
 	gLog.Trace.Printf("Source Host Pool: %v - Source Env: %s - Source Driver: %s", sproxyd.HP.Hosts(), sproxyd.Env, sproxyd.Driver)
 	return nil
@@ -128,9 +127,7 @@ func SetTargetSproxyd(op string, targetUrl string, targetDriver string, targetEn
 			return err
 		}
 	}
-	gLog.Trace.Println(targetUrl,targetDriver)
 	sproxyd.SetNewTargetProxydHost1(targetUrl, targetDriver)
-
 	gLog.Trace.Printf("Connection timeout %v - read timeout %v - write timeoiut %v", sproxyd.ConnectionTimeout, sproxyd.ReadTimeout, sproxyd.WriteTimeout)
 	gLog.Trace.Printf("Target Host Pool: %v -  Target Env: %s - Target Driver: %s", sproxyd.TargetHP.Hosts(), sproxyd.TargetEnv, sproxyd.TargetDriver)
 	return nil
