@@ -297,7 +297,6 @@ func clone_bucket() (string, error) {
 				for _, v := range result.Contents {
 					if *v.Key != nextmarker {
 						ndocr += 1
-						// retrieve the source bucket
 						svc1 := req.Service
 						if incr {
 							buck1 = mosesbc.SetBucketName(*v.Key, req.Bucket)
@@ -397,7 +396,7 @@ func clone_bucket() (string, error) {
 			break
 		}
 
-		if *result.IsTruncated && (maxLoop == 0 || N <= maxLoop) {
+		if *result.IsTruncated && (maxLoop == 0 || N < maxLoop) {
 			// req1.Marker = nextmarker
 			req.Continuationtoken = token
 		} else {

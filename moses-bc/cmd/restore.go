@@ -321,7 +321,7 @@ func restore_bucket() (string, error) {
 			break
 		}
 
-		if *result.IsTruncated && (maxLoop == 0 || N <= maxLoop) {
+		if *result.IsTruncated && (maxLoop == 0 || N < maxLoop) {
 			req.Marker = nextmarker
 		} else {
 			gLog.Info.Printf("Total number of restored documents: %d  - total number of pages: %d  - Total document size: %d - Total number of errors: %d - Total elapsed time: %v", tdocs, tpages, tsizes, terrors, time.Since(start0))
