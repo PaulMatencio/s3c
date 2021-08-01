@@ -294,6 +294,7 @@ func clone_bucket() (string, error) {
 			if l := len(result.Contents); l > 0 {
 				start := time.Now()
 				var buck1 string
+				gLog.Info.Printf("Total number of documents %d",l)
 				for _, v := range result.Contents {
 					if *v.Key != nextmarker {
 						ndocr += 1
