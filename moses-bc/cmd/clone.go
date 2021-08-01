@@ -235,6 +235,8 @@ func Clone_bucket(cmd *cobra.Command, args []string) {
 	gLog.Info.Printf("Total Elapsed time: %v", time.Since(start))
 }
 
+
+
 func clone_bucket() (string, error) {
 
 	var (
@@ -310,7 +312,6 @@ func clone_bucket() (string, error) {
 							Key:     *v.Key,
 						}
 						wg1.Add(1)
-						ndocs +=1
 						go func(request datatype.StatObjRequest, replace bool) {
 							defer wg1.Done()
 							pages, sizes, errs,docs := clone_pn(request, replace)
@@ -324,56 +325,6 @@ func clone_bucket() (string, error) {
 							docsizes += int64(sizes)
 							ndocs += docs
 							si.Unlock()
-							/*
-							var (
-								rh = datatype.Rh{
-									Key: request.Key,
-								}
-								err    error
-								usermd string
-								np     int
-								pn     string
-							)
-
-							if rh.Result, rh.Err = api.StatObject(request); rh.Err == nil {
-								if usermd, err = utils.GetUserMeta(rh.Result.Metadata); err == nil {
-									userm := UserMd{}
-									json.Unmarshal([]byte(usermd), &userm)
-									pn = rh.Key
-									if np, err = strconv.Atoi(userm.TotalPages); err == nil {
-										start3 := time.Now()
-										nerr, document := mosesbc.Clone_blob(pn, np, maxPage, replace)
-										if nerr == 0 {
-											si.Lock()
-											npages += int(document.NumberOfPages)
-											docsizes += document.Size
-											ndocs += 1
-											si.Unlock()
-											gLog.Info.Printf("Document id %s is cloned - Number of pages %d - Document size %d - Number of errors %d - Elapsed time %v ", document.DocId, document.NumberOfPages, document.Size, nerr, time.Since(start3))
-
-											if reIndex {
-												start5 := time.Now()
-												if _, err = indexDocument(document, tgtBucket, tgtS3); err != nil {
-													gLog.Error.Printf("Error %v while indexing the  document id %s into  bucket %s", err, document.DocId, tgtBucket)
-													gerrors += 1
-												} else {
-													gLog.Info.Printf("Document id %s is now indexed in the bucket %s - Elapsed time %v", document.DocId, tgtBucket, time.Since(start5))
-												}
-											}
-										} else {
-											re.Lock()
-											gerrors += nerr
-											re.Unlock()
-											gLog.Info.Printf("Document id %s is not fully cloned - Number of pages %d - Document size %d - Number of errors %d - Elapsed time %v ", document.DocId, document.NumberOfPages, document.Size, nerr, time.Since(start3))
-										}
-									}
-								} else {
-									gLog.Error.Printf("%v", err)
-								}
-							} else {
-								gLog.Error.Printf("%v", rh.Err)
-							}
-							*/
 						}(request, replace)
 					}
 				}
@@ -407,19 +358,24 @@ func clone_bucket() (string, error) {
 	return nextmarker, nil
 }
 
+/*
+		Get the document metadata
+	    retrieve its  total number  pages
+	    if number of pages > 0  Clone the document
+		if re-indexing then re-index the document in the target bucket
+
+*/
 func clone_pn(request datatype.StatObjRequest, replace bool) (int, int, int,int) {
 	var (
 		rh = datatype.Rh{
 			Key: request.Key,
 		}
-		err                    error
-		usermd                 string
-		np                     int
-		pn                     string
-		npages, ndocs, nerrors int
-		docsizes               int64
+		err    error
+		usermd,pn  string
+		npages, ndocs, nerrors,np  int
+		docsizes  int64
 	)
-	// defer wg1.Done()
+
 	if rh.Result, rh.Err = api.StatObject(request); rh.Err == nil {
 		if usermd, err = utils.GetUserMeta(rh.Result.Metadata); err == nil {
 			userm := UserMd{}
@@ -431,9 +387,12 @@ func clone_pn(request datatype.StatObjRequest, replace bool) (int, int, int,int)
 				if nerr == 0 {
 					npages = int(document.NumberOfPages)
 					docsizes = document.Size
-					ndocs += 1
+					ndocs = 1
 					gLog.Info.Printf("Document id %s is cloned - Number of pages %d - Document size %d - Number of errors %d - Elapsed time %v ", document.DocId, document.NumberOfPages, document.Size, nerr, time.Since(start3))
-					/* start  indexing */
+					/*
+						indexing the document if no cloning error
+
+					*/
 					if reIndex {
 						start5 := time.Now()
 						if _, err = mosesbc.IndexDocument(document, tgtBucket, tgtS3); err != nil {
@@ -445,6 +404,7 @@ func clone_pn(request datatype.StatObjRequest, replace bool) (int, int, int,int)
 					}
 				} else {
 					nerrors = nerr
+					ndocs = 0
 					gLog.Info.Printf("Document id %s is not fully cloned - Number of pages %d - Document size %d - Number of errors %d - Elapsed time %v ", document.DocId, document.NumberOfPages, document.Size, nerr, time.Since(start3))
 				}
 			}

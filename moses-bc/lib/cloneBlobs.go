@@ -14,7 +14,7 @@ import (
 
 
 /*
-	Get blobs  for backup
+
 */
 
 
