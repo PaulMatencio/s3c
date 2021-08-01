@@ -194,7 +194,7 @@ func restore_bucket() (string, error) {
 		if len(inFile) > 0 {
 			result, err = ListPn(listpn, int(maxKey)) //  restore documents listed in --input-file
 		} else {
-			result, err = api.ListObjectV2(req) // restore  document listed in backup bucket
+			result, err = api.ListObjectV2(req)      // restore  document listed in backup bucket
 		}
 		if err == nil {
 			gLog.Info.Printf("Backup bucket %s - target metadata bucket %s - number of documents: %d", srcBucket, tgtBucket, len(result.Contents))
@@ -241,7 +241,12 @@ func restore_bucket() (string, error) {
 				terrors += gerrors
 			}
 		} else {
-			gLog.Error.Printf("%v", err)
+			if len(inFile)== 0 {
+				gLog.Error.Printf("%v -listing bucket %s", err,req.Bucket)
+			} else {
+				gLog.Error.Printf("%v - Reading file %s", err,inFile)
+			}
+
 			break
 		}
 
