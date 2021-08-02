@@ -249,3 +249,11 @@ type UploadPartRequest struct {
 	RetryNumber int
 	WaitTime  time.Duration
 }
+
+type Reqm struct {
+	SrcS3 *s3.S3
+	SrcBucket string
+	TgtS3 *s3.S3
+	TgtBucket string
+	Incremental bool
+}

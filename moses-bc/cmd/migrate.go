@@ -15,16 +15,15 @@
 package cmd
 
 import (
-	"bufio"
-	"encoding/base64"
+	// "encoding/base64"
 	"encoding/json"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/paulmatencio/protobuf-doc/src/document/documentpb"
+	// "github.com/paulmatencio/protobuf-doc/src/document/documentpb"
 	"github.com/paulmatencio/s3c/api"
 	"github.com/paulmatencio/s3c/datatype"
 	mosesbc "github.com/paulmatencio/s3c/moses-bc/lib"
 	"github.com/spf13/viper"
-	"google.golang.org/protobuf/types/known/timestamppb"
+	// "google.golang.org/protobuf/types/known/timestamppb"
 
 	// "github.com/golang/protobuf/proto"
 	"github.com/paulmatencio/s3c/gLog"
@@ -37,7 +36,7 @@ import (
 
 // listObjectCmd represents the listObject command
 var (
-	backupCmd = &cobra.Command{
+	migrateCmd = &cobra.Command{
 		Use:   "_backup_",
 		Short: "Command to backup MOSES objects and directories",
 		Long: `        
@@ -79,28 +78,11 @@ var (
          
 		`,
 		Hidden: true,
-		Run:    Bucket_backup,
+		Run:    Bucket_migrate,
 	}
-
-	inFile, outDir, iBucket, delimiter string
-	maxPartSize, maxKey                int64
-	marker                             string
-	maxLoop, maxPage                   int
-	incr                               bool
-	fromDate                           string
-	maxVersions                        int
-	frDate                             time.Time
 )
 
-type UserMd struct {
-	FpClipping string `json:"fpClipping,omitempty"`
-	DocID      string `json:"docId"`
-	PubDate    string `json:"pubDate"`
-	SubPartFP  string `json:"subPartFP"`
-	TotalPages string `json:"totalPages"`
-}
-
-func initBkFlags(cmd *cobra.Command) {
+func initMgFlags(cmd *cobra.Command) {
 
 	cmd.Flags().StringVarP(&srcBucket, "source-bucket", "", "", "name of source s3 bucket. Ex: meta-moses-prod-pn-xx, suffix xx is only required for bucket backup")
 	cmd.Flags().StringVarP(&tgtBucket, "target-bucket", "", "", "name of the target s3 bucket. Ex: meta-moses-prod-bkp-pn-xx, xx must be the same as source-bucket")
@@ -121,21 +103,19 @@ func initBkFlags(cmd *cobra.Command) {
 }
 
 func init() {
-	rootCmd.AddCommand(backupCmd)
-	initBkFlags(backupCmd)
+	rootCmd.AddCommand(migrateCmd)
+	initMgFlags(migrateCmd)
 
 	// viper.BindPFlag("maxPartSize",rootCmd.PersistentFlags().Lookup("maxParSize"))
 }
 
-func Bucket_backup(cmd *cobra.Command, args []string) {
+func Bucket_migrate(cmd *cobra.Command, args []string) {
 
 	var (
 		nextmarker string
 		err        error
 	)
-
 	incr = false //  full backup of moses backup
-
 	if len(srcBucket) == 0 {
 		gLog.Error.Printf(missingSrcBucket)
 		return
@@ -248,17 +228,17 @@ func Bucket_backup(cmd *cobra.Command, args []string) {
 			Create a session to the the target  S3 cluster ( moses backup metadata + data)
 	*/
 
-	if err = mosesbc.SetSourceSproxyd("backup", srcUrl, driver, env); err != nil {
+	if err = mosesbc.SetSourceSproxyd("migrate", srcUrl, driver, env); err != nil {
 		return
 	}
 	maxPartSize = maxPartSize * 1024 * 1024
 	// srcS3 = mosesbc.CreateS3Session("backup", "source")
-	if srcS3 = mosesbc.CreateS3Session("backup", "source"); srcS3 == nil {
+	if srcS3 = mosesbc.CreateS3Session("migrate", "source"); srcS3 == nil {
 		gLog.Error.Printf("Failed to create a S3 source session")
 		return
 	}
 	// tgtS3 = mosesbc.CreateS3Session("backup", "target")
-	if tgtS3 = mosesbc.CreateS3Session("backup", "target"); tgtS3 == nil {
+	if tgtS3 = mosesbc.CreateS3Session("migrate", "target"); tgtS3 == nil {
 		gLog.Error.Printf("Failed to create a S3 target session")
 		return
 	}
@@ -269,9 +249,9 @@ func Bucket_backup(cmd *cobra.Command, args []string) {
 		TgtBucket:   tgtBucket,
 		Incremental: incr,
 	}
-	// start the backup
 	start := time.Now()
-	if nextmarker, err = backup_bucket(reqm); err != nil {
+
+	if nextmarker, err = migrate_bucket(marker, reqm); err != nil {
 		gLog.Error.Printf("error %v - Next marker %s", err, nextmarker)
 	} else {
 		gLog.Info.Printf("Next Marker %s", nextmarker)
@@ -283,7 +263,7 @@ func Bucket_backup(cmd *cobra.Command, args []string) {
 /*
 	func backup_bucket(marker string, srcS3 *s3.S3, srcBucket string, tgtS3 *s3.S3, tgtBucket string) (string, error) {
 */
-func backup_bucket(reqm datatype.Reqm) (string, error) {
+func migrate_bucket(marker string, reqm datatype.Reqm) (string, error) {
 	var (
 		nextmarker, token               string
 		N                               int
@@ -294,7 +274,7 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 		incr                            = reqm.Incremental
 		req, reql                       datatype.ListObjV2Request
 	)
-
+	//   prepare the request to list the source bucket ( document indexes)
 	req = datatype.ListObjV2Request{
 		Service:           reqm.SrcS3,
 		Bucket:            reqm.SrcBucket,
@@ -303,43 +283,43 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 		Marker:            marker,
 		Continuationtoken: token,
 	}
+	//  if --input-bucket  then prepare the request to list the last loaded bucket
 
 	if len(iBucket) > 0 {
 		reql = datatype.ListObjV2Request{
 			Service:           reqm.SrcS3,
-			Bucket:            iBucket,
+			Bucket:            iBucket, //
 			Prefix:            prefix,
 			MaxKey:            int64(maxKey),
 			Marker:            marker,
 			Continuationtoken: token,
 		}
-
 	}
 
 	for {
 		var (
-			result           *s3.ListObjectsV2Output
-			versionId        string
-			err              error
-			ndocs            int = 0
-			npages, ndeletes int = 0, 0
-			docsizes         int = 0
-			gerrors          int = 0
-			key, method      string
+			result                                     *s3.ListObjectsV2Output
+			err                                        error
+			npages, ndeletes, ndocs, docsizes, gerrors int = 0, 0, 0, 0, 0
+			key, method                                string
 		)
 		N++ // number of loop
 		if !incr {
-			gLog.Info.Printf("Listing documents from  %s",reqm.SrcBucket)
+			gLog.Info.Printf("Listing documents from  %s", reqm.SrcBucket)
 			result, err = api.ListObjectV2(req)
 		} else {
 			if len(inFile) > 0 {
-				gLog.Info.Printf("Listing documents from file %s",inFile)
+				gLog.Info.Printf("Listing documents from file %s", inFile)
 				result, err = ListPn(listpn, int(maxKey))
 			} else {
-				gLog.Info.Printf("Listing documents from bucket  %s",iBucket)
+				gLog.Info.Printf("Listing documents from bucket  %s", iBucket)
 				result, err = api.ListObjectV2(reql)
 			}
 		}
+
+		/*
+			result contains the list of documents to be migrated
+		*/
 		if err == nil {
 			if l := len(result.Contents); l > 0 {
 				var wg1 sync.WaitGroup
@@ -347,86 +327,48 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 					if *v.Key != nextmarker {
 						gLog.Info.Printf("Key: %s - Size: %d - LastModified: %v", *v.Key, *v.Size, v.LastModified)
 						svc := req.Service
+						//  if  incremental  migration then the bucket  suffix will depends of the first 2 characters of the prefix
 						var buck string
 						if incr {
 							buck = mosesbc.SetBucketName(*v.Key, req.Bucket)
 						} else {
 							buck = req.Bucket
 						}
+						// if --in-file  to retrieve the method  : PUT or DELETE
 						if len(inFile) > 0 {
 							if err, method, key = mosesbc.ParseLog(*v.Key); err != nil {
 								gLog.Error.Printf("%v", err)
 								continue
 							}
 						} else {
-							//  full backup : method = PUT
+							//  if no --in-file then full backup : method = PUT
 							key = *v.Key
 							method = "PUT"
 						}
+						//  prepare the request to retrieve the S3 metadata of the document
 						request := datatype.StatObjRequest{
 							Service: svc,
 							Bucket:  buck,
 							Key:     key,
 						}
-						if method == "PUT" {
-							ndocs += 1
-						}
 						wg1.Add(1)
 						go func(request datatype.StatObjRequest, method string) {
-							defer wg1.Done()
-							var (
-								rh = datatype.Rh{
-									Key: request.Key,
-								}
-								np, status, docsize, npage int
-								err                        error
-								usermd                     string
-							)
 
+							defer wg1.Done()
 							gLog.Trace.Printf("Method %s - Key %s ", method, request.Key)
 							if method == "PUT" {
-								rh.Result, rh.Err = api.StatObject(request)
-								versionId = *rh.Result.VersionId
-								if usermd, err = utils.GetUserMeta(rh.Result.Metadata); err == nil {
-									userm := UserMd{}
-									json.Unmarshal([]byte(usermd), &userm)
-									pn := rh.Key
-									if np, err = strconv.Atoi(userm.TotalPages); err == nil {
-										nerr, document := BackupPn(pn, np, usermd, versionId, maxPage)
-										if nerr > 0 {
-											mt.Lock()
-											gerrors += nerr
-											mt.Unlock()
-										} else {
-											docsize = (int)(document.Size)
-											npage = (int)(document.NumberOfPages)
-										}
-									} else {
-										gLog.Error.Printf("Document %s - S3 metadata has an invalid number of pages in %s - Try to get it from the document user metadata ", pn, usermd)
-										if np, err, status = mosesbc.GetPageNumber(pn); err == nil {
-											nerr, document := BackupPn(pn, np, usermd, versionId, maxPage)
-											if nerr > 0 {
-												mt.Lock()
-												gerrors += nerr
-												mt.Unlock()
-											} else {
-												docsize = (int)(document.Size)
-												npage = (int)(document.NumberOfPages)
-											}
-
-										} else {
-											gLog.Error.Printf(" Error %v - Status Code: %v  - Getting number of pages for %s ", err, status, pn)
-											mt.Lock()
-											gerrors += 1
-											mt.Unlock()
-										}
-									}
+								r := migrate_pn(request, reqm, replace)
+								if r.Nerrors > 0 {
+									mu.Lock()
+									gerrors += r.Nerrors
+									mu.Unlock()
 								}
-								mu.Lock()
-								npages += npage
-								docsizes += docsize
-								mu.Unlock()
-							} // end PUT method
+								mt.Lock()
+								npages += r.Npages
+								docsizes += r.Docsizes
+								ndocs += r.Ndocs
+								mt.Unlock()
+							}
 
 							if method == "DELETE" {
 								ndel, nerr := deleteVersions(request)
@@ -475,146 +417,50 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 	return nextmarker, nil
 }
 
-//func inc_backup(listpn *bufio.Scanner, srcS3 *s3.S3, srcBucket string, tgtS3 *s3.S3, tgtBucket string) (string, error) {
-
-func printErr(errs []error) {
-	for _, e := range errs {
-		gLog.Error.Println(e)
-	}
-}
-
-func ListPn(buf *bufio.Scanner, num int) (*s3.ListObjectsV2Output, error) {
+func migrate_pn(request datatype.StatObjRequest, reqm datatype.Reqm, replace bool) datatype.Rm {
 
 	var (
-		T            = true
-		Z      int64 = 0
-		D            = time.Now()
-		result       = &s3.ListObjectsV2Output{
-			IsTruncated: &T,
+		rh = datatype.Rh{
+			Key: request.Key,
 		}
-		err     error
-		objects []*s3.Object
-	)
-	for k := 1; k <= num; k++ {
-		var object s3.Object
-		if buf.Scan() {
-			if text := buf.Text(); len(text) > 0 {
-				object.Key = &text
-				object.Size = &Z
-				object.LastModified = &D
-				objects = append(objects, &object)
-				result.StartAfter = &text
-			} else {
-				T = false
-				result.IsTruncated = &T
-			}
-		} else {
-			T = false
-			result.IsTruncated = &T
-		}
-	}
-	result.Contents = objects
-	return result, err
-}
-
-func BackupPn(pn string, np int, usermd string, versionId string, maxPage int) (int, *documentpb.Document) {
-
-	var (
-		nerrs    = 0
-		document *documentpb.Document
-		errs     []error
-	)
-	if errs, document = mosesbc.Backup_blob(pn, np, maxPage); len(errs) == 0 {
-
-		/*
-			Add  s3 moses metadata to the document even if it may be  invalid in the source bucket
-			the purpose of the backup is not to fix source data
-		*/
-
-		document.S3Meta = base64.StdEncoding.EncodeToString([]byte(usermd))
-		document.VersionId = versionId
-		document.LastUpdated = timestamppb.Now()
-		var buck1 string
-		if incr {
-			buck1 = mosesbc.SetBucketName(pn, tgtBucket)
-		} else {
-			buck1 = tgtBucket
-		}
-		if _, err := writeS3(tgtS3, buck1, maxPartSize, document); err != nil {
-			gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
-			nerrs += 1
-		}
-		/*
-			version management can be implement here
-			list all the versions and delete the oldest one
-		*/
-
-	} else {
-		printErr(errs)
-		nerrs += len(errs)
-	}
-	return nerrs, document
-}
-
-func writeS3(service *s3.S3, bucket string, maxPartSize int64, document *documentpb.Document) (interface{}, error) {
-
-	if maxPartSize > 0 && document.Size > maxPartSize {
-		gLog.Warning.Printf("Multipart upload %s - size %d - max part size %d", document.DocId, document.Size, maxPartSize)
-		return mosesbc.WriteS3Multipart(service, bucket, maxPartSize, document)
-	} else {
-		return mosesbc.WriteS3(service, bucket, document)
-	}
-}
-
-func deleteVersions(request datatype.StatObjRequest) (int, int) {
-	// take the oldest version
-	var (
-		svc               = request.Service
-		bucket            = request.Bucket
-		key               = request.Key
-		versions          []*string
-		ndeletes, nerrors int
+		err                        error
+		usermd, pn                 string
+		npages, ndocs, nerrors, np int
+		docsizes                   int64
 	)
 
-	listreq := datatype.ListObjVersionsRequest{
-		Service: svc,
-		Bucket:  bucket,
-		Prefix:  prefix,
-	}
-
-	if listvers, err := api.ListObjectVersions(listreq); err == nil {
-
-		objVersions := listvers.Versions
-		l := len(objVersions)
-		if l > maxVersions {
-			for k := maxVersions; k < l; k++ {
-				versions = append(versions, objVersions[k].VersionId)
+	if rh.Result, rh.Err = api.StatObject(request); rh.Err == nil {
+		//  Extract the number of pages from the user metadata
+		if usermd, err = utils.GetUserMeta(rh.Result.Metadata); err == nil {
+			userm := UserMd{}
+			json.Unmarshal([]byte(usermd), &userm)
+			pn = rh.Key
+			if np, err = strconv.Atoi(userm.TotalPages); err == nil {
+				start3 := time.Now()
+				s3meta := rh.Result.Metadata["Usermd"] //  Metadata map  must contain "usermd" entry encoded 64
+				nerr, document := mosesbc.Migrate_blob(reqm, *s3meta, pn, np, maxPage, replace)
+				if nerr == 0 {
+					npages = int(document.NumberOfPages)
+					docsizes = document.Size
+					ndocs = 1
+					gLog.Info.Printf("Document id %s is cloned - Number of pages %d - Document size %d - Number of errors %d - Elapsed time %v ", document.DocId, document.NumberOfPages, document.Size, nerr, time.Since(start3))
+				} else {
+					nerrors = nerr
+					ndocs = 0
+					gLog.Info.Printf("Document id %s is not fully cloned - Number of pages %d - Document size %d - Number of errors %d - Elapsed time %v ", document.DocId, document.NumberOfPages, document.Size, nerr, time.Since(start3))
+				}
 			}
-		}
-		delreq := datatype.DeleteObjRequest{
-			Service: request.Service,
-			Bucket:  request.Bucket,
-			Key:     key,
-		}
-		var delreqs []*datatype.DeleteObjRequest
-
-		for k := 0; k < len(versions); k++ {
-			delreq.VersionId = *versions[k]
-			delreqs = append(delreqs, &delreq)
-		}
-		if ret, err := api.DeleteObjectVersions(delreqs); err == nil {
-			for _, del := range ret.Deleted {
-				gLog.Info.Printf("Object %s - Version id %s is deleted from %s", del.Key, del.VersionId, request.Bucket)
-			}
-			ndeletes = len(ret.Deleted)
 		} else {
-			gLog.Error.Printf("Error %v  while deleting multiple versions of %s in %s", err, request.Key, request.Bucket)
-			nerrors += 1
+			gLog.Error.Printf("%v", err)
 		}
-
 	} else {
-		gLog.Error.Printf("Error %v  while listing versions of %s in  %s", err, request.Key, request.Bucket)
-		nerrors += 1
+		gLog.Error.Printf("%v", rh.Err)
 	}
-	return ndeletes, nerrors
+	r := datatype.Rm{
+		nerrors,
+		ndocs,
+		npages,
+		int(docsizes),
+	}
+	return r
 }

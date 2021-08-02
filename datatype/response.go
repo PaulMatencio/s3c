@@ -1,8 +1,8 @@
 package datatype
 
 import (
-	"github.com/aws/aws-sdk-go/service/s3"
 	"bytes"
+	"github.com/aws/aws-sdk-go/service/s3"
 )
 
 type  Rh struct {
@@ -65,3 +65,10 @@ type PutS3Response struct {
 
 }
 */
+
+type Rm struct {
+	Nerrors int
+	Ndocs   int
+	Npages  int
+	Docsizes int
+}

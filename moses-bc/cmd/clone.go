@@ -226,8 +226,16 @@ func Clone_bucket(cmd *cobra.Command, args []string) {
 			return
 		}
 	}
+
+	reqm := datatype.Reqm{
+		SrcS3:       srcS3,
+		SrcBucket:   srcBucket,
+		TgtS3:       tgtS3,
+		TgtBucket:   tgtBucket,
+		Incremental: incr,
+	}
 	start := time.Now()
-	if nextMarker, err := clone_bucket(); err != nil {
+	if nextMarker, err := clone_bucket(reqm); err != nil {
 		gLog.Error.Printf("error %v - Next marker %s", err, nextMarker)
 	} else {
 		gLog.Info.Printf("Next Marker %s", nextMarker)
@@ -235,9 +243,7 @@ func Clone_bucket(cmd *cobra.Command, args []string) {
 	gLog.Info.Printf("Total Elapsed time: %v", time.Since(start))
 }
 
-
-
-func clone_bucket() (string, error) {
+func clone_bucket(reqm datatype.Reqm) (string, error) {
 
 	var (
 		nextmarker, token            string
@@ -246,6 +252,7 @@ func clone_bucket() (string, error) {
 		terrors                      int
 		re, si                       sync.Mutex
 		req, reql                    datatype.ListObjV2Request
+		incr                         = reqm.Incremental
 	)
 
 	req = datatype.ListObjV2Request{
@@ -257,19 +264,17 @@ func clone_bucket() (string, error) {
 		Continuationtoken: token,
 	}
 
-	if len(inFile) > 0 || len(iBucket) > 0 {
-		incr = true
-		if len(iBucket) > 0 {
-			reql = datatype.ListObjV2Request{
-				Service:           srcS3,
-				Bucket:            iBucket,
-				Prefix:            prefix,
-				MaxKey:            int64(maxKey),
-				Marker:            marker,
-				Continuationtoken: token,
-			}
+	if len(iBucket) > 0 {
+		reql = datatype.ListObjV2Request{
+			Service:           srcS3,
+			Bucket:            iBucket,
+			Prefix:            prefix,
+			MaxKey:            int64(maxKey),
+			Marker:            marker,
+			Continuationtoken: token,
 		}
 	}
+
 	start0 := time.Now()
 	for {
 		var (
@@ -282,21 +287,25 @@ func clone_bucket() (string, error) {
 			wg1          sync.WaitGroup
 		)
 		N++ // number of loop
-
 		if !incr {
-			result, err = api.ListObjectV2(req) // full copy
+			gLog.Info.Printf("Listing documents from  %s", reqm.SrcBucket)
+			result, err = api.ListObjectV2(req)
 		} else {
 			if len(inFile) > 0 {
-				result, err = ListPn(listpn, int(maxKey)) // copy documents listed in --input-file
+				gLog.Info.Printf("Listing documents from file %s", inFile)
+				result, err = ListPn(listpn, int(maxKey))
 			} else {
-				result, err = api.ListObjectV2(reql) // copy documents listed in the --input-bucket
+				gLog.Info.Printf("Listing documents from bucket  %s", iBucket)
+				result, err = api.ListObjectV2(reql)
 			}
 		}
+
+		// result contains the list of documents to clone
 		if err == nil {
 			if l := len(result.Contents); l > 0 {
 				start := time.Now()
 				var buck1 string
-				gLog.Info.Printf("Total number of documents %d",l)
+				gLog.Info.Printf("Total number of documents %d", l)
 				for _, v := range result.Contents {
 					if *v.Key != nextmarker {
 						ndocr += 1
@@ -306,6 +315,7 @@ func clone_bucket() (string, error) {
 						} else {
 							buck1 = req.Bucket
 						}
+						//  prepare the request to retrieve S3 meta data
 						request := datatype.StatObjRequest{
 							Service: svc1,
 							Bucket:  buck1,
@@ -314,16 +324,16 @@ func clone_bucket() (string, error) {
 						wg1.Add(1)
 						go func(request datatype.StatObjRequest, replace bool) {
 							defer wg1.Done()
-							pages, sizes, errs,docs := clone_pn(request, replace)
-							if errs > 0 {
+							r := clone_pn(request, replace)
+							if r.Nerrors > 0 {
 								re.Lock()
-								gerrors += errs
+								gerrors += r.Nerrors
 								re.Unlock()
 							}
 							si.Lock()
-							npages += pages
-							docsizes += int64(sizes)
-							ndocs += docs
+							npages += r.Npages
+							docsizes += int64(r.Docsizes)
+							ndocs += r.Ndocs
 							si.Unlock()
 						}(request, replace)
 					}
@@ -334,7 +344,6 @@ func clone_bucket() (string, error) {
 					token = *result.NextContinuationToken
 					gLog.Warning.Printf("Truncated %v - Next marker: %s  - Nextcontinuation token: %s", *result.IsTruncated, nextmarker, token)
 				}
-				// ndocs = ndocs - gerrors
 				gLog.Info.Printf("Number of cloned documents: %d of %d - Number of pages: %d  - Documents size: %d - Number of errors: %d -  Elapsed time: %v", ndocs, ndocr, npages, docsizes, gerrors, time.Since(start))
 				tdocs += int64(ndocs)
 				tdocr += int64(ndocr)
@@ -365,18 +374,20 @@ func clone_bucket() (string, error) {
 		if re-indexing then re-index the document in the target bucket
 
 */
-func clone_pn(request datatype.StatObjRequest, replace bool) (int, int, int,int) {
+
+func clone_pn(request datatype.StatObjRequest, replace bool) datatype.Rm {
 	var (
 		rh = datatype.Rh{
 			Key: request.Key,
 		}
-		err    error
-		usermd,pn  string
-		npages, ndocs, nerrors,np  int
-		docsizes  int64
+		err                        error
+		usermd, pn                 string
+		npages, ndocs, nerrors, np int
+		docsizes                   int64
 	)
 
 	if rh.Result, rh.Err = api.StatObject(request); rh.Err == nil {
+		// get S3 user metadata
 		if usermd, err = utils.GetUserMeta(rh.Result.Metadata); err == nil {
 			userm := UserMd{}
 			json.Unmarshal([]byte(usermd), &userm)
@@ -391,7 +402,6 @@ func clone_pn(request datatype.StatObjRequest, replace bool) (int, int, int,int)
 					gLog.Info.Printf("Document id %s is cloned - Number of pages %d - Document size %d - Number of errors %d - Elapsed time %v ", document.DocId, document.NumberOfPages, document.Size, nerr, time.Since(start3))
 					/*
 						indexing the document if no cloning error
-
 					*/
 					if reIndex {
 						start5 := time.Now()
@@ -414,5 +424,11 @@ func clone_pn(request datatype.StatObjRequest, replace bool) (int, int, int,int)
 	} else {
 		gLog.Error.Printf("%v", rh.Err)
 	}
-	return npages, int(docsizes), nerrors,ndocs
+	r := datatype.Rm{
+		nerrors,
+		ndocs,
+		npages,
+		int(docsizes),
+	}
+	return r
 }

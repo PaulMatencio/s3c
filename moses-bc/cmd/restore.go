@@ -241,12 +241,11 @@ func restore_bucket() (string, error) {
 				terrors += gerrors
 			}
 		} else {
-			if len(inFile)== 0 {
-				gLog.Error.Printf("%v -listing bucket %s", err,req.Bucket)
+			if len(inFile)  == 0 {
+				gLog.Error.Printf("%v - Listing bucket %s", err,req.Bucket)
 			} else {
 				gLog.Error.Printf("%v - Reading file %s", err,inFile)
 			}
-
 			break
 		}
 

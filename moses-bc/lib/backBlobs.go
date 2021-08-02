@@ -27,7 +27,7 @@ type GetBlobResponse struct {
 */
 
 
-func BackupAllBlob(pn string, np int, maxPage int) ([]error,*documentpb.Document){
+func Backup_blob(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 	if np <= maxPage {
 		return backup_regular_blob(pn,np)
 	} else {

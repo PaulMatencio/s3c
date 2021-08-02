@@ -27,10 +27,10 @@ import (
 
 var (
 	testCmd = &cobra.Command{
-		Use:   "test",
+		Use:   "test-replication",
 		Short: "Command to put/get/delete objects by object Id",
 		Long:  `Command to put/get/delete objects objets using their Id. This is for for testing if the targert sproxdd driver chord can change`,
-		Hidden: true,
+		// Hidden: true,
 		Run:   TestReplication,
 	}
 
