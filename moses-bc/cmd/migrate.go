@@ -132,6 +132,7 @@ func Bucket_migrate(cmd *cobra.Command, args []string) {
 			gLog.Error.Printf("--input-file  and --input-bucket are mutually exclusive", inFile, iBucket)
 			return
 		}
+
 		if len(prefix) > 0 {
 			gLog.Warning.Printf("Prefix is ignored with --input-file or --input-bucket ")
 			prefix = ""
@@ -229,8 +230,12 @@ func Bucket_migrate(cmd *cobra.Command, args []string) {
 	*/
 
 	if err = mosesbc.SetSourceSproxyd("migrate", srcUrl, driver, env); err != nil {
-		return
+		gLog.Warning.Printf("Checking  clone.s3.source...  and clone.sproxy.source... ")
+		if err = mosesbc.SetSourceSproxyd("clone", srcUrl, driver, env); err != nil {
+			return
+		}
 	}
+
 	maxPartSize = maxPartSize * 1024 * 1024
 	// srcS3 = mosesbc.CreateS3Session("backup", "source")
 	if srcS3 = mosesbc.CreateS3Session("migrate", "source"); srcS3 == nil {
