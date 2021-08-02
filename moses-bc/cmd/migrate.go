@@ -37,7 +37,7 @@ import (
 // listObjectCmd represents the listObject command
 var (
 	migrateCmd = &cobra.Command{
-		Use:   "_backup_",
+		Use:   "_migrate_",
 		Short: "Command to backup MOSES objects and directories",
 		Long: `        
         Command to backup Moses data and Moses directories
