@@ -452,11 +452,11 @@ func migrate_pn(request datatype.StatObjRequest, reqm datatype.Reqm, replace boo
 					npages = int(document.NumberOfPages)
 					docsizes = document.Size
 					ndocs = 1
-					gLog.Info.Printf("Document id %s is cloned - Number of pages %d - Document size %d - Number of errors %d - Elapsed time %v ", document.DocId, document.NumberOfPages, document.Size, nerr, time.Since(start3))
+					gLog.Info.Printf("Document id %s is migrated - Number of pages %d - Document size %d - Number of errors %d - Elapsed time %v ", document.DocId, document.NumberOfPages, document.Size, nerr, time.Since(start3))
 				} else {
 					nerrors = nerr
 					ndocs = 0
-					gLog.Info.Printf("Document id %s is not fully cloned - Number of pages %d - Document size %d - Number of errors %d - Elapsed time %v ", document.DocId, document.NumberOfPages, document.Size, nerr, time.Since(start3))
+					gLog.Info.Printf("Document id %s is not fully migrated - Number of pages %d - Document size %d - Number of errors %d - Elapsed time %v ", document.DocId, document.NumberOfPages, document.Size, nerr, time.Since(start3))
 				}
 			}
 		} else {

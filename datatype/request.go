@@ -14,6 +14,7 @@ type CreateSession struct {
 	EndPoint 	string
 	AccessKey   string
 	SecretKey   string
+	MaxRetries  int
 }
 
 type GetObjRequest struct {
