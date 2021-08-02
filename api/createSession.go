@@ -20,16 +20,30 @@ func CreateSession() *session.Session {
 	var (
 		sess     *session.Session
 		loglevel = *aws.LogLevel(1)
+		maxRetries            = 5
+		conTimeout, keepAlive int
 	)
 
 	if viper.GetInt("loglevel") == 5 {
 		loglevel = aws.LogDebug
 	}
+	if retry := viper.GetInt("transport.retry.number"); retry > 0 {
+		maxRetries = retry
+	} else {
+		if retry = viper.GetInt("transport.retry.number"); retry > 0 {
+			maxRetries = retry
+		}
+	}
 
+	if conTimeout := viper.GetInt("transport.connectionTimeout"); conTimeout == 0 {
+		conTimeout = 1000
+	}
+
+	if keepAlive := viper.GetInt("transport.connectionTimeout"); keepAlive == 0 {
+		keepAlive = 15000
+	}
 	if viper.ConfigFileUsed() == "" {
-
 		myCustomResolver := func(service, region string, optFns ...func(*endpoints.Options)) (endpoints.ResolvedEndpoint, error) {
-
 			if service == endpoints.S3ServiceID {
 				return endpoints.ResolvedEndpoint{
 					URL: "http://127.0.0.1:9000",
@@ -37,16 +51,12 @@ func CreateSession() *session.Session {
 					SigningRegion: "us-east-1",
 				}, nil
 			}
-
 			return endpoints.DefaultResolver().EndpointFor(service, region, optFns...)
-
 		}
 
 		sess = session.Must(session.NewSession(&aws.Config{
-			// Region:           aws.String("us-east-1"),
 			Credentials:      credentials.NewSharedCredentials("", "minio-account"),
 			EndpointResolver: endpoints.ResolverFunc(myCustomResolver),
-			//Endpoint: &endpoint,
 			S3ForcePathStyle: aws.Bool(true),
 			LogLevel:         aws.LogLevel(loglevel),
 		}))
@@ -101,6 +111,34 @@ func CreateSession() *session.Session {
 			client.Transport = t
 		*/
 
+
+		client := http.Client{}
+		Transport := &http.Transport{
+			DialContext: (&net.Dialer{
+				Timeout:   time.Duration(conTimeout) * time.Millisecond, // connection timeout
+				KeepAlive: time.Duration(keepAlive) * time.Millisecond,
+			}).DialContext,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ForceAttemptHTTP2:     true,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		}
+
+		if proxy := viper.GetString("transport.proxy.http"); len(proxy) == 0 {
+			//Transport.Proxy = http.ProxyFromEnvironment
+			gLog.Warning.Println("http_proxy=no")
+			Transport.Proxy = nil
+		} else {
+			if proxyHttp, err := url.Parse(proxy); err == nil {
+				gLog.Info.Println(proxyHttp)
+				Transport.Proxy = http.ProxyURL(proxyHttp)
+			} else {
+				gLog.Warning.Printf("http_proxy= %s",os.Getenv("http_proxy"))
+				Transport.Proxy = http.ProxyFromEnvironment
+			}
+		}
+		client.Transport = Transport
 		sess, _ = session.NewSession(&aws.Config{
 
 			Region:                         aws.String(viper.GetString("s3.region")),
@@ -109,6 +147,8 @@ func CreateSession() *session.Session {
 			DisableRestProtocolURICleaning: aws.Bool(true),
 			S3ForcePathStyle:               aws.Bool(true),
 			LogLevel:                       aws.LogLevel(loglevel),
+			MaxRetries:                     aws.Int(maxRetries),
+			HTTPClient:                     &client,
 			// HTTPClient:    &client,
 		})
 
@@ -141,6 +181,7 @@ func CreateSession2(req datatype.CreateSession) *session.Session {
 	if conTimeout := viper.GetInt("transport.connectionTimeout"); conTimeout == 0 {
 		conTimeout = 1000
 	}
+
 	if keepAlive := viper.GetInt("transport.connectionTimeout"); keepAlive == 0 {
 		keepAlive = 15000
 	}
