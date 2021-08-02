@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 )
 
@@ -187,14 +188,16 @@ func CreateSession2(req datatype.CreateSession) *session.Session {
 		}
 
 		if proxy := viper.GetString("transport.proxy.http"); len(proxy) == 0 {
-			Transport.Proxy = http.ProxyFromEnvironment
+			//Transport.Proxy = http.ProxyFromEnvironment
+			gLog.Warning.Println("http_proxy=no")
+			Transport.Proxy = nil
 		} else {
 			if proxyHttp, err := url.Parse(proxy); err == nil {
 				gLog.Info.Println(proxyHttp)
 				Transport.Proxy = http.ProxyURL(proxyHttp)
 			} else {
-				gLog.Warning.Println("http_proxy=no")
-				Transport.Proxy = nil
+				gLog.Warning.Printf("http_proxy= %s",os.Getenv("http_proxy"))
+				Transport.Proxy = http.ProxyFromEnvironment
 			}
 		}
 		client.Transport = Transport
