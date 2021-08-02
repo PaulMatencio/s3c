@@ -238,14 +238,18 @@ func Bucket_migrate(cmd *cobra.Command, args []string) {
 
 	maxPartSize = maxPartSize * 1024 * 1024
 	// srcS3 = mosesbc.CreateS3Session("backup", "source")
-	if srcS3 = mosesbc.CreateS3Session("migrate", "source"); srcS3 == nil {
-		gLog.Error.Printf("Failed to create a S3 source session")
-		return
+	if srcS3 = mosesbc.CreateS3Session("clone", "source"); srcS3 == nil {
+		if srcS3 = mosesbc.CreateS3Session("clone", "source"); srcS3 == nil {
+			gLog.Error.Printf("Failed to create a S3 source session")
+			return
+		}
 	}
 	// tgtS3 = mosesbc.CreateS3Session("backup", "target")
 	if tgtS3 = mosesbc.CreateS3Session("migrate", "target"); tgtS3 == nil {
-		gLog.Error.Printf("Failed to create a S3 target session")
-		return
+		if tgtS3 = mosesbc.CreateS3Session("clone", "target"); tgtS3 == nil {
+			gLog.Error.Printf("Failed to create a S3 target session")
+			return
+		}
 	}
 	reqm := datatype.Reqm{
 		SrcS3:       srcS3,
