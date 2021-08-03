@@ -265,12 +265,16 @@ func listV2Prefix(req datatype.ListObjV2Request) {
 		total      = 0
 		nextmarker string
 		token      string
+		result *s3.ListObjectsV2Output
+		err    error
 	)
 	for {
+		/*
 		var (
 			result *s3.ListObjectsV2Output
 			err    error
 		)
+		 */
 		if result, err = api.ListObjectV2(req); err == nil {
 			if l := len(result.Contents); l > 0 {
 
@@ -308,12 +312,16 @@ func listV2CommonPrefix(req datatype.ListObjV2Request) {
 		total      = 0
 		nextmarker string
 		token      string
+		result *s3.ListObjectsV2Output
+		err    error
 	)
 	for {
+		/*
 		var (
 			result *s3.ListObjectsV2Output
 			err    error
 		)
+		 */
 		if result, err = api.ListObjectV2(req); err == nil {
 			if l := len(result.Contents); l > 0 {
 
@@ -354,12 +362,17 @@ func listVersions(req datatype.ListObjVersionsRequest) {
 		total               = 0
 		nextMarker          string
 		nextVersionIdMarker string
+		result *s3.ListObjectVersionsOutput
+		err    error
 	)
 	for {
+		/*
 		var (
 			result *s3.ListObjectVersionsOutput
 			err    error
 		)
+
+		 */
 		if result, err = api.ListObjectVersions(req); err == nil {
 			if l := len(result.Versions); l > 0 {
 				for _, v := range result.Versions {
