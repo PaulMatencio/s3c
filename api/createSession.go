@@ -14,7 +14,10 @@ import (
 	"os"
 	"time"
 )
-
+const (
+	CONTIMEOUT = 2000  // connection timeout in ms
+	KEEPALIVE = 15000  // keep alive  in ms
+)
 func CreateSession() *session.Session {
 
 	var (
@@ -27,6 +30,7 @@ func CreateSession() *session.Session {
 	if viper.GetInt("loglevel") == 5 {
 		loglevel = aws.LogDebug
 	}
+
 	if retry := viper.GetInt("transport.retry.number"); retry > 0 {
 		maxRetries = retry
 	} else {
@@ -36,11 +40,11 @@ func CreateSession() *session.Session {
 	}
 
 	if conTimeout := viper.GetInt("transport.connectionTimeout"); conTimeout == 0 {
-		conTimeout = 1000
+		conTimeout = CONTIMEOUT
 	}
 
 	if keepAlive := viper.GetInt("transport.connectionTimeout"); keepAlive == 0 {
-		keepAlive = 15000
+		keepAlive = KEEPALIVE
 	}
 	if viper.ConfigFileUsed() == "" {
 		myCustomResolver := func(service, region string, optFns ...func(*endpoints.Options)) (endpoints.ResolvedEndpoint, error) {
@@ -111,7 +115,6 @@ func CreateSession() *session.Session {
 			client.Transport = t
 		*/
 
-
 		client := http.Client{}
 		Transport := &http.Transport{
 			DialContext: (&net.Dialer{
@@ -127,20 +130,19 @@ func CreateSession() *session.Session {
 
 		if proxy := viper.GetString("transport.proxy.http"); len(proxy) == 0 {
 			//Transport.Proxy = http.ProxyFromEnvironment
-			gLog.Warning.Println("http_proxy=no")
+			gLog.Info.Println("no http proxy - if needed, please add trnsport.proxy.http = http://proxyUri to the congig file congigure your proxy")
 			Transport.Proxy = nil
 		} else {
 			if proxyHttp, err := url.Parse(proxy); err == nil {
-				gLog.Info.Println(proxyHttp)
+				gLog.Info.Printf("Setting http proxy %s",proxyHttp)
 				Transport.Proxy = http.ProxyURL(proxyHttp)
 			} else {
-				gLog.Warning.Printf("http_proxy= %s",os.Getenv("http_proxy"))
+				gLog.Warning.Printf("Setting http proxy %s",os.Getenv("http_proxy"))
 				Transport.Proxy = http.ProxyFromEnvironment
 			}
 		}
 		client.Transport = Transport
 		sess, _ = session.NewSession(&aws.Config{
-
 			Region:                         aws.String(viper.GetString("s3.region")),
 			Endpoint:                       aws.String(viper.GetString("s3.url")),
 			Credentials:                    credentials.NewStaticCredentials(viper.GetString("credential.access_key_id"), viper.GetString("credential.secret_access_key"), ""),
@@ -149,7 +151,6 @@ func CreateSession() *session.Session {
 			LogLevel:                       aws.LogLevel(loglevel),
 			MaxRetries:                     aws.Int(maxRetries),
 			HTTPClient:                     &client,
-			// HTTPClient:    &client,
 		})
 
 	}
@@ -179,33 +180,26 @@ func CreateSession2(req datatype.CreateSession) *session.Session {
 	}
 
 	if conTimeout := viper.GetInt("transport.connectionTimeout"); conTimeout == 0 {
-		conTimeout = 1000
+		conTimeout = CONTIMEOUT
 	}
 
 	if keepAlive := viper.GetInt("transport.connectionTimeout"); keepAlive == 0 {
-		keepAlive = 15000
+		keepAlive = KEEPALIVE
 	}
 
 	if viper.ConfigFileUsed() == "" {
-
 		myCustomResolver := func(service, region string, optFns ...func(*endpoints.Options)) (endpoints.ResolvedEndpoint, error) {
-
 			if service == endpoints.S3ServiceID {
 				return endpoints.ResolvedEndpoint{
 					URL:           "http://127.0.0.1:9000",
 					SigningRegion: "us-east-1",
 				}, nil
 			}
-
 			return endpoints.DefaultResolver().EndpointFor(service, region, optFns...)
-
 		}
-
 		sess = session.Must(session.NewSession(&aws.Config{
-			// Region:           aws.String("us-east-1"),
 			Credentials:      credentials.NewSharedCredentials("", "minio-account"),
 			EndpointResolver: endpoints.ResolverFunc(myCustomResolver),
-			//Endpoint: &endpoint,
 			S3ForcePathStyle: aws.Bool(true),
 			LogLevel:         aws.LogLevel(loglevel),
 		}))
@@ -230,14 +224,14 @@ func CreateSession2(req datatype.CreateSession) *session.Session {
 
 		if proxy := viper.GetString("transport.proxy.http"); len(proxy) == 0 {
 			//Transport.Proxy = http.ProxyFromEnvironment
-			gLog.Warning.Println("http_proxy=no")
+			gLog.Info.Println("no http proxy - if needed, please add trnsport.proxy.http = http://proxyUri to the congig file congigure your proxy")
 			Transport.Proxy = nil
 		} else {
 			if proxyHttp, err := url.Parse(proxy); err == nil {
-				gLog.Info.Println(proxyHttp)
+				gLog.Info.Printf("Setting http proxy %s",proxyHttp)
 				Transport.Proxy = http.ProxyURL(proxyHttp)
 			} else {
-				gLog.Warning.Printf("http_proxy= %s",os.Getenv("http_proxy"))
+				gLog.Warning.Printf("Setting http proxy %s",os.Getenv("http_proxy"))
 				Transport.Proxy = http.ProxyFromEnvironment
 			}
 		}

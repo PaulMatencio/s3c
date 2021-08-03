@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	gmshort  = "Command to retieve some metadata of objects in a bucket"
+	gmshort  = "Command to retieve S3 object metadata"
 	gmetaCmd = &cobra.Command{
 		Use:    "head-objects",
 		Short:  gmshort,

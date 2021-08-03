@@ -132,15 +132,30 @@ func PrintUsermd(key string, metad map[string]*string) {
 
 	gLog.Info.Printf("Key: %s",key)
 	for k,v := range metad {
+		switch k {
+		case "Usermd" :
+			val,_ :=  base64.StdEncoding.DecodeString(*v)
+			gLog.Info.Printf("%s: %s",k,string(val))
+		case "S3Meta" :
+			val,_ :=  base64.StdEncoding.DecodeString(*v)
+			gLog.Info.Printf("%s: %s",k,string(val))
+		default:
+			gLog.Info.Printf("%s: %s", k, *v)
+		}
+		/*
 		if k == "Usermd" {
 			usermd,_ :=  base64.StdEncoding.DecodeString(*v)
 			gLog.Info.Printf("%s: %s",k,string(usermd))
 		} else {
-			gLog.Info.Printf("%s: %s", k,*v)
+			if k == "S3Meta" {
+				s3meta,_ :=  base64.StdEncoding.DecodeString(*v)
+				gLog.Info.Printf("%s: %s",k,string(s3meta)
+			} else {
+				gLog.Info.Printf("%s: %s", k, *v)
+			}
 		}
+		 */
 	}
-	// fmt.Println("")
-
 }
 
 func PrintMetadata(metad map[string]*string) {

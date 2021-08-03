@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"bytes"
+	hostpool "github.com/bitly/go-hostpool"
 	goLog "github.com/paulmatencio/s3c/gLog"
 	"io"
 	"io/ioutil"
@@ -11,7 +12,6 @@ import (
 	"net/url"
 	"strings"
 	"time"
-	hostpool "github.com/bitly/go-hostpool"
 )
 
 func DoRequest(hspool hostpool.HostPool, client *http.Client, req *http.Request, object []byte) (*http.Response, error) {
@@ -24,7 +24,7 @@ func DoRequest(hspool hostpool.HostPool, client *http.Client, req *http.Request,
 	)
 	u := req.URL
 	uPath := u.Path
-	waittime = 50 * time.Millisecond
+	waittime = Waittime * time.Millisecond
 	// goLog.Trace.Println(req.Method, req.Header, u.Host, u.Path, len(object))
 	for r = 1; r <= DoRetry; r++ {
 		// hpool = HP.Get()

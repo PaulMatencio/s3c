@@ -187,7 +187,7 @@ func restore_bucket() (string, error) {
 			ndocs    int = 0
 			npages   int = 0
 			docsizes int = 0
-			gerrors  int = 0
+			nerrors  int = 0
 		)
 		N++ // number of loop
 
@@ -217,7 +217,7 @@ func restore_bucket() (string, error) {
 							pages, sizes, errs := restore_pn(request, replace)
 							if errs > 0 {
 								re.Lock()
-								gerrors += errs
+								nerrors += errs
 								re.Unlock()
 							}
 							si.Lock()
@@ -233,12 +233,12 @@ func restore_bucket() (string, error) {
 					nextmarker = *result.Contents[l-1].Key
 					gLog.Warning.Printf("Truncated %v - Next marker: %s ", *result.IsTruncated, nextmarker)
 				}
-				ndocs = ndocs - gerrors
-				gLog.Info.Printf("Number of restored documents: %d  - Number of pages: %d  - Documents size: %d - Number of errors: %d -  Elapsed time: %v", ndocs, npages, docsizes, gerrors, time.Since(start))
+				ndocs = ndocs - nerrors
+				gLog.Info.Printf("Number of restored documents: %d  - Number of pages: %d  - Documents size: %d - Number of errors: %d -  Elapsed time: %v", ndocs, npages, docsizes, nerrors, time.Since(start))
 				tdocs += int64(ndocs)
 				tpages += int64(npages)
 				tsizes += int64(docsizes)
-				terrors += gerrors
+				terrors += nerrors
 			}
 		} else {
 			if len(inFile)  == 0 {

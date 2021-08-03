@@ -283,7 +283,7 @@ func clone_bucket(reqm datatype.Reqm) (string, error) {
 			ndocs, ndocr int   = 0, 0
 			npages       int   = 0
 			docsizes     int64 = 0
-			gerrors      int   = 0
+			nerrors      int   = 0
 			wg1          sync.WaitGroup
 		)
 		N++ // number of loop
@@ -327,7 +327,7 @@ func clone_bucket(reqm datatype.Reqm) (string, error) {
 							r := clone_pn(request, replace)
 							if r.Nerrors > 0 {
 								re.Lock()
-								gerrors += r.Nerrors
+								nerrors += r.Nerrors
 								re.Unlock()
 							}
 							si.Lock()
@@ -344,12 +344,12 @@ func clone_bucket(reqm datatype.Reqm) (string, error) {
 					token = *result.NextContinuationToken
 					gLog.Warning.Printf("Truncated %v - Next marker: %s  - Nextcontinuation token: %s", *result.IsTruncated, nextmarker, token)
 				}
-				gLog.Info.Printf("Number of cloned documents: %d of %d - Number of pages: %d  - Documents size: %d - Number of errors: %d -  Elapsed time: %v", ndocs, ndocr, npages, docsizes, gerrors, time.Since(start))
+				gLog.Info.Printf("Number of cloned documents: %d of %d - Number of pages: %d  - Documents size: %d - Number of errors: %d -  Elapsed time: %v", ndocs, ndocr, npages, docsizes, nerrors, time.Since(start))
 				tdocs += int64(ndocs)
 				tdocr += int64(ndocr)
 				tpages += int64(npages)
 				tsizes += int64(docsizes)
-				terrors += gerrors
+				terrors += nerrors
 			}
 		} else {
 			gLog.Error.Printf("%v", err)

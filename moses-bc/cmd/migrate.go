@@ -309,7 +309,7 @@ func migrate_bucket(marker string, reqm datatype.Reqm) (string, error) {
 		var (
 			result                                     *s3.ListObjectsV2Output
 			err                                        error
-			npages, ndeletes, ndocs, docsizes, gerrors int = 0, 0, 0, 0, 0
+			npages, ndeletes, ndocs, docsizes, nerrors int = 0, 0, 0, 0, 0
 			key, method                                string
 		)
 		N++ // number of loop
@@ -362,14 +362,13 @@ func migrate_bucket(marker string, reqm datatype.Reqm) (string, error) {
 						}
 						wg1.Add(1)
 						go func(request datatype.StatObjRequest, method string) {
-
 							defer wg1.Done()
 							gLog.Trace.Printf("Method %s - Key %s ", method, request.Key)
 							if method == "PUT" {
 								r := migrate_pn(request, reqm, replace)
 								if r.Nerrors > 0 {
 									mu.Lock()
-									gerrors += r.Nerrors
+									nerrors += r.Nerrors
 									mu.Unlock()
 								}
 								mt.Lock()
@@ -388,7 +387,7 @@ func migrate_bucket(marker string, reqm datatype.Reqm) (string, error) {
 								}
 								if nerr > 0 {
 									mt.Lock()
-									gerrors += nerr
+									nerrors += nerr
 									mt.Unlock()
 								}
 							}
@@ -403,12 +402,12 @@ func migrate_bucket(marker string, reqm datatype.Reqm) (string, error) {
 					}
 					gLog.Warning.Printf("Truncated %v - Next marker: %s ", *result.IsTruncated, nextmarker)
 				}
-				gLog.Info.Printf("Number of backed up documents: %d  - Number of pages: %d  - Document size: %d - Number of deletes: %d - Number of errors: %d", ndocs, npages, docsizes, ndeletes, gerrors)
+				gLog.Info.Printf("Number of backed up documents: %d  - Number of pages: %d  - Document size: %d - Number of deletes: %d - Number of errors: %d", ndocs, npages, docsizes, ndeletes, nerrors)
 				tdocs += int64(ndocs)
 				tpages += int64(npages)
 				tsizes += int64(docsizes)
 				tdeletes += int64(ndeletes)
-				terrors += gerrors
+				terrors += nerrors
 			}
 		} else {
 			gLog.Error.Printf("%v", err)

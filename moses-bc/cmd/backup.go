@@ -324,7 +324,7 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 			ndocs            int = 0
 			npages, ndeletes int = 0, 0
 			docsizes         int = 0
-			gerrors          int = 0
+			nerrors          int = 0
 			key, method      string
 		)
 		N++ // number of loop
@@ -395,7 +395,7 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 										nerr, document := BackupPn(pn, np, usermd, versionId, maxPage)
 										if nerr > 0 {
 											mt.Lock()
-											gerrors += nerr
+											nerrors += nerr
 											mt.Unlock()
 										} else {
 											docsize = (int)(document.Size)
@@ -407,7 +407,7 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 											nerr, document := BackupPn(pn, np, usermd, versionId, maxPage)
 											if nerr > 0 {
 												mt.Lock()
-												gerrors += nerr
+												nerrors += nerr
 												mt.Unlock()
 											} else {
 												docsize = (int)(document.Size)
@@ -417,7 +417,7 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 										} else {
 											gLog.Error.Printf(" Error %v - Status Code: %v  - Getting number of pages for %s ", err, status, pn)
 											mt.Lock()
-											gerrors += 1
+											nerrors += 1
 											mt.Unlock()
 										}
 									}
@@ -437,7 +437,7 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 								}
 								if nerr > 0 {
 									mt.Lock()
-									gerrors += nerr
+									nerrors += nerr
 									mt.Unlock()
 								}
 							}
@@ -452,12 +452,12 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 					}
 					gLog.Warning.Printf("Truncated %v - Next marker: %s ", *result.IsTruncated, nextmarker)
 				}
-				gLog.Info.Printf("Number of backed up documents: %d  - Number of pages: %d  - Document size: %d - Number of deletes: %d - Number of errors: %d", ndocs, npages, docsizes, ndeletes, gerrors)
+				gLog.Info.Printf("Number of backed up documents: %d  - Number of pages: %d  - Document size: %d - Number of deletes: %d - Number of errors: %d", ndocs, npages, docsizes, ndeletes, nerrors)
 				tdocs += int64(ndocs)
 				tpages += int64(npages)
 				tsizes += int64(docsizes)
 				tdeletes += int64(ndeletes)
-				terrors += gerrors
+				terrors += nerrors
 			}
 		} else {
 			gLog.Error.Printf("%v", err)
