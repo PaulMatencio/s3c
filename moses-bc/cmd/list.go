@@ -48,6 +48,7 @@ var (
 		Run:    listObjVersions,
 	}
 	location string
+	prefixs  string
 )
 
 func initLoFlags(cmd *cobra.Command) {
@@ -55,7 +56,7 @@ func initLoFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&bucket, "bucket", "b", "", "the name of the bucket")
 	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "key prefix")
 	cmd.Flags().Int64VarP(&maxKey, "max-key", "m", 100, "maximum number of keys to be processed concurrently")
-	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key")
+	cmd.Flags().StringVarP(&marker, "marker", "K", "", "start processing from this key")
 	cmd.Flags().StringVarP(&delimiter, "delimiter", "d", "", "key delimiter")
 	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, "maximum number of loop, 0 means no upper limit")
 	cmd.Flags().StringVarP(&location, "location", "", "backup", "S3 location - possible value [source|backup|clone]")
@@ -66,28 +67,38 @@ func initBlFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&bucket, "bucket", "b", "", "the name of the bucket")
 	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "key prefix")
 	cmd.Flags().Int64VarP(&maxKey, "max-key", "m", 100, "maximum number of keys to be processed concurrently")
-	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key")
+	cmd.Flags().StringVarP(&marker, "marker", "K", "", "start processing from this key")
 	cmd.Flags().StringVarP(&delimiter, "delimiter", "d", "", "key delimiter")
 	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, "maximum number of loop, 0 means no upper limit")
 	cmd.Flags().IntVarP(&maxPage, "max-page", "", 50, "maximum number of concurrent pages per document. check  --max-key for maximum number of concurrent documents")
 	cmd.Flags().StringVarP(&location, "location", "", "backup", "S3 location - possible value [source|backup|clone]")
 	/*
-	cmd.Flags().StringVarP(&srcUrl, "source-sproxyd-url", "s", "", "source sproxyd endpoints  http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
-	cmd.Flags().StringVarP(&targetUrl, "target-sproxyd-url", "t", "", "target sproxyd endpoint URL http://xx.xx.xx.xx:81/proxy,http:// ...")
-	cmd.Flags().StringVarP(&driver, "source-sproxyd-driver", "", "", "source sproxyd driver [bpchord|bparc]")
-	 */
+		cmd.Flags().StringVarP(&srcUrl, "source-sproxyd-url", "s", "", "source sproxyd endpoints  http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
+		cmd.Flags().StringVarP(&targetUrl, "target-sproxyd-url", "t", "", "target sproxyd endpoint URL http://xx.xx.xx.xx:81/proxy,http:// ...")
+		cmd.Flags().StringVarP(&driver, "source-sproxyd-driver", "", "", "source sproxyd driver [bpchord|bparc]")
+	*/
 }
 func initLvFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&bucket, "bucket", "b", "", "the name of the bucket")
 	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "key prefix")
 	cmd.Flags().Int64VarP(&maxKey, "max-key", "m", 100, "maximum number of keys to be processed concurrently")
-	cmd.Flags().StringVarP(&marker, "key-marker", "M", "", "start processing from this key")
+	cmd.Flags().StringVarP(&marker, "key-marker", "K", "", "start processing from this key")
 	cmd.Flags().StringVarP(&versionId, "version-id", "", "", "start processing from this version id")
 	cmd.Flags().StringVarP(&delimiter, "delimiter", "d", "", "key delimiter")
 	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, "maximum number of loop, 0 means no upper limit")
 	cmd.Flags().StringVarP(&location, "location", "", "target", "S3 location - possible value [source|target]")
 }
 
+func initListS3Flags(cmd *cobra.Command) {
+	cmd.Flags().StringVarP(&prefixs, "prefixs", "", "", "list of the key prefixes separated by a commma")
+	cmd.Flags().StringVarP(&marker, "key-marker", "K", "", "Start with this marker (Key) for the Get Prefix")
+	cmd.Flags().Int64VarP(&maxKey, "max-key", "m", 20, "maximum number of keys to be processed concurrently")
+	cmd.Flags().StringVarP(&delimiter, "delimiter", "d", "", "delimiter character")
+	cmd.Flags().StringVarP(&bucket, "bucket", "b", "", "the name of the S3  bucket")
+	cmd.Flags().IntVarP(&maxLoop, "max-loop", "L", 1, "maximum number of loop, 0 means no upper limit")
+	cmd.Flags().StringVarP(&location, "location", "", "target", "S3 location - possible value [source|target]")
+	// cmd.Flags().StringVarP(&index, "index", "i", "pn", "bucket group [pn|pd|bn]")
+}
 func initLbFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&location, "location", "", "backup", "S3 location - possible value [source|backup|clone]")
 }
@@ -103,11 +114,24 @@ func init() {
 	initLvFlags(lvCmd)
 }
 
+func createS3Session(location string) (error, *s3.S3) {
+
+	if location != "source" && location != "backup" && location != "clone" && location != "migrate" {
+		return errors.New("location must be [source|backup|clone|migrate]"), nil
+	}
+	if s3 := mosesbc.CreateS3Session("list", location); s3 != nil {
+		return nil, s3
+	} else {
+		return errors.New(fmt.Sprintf("Failed to create a session for %s S3", location)), nil
+	}
+
+}
+
 func listBlobs(cmd *cobra.Command, args []string) {
 
 	var (
-		req        datatype.ListObjRequest
-		service    *s3.S3
+		req     datatype.ListObjRequest
+		service *s3.S3
 	)
 
 	if len(bucket) == 0 {
@@ -115,7 +139,7 @@ func listBlobs(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	if len(prefix)> 0 {
+	if len(prefix) > 0 {
 		if err, suf := mosesbc.GetBucketSuffix(bucket, prefix); err != nil {
 			gLog.Error.Printf("%v", err)
 			return
@@ -126,15 +150,15 @@ func listBlobs(cmd *cobra.Command, args []string) {
 			}
 		}
 	}
-	srcUrl =""
-	driver =""
-	env =""
-	if err = mosesbc.SetLocationSproxyd("list", location,srcUrl, driver, env); err != nil {
-		gLog.Error.Printf("%v",err)
+	srcUrl = ""
+	driver = ""
+	env = ""
+	if err = mosesbc.SetLocationSproxyd("list", location, srcUrl, driver, env); err != nil {
+		gLog.Error.Printf("%v", err)
 		return
 	}
 
-	gLog.Info.Printf("Source Env: %s - Source Driver: %s - Source Url: %s",sproxyd.Env, sproxyd.Driver, sproxyd.Url)
+	gLog.Info.Printf("Source Env: %s - Source Driver: %s - Source Url: %s", sproxyd.Env, sproxyd.Driver, sproxyd.Url)
 
 	if err, service = createS3Session(location); err == nil {
 		req = datatype.ListObjRequest{
@@ -155,12 +179,10 @@ func listBlobs(cmd *cobra.Command, args []string) {
 func listObjectV2(cmd *cobra.Command, args []string) {
 
 	var (
-		start            = utils.LumberPrefix(cmd)
-		total      int64 = 0
-		token      string
-		nextmarker string
-		req        datatype.ListObjV2Request
-		service    *s3.S3
+		start   = utils.LumberPrefix(cmd)
+		token   string
+		req     datatype.ListObjV2Request
+		service *s3.S3
 	)
 
 	if len(bucket) == 0 {
@@ -183,7 +205,67 @@ func listObjectV2(cmd *cobra.Command, args []string) {
 		gLog.Error.Printf("%v", err)
 		return
 	}
-	L := 1
+	if len(delimiter) == 0 {
+		listV2Prefix(req)
+	} else {
+		listV2CommonPrefix(req)
+	}
+}
+
+func listObjVersions(cmd *cobra.Command, args []string) {
+
+	var (
+		service *s3.S3
+		req     datatype.ListObjVersionsRequest
+	)
+
+	if len(bucket) == 0 {
+		gLog.Warning.Printf("%s", missingBucket)
+		return
+	}
+	if err, service = createS3Session(location); err == nil {
+		req = datatype.ListObjVersionsRequest{
+			Service:         service,
+			Bucket:          bucket,
+			Prefix:          prefix,
+			MaxKey:          maxKey,
+			KeyMarker:       marker,
+			VersionIdMarker: versionId,
+			Delimiter:       delimiter,
+		}
+	} else {
+		gLog.Error.Printf("%v", err)
+		return
+	}
+	listVersions(req)
+}
+
+func listBucket(cmd *cobra.Command, args []string) {
+	if err, service = createS3Session(location); err != nil {
+		gLog.Error.Printf("%v", err)
+		return
+	}
+	req := datatype.ListBucketRequest{
+		Service: service,
+	}
+	if result, err := api.ListBucket(req); err != nil {
+		gLog.Error.Printf("%v", err)
+	} else {
+		gLog.Info.Printf("Owner of the buckets: %s", result.Owner)
+		for _, v := range result.Buckets {
+			gLog.Info.Printf("Bucket Name: %s - Creation date: %s", *v.Name, v.CreationDate)
+		}
+	}
+}
+
+func listV2Prefix(req datatype.ListObjV2Request) {
+
+	var (
+		L          = 1
+		total      = 0
+		nextmarker string
+		token      string
+	)
 	for {
 		var (
 			result *s3.ListObjectsV2Output
@@ -219,35 +301,60 @@ func listObjectV2(cmd *cobra.Command, args []string) {
 	}
 }
 
+func listV2CommonPrefix(req datatype.ListObjV2Request) {
 
-func listObjVersions(cmd *cobra.Command, args []string) {
 	var (
-		total               int64 = 0
+		L          = 1
+		total      = 0
+		nextmarker string
+		token      string
+	)
+	for {
+		var (
+			result *s3.ListObjectsV2Output
+			err    error
+		)
+		if result, err = api.ListObjectV2(req); err == nil {
+			if l := len(result.Contents); l > 0 {
+
+				for _, v := range result.Contents {
+					if *v.Key != nextmarker {
+						total += 1
+						gLog.Info.Printf("Key: %s - Size: %d  - LastModified: %v", *v.Key, *v.Size, v.LastModified)
+					}
+				}
+				// list the common prefixes
+				if len(result.CommonPrefixes) > 0 {
+					gLog.Info.Println("List Common prefix:")
+					for _, v := range result.CommonPrefixes {
+						gLog.Info.Printf("%s", *v.Prefix)
+					}
+				}
+				if *result.IsTruncated {
+					nextmarker = *result.Contents[l-1].Key
+					token = *result.NextContinuationToken
+					gLog.Warning.Printf("Truncated %v - Next marker: %s - Next continuation token: %s", *result.IsTruncated, nextmarker, token)
+				}
+			}
+		}
+		L++
+		if *result.IsTruncated && (maxLoop == 0 || L <= maxLoop) {
+			req.Continuationtoken = token
+
+		} else {
+			gLog.Info.Printf("Total number of objects returned: %d", total)
+			break
+		}
+	}
+}
+
+func listVersions(req datatype.ListObjVersionsRequest) {
+	var (
+		L                   = 1
+		total               = 0
 		nextMarker          string
 		nextVersionIdMarker string
-		service             *s3.S3
-		req                 datatype.ListObjVersionsRequest
 	)
-
-	if len(bucket) == 0 {
-		gLog.Warning.Printf("%s", missingBucket)
-		return
-	}
-	if err, service = createS3Session(location); err == nil {
-		req = datatype.ListObjVersionsRequest{
-			Service:         service,
-			Bucket:          bucket,
-			Prefix:          prefix,
-			MaxKey:          maxKey,
-			KeyMarker:       marker,
-			VersionIdMarker: versionId,
-			Delimiter:       delimiter,
-		}
-	} else {
-		gLog.Error.Printf("%v", err)
-		return
-	}
-	L := 1
 	for {
 		var (
 			result *s3.ListObjectVersionsOutput
@@ -280,36 +387,4 @@ func listObjVersions(cmd *cobra.Command, args []string) {
 			break
 		}
 	}
-}
-
-
-func listBucket(cmd *cobra.Command, args []string) {
-	if err, service = createS3Session(location); err != nil {
-		gLog.Error.Printf("%v", err)
-		return
-	}
-	req := datatype.ListBucketRequest{
-		Service: service,
-	}
-	if result, err := api.ListBucket(req); err != nil {
-		gLog.Error.Printf("%v", err)
-	} else {
-		gLog.Info.Printf("Owner of the buckets: %s", result.Owner)
-		for _, v := range result.Buckets {
-			gLog.Info.Printf("Bucket Name: %s - Creation date: %s", *v.Name, v.CreationDate)
-		}
-	}
-}
-
-func createS3Session(location string) (error, *s3.S3) {
-
-	if location != "source" && location != "backup" && location != "clone" {
-		return errors.New("location must be [source|backup|clone]"), nil
-	}
-	if s3 := mosesbc.CreateS3Session("list", location); s3 != nil {
-		return nil, s3
-	} else {
-		return errors.New(fmt.Sprintf("Failed to create a session for %s S3", location)), nil
-	}
-
 }

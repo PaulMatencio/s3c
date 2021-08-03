@@ -136,7 +136,7 @@ func PrintUsermd(key string, metad map[string]*string) {
 		case "Usermd" :
 			val,_ :=  base64.StdEncoding.DecodeString(*v)
 			gLog.Info.Printf("%s: %s",k,string(val))
-		case "S3Meta" :
+		case "S3meta" :
 			val,_ :=  base64.StdEncoding.DecodeString(*v)
 			gLog.Info.Printf("%s: %s",k,string(val))
 		default:
