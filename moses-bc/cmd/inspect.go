@@ -134,21 +134,21 @@ func inspect_pn(request datatype.GetObjRequest)  {
 		if body, err := utils.ReadObjectv(result.Body, CHUNKSIZE); err == nil {
 			defer result.Body.Close()
 			document, err = mosesbc.GetDocument(body.Bytes())
-			fmt.Printf("Document id: %s - Version Id: %s - Number of pages: %d - Document size: %s",document.DocId, document.VersionId, document.NumberOfPages, document.Size)
+			fmt.Printf("Document id: %s - Version Id: %s - Number of pages: %d - Document size: %s\n",document.DocId, document.VersionId, document.NumberOfPages, document.Size)
 			usermd,_ :=  base64.StdEncoding.DecodeString(document.S3Meta)
-			fmt.Printf("Document user metadada %s",string(usermd))
+			fmt.Printf("Document user metadada %s\n",string(usermd))
 			s3meta,_ :=  base64.StdEncoding.DecodeString(document.S3Meta)
-			fmt.Printf("Document s3 metadata %s",string(s3meta))
+			fmt.Printf("Document s3 metadata %s\n",string(s3meta))
 			Pdf:= document.Pdf
 			if len(Pdf.Pdf) > 0 {
-				fmt.Printf("\tDocument PDF %s - PDF size %s ",Pdf.PdfId,Pdf.Size)
+				fmt.Printf("\tDocument PDF %s - PDF size %s\n",Pdf.PdfId,Pdf.Size)
 			}
 			if document.Clip {
-				fmt.Printf("\tDocument  %s  has a clipping page ( page 0 ) ",document.DocId)
+				fmt.Printf("\tDocument  %s  has a clipping page (page 0)\n",document.DocId)
 			}
 			mosesbc.InspectBlobs(document, maxPage)
 		} else {
-			gLog.Error.Printf("Error %v when retrieving the document %s", err, request.Key)
+			gLog.Error.Printf("Error %v when retrieving the document %s\n", err, request.Key)
 			nerrors = 1
 
 		}
