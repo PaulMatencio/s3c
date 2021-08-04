@@ -2,8 +2,8 @@ package lib
 
 import (
 	"encoding/base64"
+	"fmt"
 	"github.com/paulmatencio/protobuf-doc/src/document/documentpb"
-	"github.com/paulmatencio/s3c/gLog"
 	"strconv"
 )
 func InspectBlobs(document *documentpb.Document,  maxPage int) {
@@ -20,10 +20,10 @@ func inspect_regular_blob(document *documentpb.Document) {
 	for _, pg := range pages {
 		pgn := int(pg.PageNumber)
 		pageid := pg.PageId + "/p" + strconv.Itoa(pgn)
-		gLog.Info.Printf("\tPage id %s -Page Size %d",pageid,pg.Size)
+		fmt.Printf("\tPage id %s -Page Size %d",pageid,pg.Size)
 		pagemeta,_ :=  base64.StdEncoding.DecodeString(pg.Metadata)
-		gLog.Info.Printf("\t\tPage metadata %s",pagemeta)
-		gLog.Info.Println(pg.PageId,pg.PageNumber,pg.Metadata,pg.Size)
+		fmt.Printf("\t\tPage metadata %s",pagemeta)
+		fmt.Println(pg.PageId,pg.PageNumber,pg.Metadata,pg.Size)
 	}
 
 }
@@ -64,8 +64,8 @@ func inspect_part_large_blob(document *documentpb.Document,start int,end int)  {
 		pg := *pages[k-1]
 		pgn := int(pg.PageNumber)
 		pageid := pg.PageId + "/p" + strconv.Itoa(pgn)
-		gLog.Info.Printf("\tPage id %s -Page Size %d",pageid,pg.Size)
+		fmt.Printf("\tPage id %s -Page Size %d",pageid,pg.Size)
 		pagemeta,_ :=  base64.StdEncoding.DecodeString(pg.Metadata)
-		gLog.Info.Printf("\t\tPage metadata %s",pagemeta)
+		fmt.Printf("\t\tPage metadata %s",pagemeta)
 	}
 }

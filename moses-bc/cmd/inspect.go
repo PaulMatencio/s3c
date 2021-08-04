@@ -17,6 +17,7 @@ package cmd
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/paulmatencio/protobuf-doc/src/document/documentpb"
@@ -26,7 +27,6 @@ import (
 	mosesbc "github.com/paulmatencio/s3c/moses-bc/lib"
 	"github.com/paulmatencio/s3c/utils"
 	"github.com/spf13/cobra"
-
 	"time"
 )
 
@@ -38,7 +38,6 @@ var (
 		Short: "Command to inspect backup objects",
 		Long:  ``,
 		Run:   Inspect,
-		// Hidden: true,
 	}
 )
 
@@ -135,17 +134,17 @@ func inspect_pn(request datatype.GetObjRequest)  {
 		if body, err := utils.ReadObjectv(result.Body, CHUNKSIZE); err == nil {
 			defer result.Body.Close()
 			document, err = mosesbc.GetDocument(body.Bytes())
-			gLog.Info.Printf("Document id: %s - Version Id: %s - Number of pages: %d - Document size: %s",document.DocId, document.VersionId, document.NumberOfPages, document.Size)
+			fmt.Printf("Document id: %s - Version Id: %s - Number of pages: %d - Document size: %s",document.DocId, document.VersionId, document.NumberOfPages, document.Size)
 			usermd,_ :=  base64.StdEncoding.DecodeString(document.S3Meta)
-			gLog.Info.Printf("Document user metadada %s",string(usermd))
+			fmt.Printf("Document user metadada %s",string(usermd))
 			s3meta,_ :=  base64.StdEncoding.DecodeString(document.S3Meta)
-			gLog.Info.Printf("Document s3 metadata %s",string(s3meta))
+			fmt.Printf("Document s3 metadata %s",string(s3meta))
 			Pdf:= document.Pdf
 			if len(Pdf.Pdf) > 0 {
-				gLog.Info.Printf("\tDocument PDF %s - PDF size %s ",Pdf.PdfId,Pdf.Size)
+				fmt.Printf("\tDocument PDF %s - PDF size %s ",Pdf.PdfId,Pdf.Size)
 			}
 			if document.Clip {
-				gLog.Info.Printf("\tDocument  %s  has a clipping page ( page 0 ) ",document.DocId)
+				fmt.Printf("\tDocument  %s  has a clipping page ( page 0 ) ",document.DocId)
 			}
 			mosesbc.InspectBlobs(document, maxPage)
 		} else {
