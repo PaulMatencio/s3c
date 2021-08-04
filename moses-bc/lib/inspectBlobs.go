@@ -22,6 +22,7 @@ func inspect_regular_blob(document *documentpb.Document,verbose bool) {
 	var (
 		pages = document.GetPage()
 		tiff ,png string
+		tiffl,pngl int
 	)
 
 	for _, pg := range pages {
@@ -36,11 +37,13 @@ func inspect_regular_blob(document *documentpb.Document,verbose bool) {
 			json.Unmarshal([]byte(pagemeta), &pagmeta)
 			if  pagmeta.MultiMedia.Tiff {
 				tiff = http.DetectContentType(pg.Object[pagmeta.TiffOffset.Start:pagmeta.TiffOffset.End])
+				tiffl = pagmeta.TiffOffset.End - pagmeta.TiffOffset.Start +1
 			}
 			if  pagmeta.MultiMedia.Png {
 				png = http.DetectContentType(pg.Object[pagmeta.PngOffset.Start:pagmeta.PngOffset.End])
+				pngl = pagmeta.PngOffset.End - pagmeta.PngOffset.Start +1
 			}
-			fmt.Printf("\t\tPage Number %d - Length %d - Png %v %s - Tiff %v %s - Pdf %v\n",pagmeta.PageNumber,pagmeta.PageLength,pagmeta.MultiMedia.Png,png,pagmeta.MultiMedia.Tiff,tiff,pagmeta.MultiMedia.Pdf)
+			fmt.Printf("\t\tPage Number %d - Length %d - Png %v:%s:%d - Tiff %v:%s:%d - Pdf %v\n",pagmeta.PageNumber,pagmeta.PageLength,pagmeta.MultiMedia.Png,png,pngl,pagmeta.MultiMedia.Tiff,tiff,tiffl,pagmeta.MultiMedia.Pdf)
 
 
 		}
@@ -81,6 +84,7 @@ func inspect_part_large_blob(document *documentpb.Document,start int,end int,ver
 	var (
 		pages = document.GetPage()
 		tiff ,png string
+		tiffl,pngl int
 	)
 	for k := start; k <= end; k++ {
 		pg := *pages[k-1]
@@ -95,12 +99,13 @@ func inspect_part_large_blob(document *documentpb.Document,start int,end int,ver
 			json.Unmarshal([]byte(pagemeta), &pagmeta)
 			if  pagmeta.MultiMedia.Tiff {
 				tiff = http.DetectContentType(pg.Object[pagmeta.TiffOffset.Start:pagmeta.TiffOffset.End])
+				tiffl = pagmeta.TiffOffset.End - pagmeta.TiffOffset.Start +1
 			}
 			if  pagmeta.MultiMedia.Png {
 				png = http.DetectContentType(pg.Object[pagmeta.PngOffset.Start:pagmeta.PngOffset.End])
+				pngl = pagmeta.PngOffset.End - pagmeta.PngOffset.Start +1
 			}
-			fmt.Printf("\t\tPage Number %d - Length %d - Png %v:%s - Tiff %v:%s - Pdf %v\n",pagmeta.PageNumber,pagmeta.PageLength,pagmeta.MultiMedia.Png,png,pagmeta.MultiMedia.Tiff,tiff,pagmeta.MultiMedia.Pdf)
-
+			fmt.Printf("\t\tPage Number %d - Length %d - Png %v:%s:%d - Tiff %v:%s:%d - Pdf %v\n",pagmeta.PageNumber,pagmeta.PageLength,pagmeta.MultiMedia.Png,png,pngl,pagmeta.MultiMedia.Tiff,tiff,tiffl,pagmeta.MultiMedia.Pdf)
 		}
 	}
 }
