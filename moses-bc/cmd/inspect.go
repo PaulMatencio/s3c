@@ -37,7 +37,7 @@ var (
 		Use:   "_inspect_",
 		Short: "Command to inspect backup objects",
 		Long:  ``,
-		Run:   Restore_bucket,
+		Run:   Inspect,
 		// Hidden: true,
 	}
 )
