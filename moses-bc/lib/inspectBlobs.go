@@ -40,7 +40,7 @@ func inspect_regular_blob(document *documentpb.Document,verbose bool) {
 			if  pagmeta.MultiMedia.Png {
 				png = http.DetectContentType(pg.Object[pagmeta.PngOffset.Start:pagmeta.PngOffset.End])
 			}
-			fmt.Printf("\t\tPage Number %d - Length %d - Png %v %s - Tiff %v %s- Pdf %v\n",pagmeta.PageNumber,pagmeta.PageLength,pagmeta.MultiMedia.Png,png,pagmeta.MultiMedia.Tiff,tiff,pagmeta.MultiMedia.Pdf)
+			fmt.Printf("\t\tPage Number %d - Length %d - Png %v %s - Tiff %v %s - Pdf %v\n",pagmeta.PageNumber,pagmeta.PageLength,pagmeta.MultiMedia.Png,png,pagmeta.MultiMedia.Tiff,tiff,pagmeta.MultiMedia.Pdf)
 
 
 		}
@@ -99,7 +99,7 @@ func inspect_part_large_blob(document *documentpb.Document,start int,end int,ver
 			if  pagmeta.MultiMedia.Png {
 				png = http.DetectContentType(pg.Object[pagmeta.PngOffset.Start:pagmeta.PngOffset.End])
 			}
-			fmt.Printf("\t\tPage Number %d - Length %d - Png %v:%s - Tiff %v:%s- Pdf %v\n",pagmeta.PageNumber,pagmeta.PageLength,pagmeta.MultiMedia.Png,png,pagmeta.MultiMedia.Tiff,tiff,pagmeta.MultiMedia.Pdf)
+			fmt.Printf("\t\tPage Number %d - Length %d - Png %v:%s - Tiff %v:%s - Pdf %v\n",pagmeta.PageNumber,pagmeta.PageLength,pagmeta.MultiMedia.Png,png,pagmeta.MultiMedia.Tiff,tiff,pagmeta.MultiMedia.Pdf)
 
 		}
 	}
