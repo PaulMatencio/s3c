@@ -29,7 +29,7 @@ func inspect_regular_blob(document *documentpb.Document,verbose bool) {
 		} else {
 			pagmeta := meta.Pagemeta{}
 			json.Unmarshal([]byte(pagemeta), &pagmeta)
-			fmt.Printf("\t\tPage Number %d - Length %d - Png %v - Tiff %v - Pdf %v\n",pagmeta.PageNumber,pagmeta.PageLength,pagmeta.PubId,pagmeta.MultiMedia.Png,pagmeta.MultiMedia.Tiff,pagmeta.MultiMedia.Pdf)
+			fmt.Printf("\t\tPage Number %d - Length %d - Png %v - Tiff %v - Pdf %v\n",pagmeta.PageNumber,pagmeta.PageLength,pagmeta.MultiMedia.Png,pagmeta.MultiMedia.Tiff,pagmeta.MultiMedia.Pdf)
 		}
 
 	}
@@ -79,7 +79,7 @@ func inspect_part_large_blob(document *documentpb.Document,start int,end int,ver
 		}  else {
 			pagmeta := meta.Pagemeta{}
 			json.Unmarshal([]byte(pagemeta), &pagmeta)
-			fmt.Printf("\t\tPage Number %d - Length %d - Png %v - Tiff %v - Pdf %v\n",pagmeta.PageNumber,pagmeta.PageLength,pagmeta.PubId,pagmeta.MultiMedia.Png,pagmeta.MultiMedia.Tiff,pagmeta.MultiMedia.Pdf)
+			fmt.Printf("\t\tPage Number %d - Length %d - Png %v - Tiff %v - Pdf %v\n",pagmeta.PageNumber,pagmeta.PageLength,pagmeta.MultiMedia.Png,pagmeta.MultiMedia.Tiff,pagmeta.MultiMedia.Pdf)
 		}
 	}
 }
