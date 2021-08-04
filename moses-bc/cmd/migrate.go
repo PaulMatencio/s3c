@@ -414,7 +414,7 @@ func migrate_bucket(marker string, reqm datatype.Reqm) (string, error) {
 			break
 		}
 
-		if *result.IsTruncated && (maxLoop == 0 || N <= maxLoop) {
+		if *result.IsTruncated && (maxLoop == 0 || N < maxLoop) {
 			// req1.Marker = nextmarker
 			req.Continuationtoken = token
 		} else {
