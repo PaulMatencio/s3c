@@ -72,12 +72,14 @@ func inspect_part_large_blob(document *documentpb.Document,start int,end int,ver
 		pg := *pages[k-1]
 		pgn := int(pg.PageNumber)
 		pageid := pg.PageId + "/p" + strconv.Itoa(pgn)
-		fmt.Printf("\tPage id %s -Page Size %d\n",pageid,pg.Size)
+		fmt.Printf("\tPage id %s - Page Size %d\n",pageid,pg.Size)
 		pagemeta,_ :=  base64.StdEncoding.DecodeString(pg.Metadata)
 		if verbose {
 			fmt.Printf("\t\tPage metadata %s\n", pagemeta)
 		}  else {
-
+			pagmeta := meta.Pagemeta{}
+			json.Unmarshal([]byte(pagemeta), &pagmeta)
+			fmt.Printf("\t\tPage Number %d - Length %d - Png %v - Tiff %v - Pdf %v\n",pagmeta.PageNumber,pagmeta.PageLength,pagmeta.PubId,pagmeta.MultiMedia.Png,pagmeta.MultiMedia.Tiff,pagmeta.MultiMedia.Pdf)
 		}
 	}
 }
