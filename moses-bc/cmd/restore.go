@@ -39,7 +39,7 @@ var (
 	pn, iDir, versionId string
 	restoreCmd          = &cobra.Command{
 		Use:   "_restore_",
-		Short: "Command to restore Moses documents which are previously backed up with the backup command",
+		Short: "Command to restore Moses objects to another Scality Ring or S3 objects",
 		Long: `Command to restore Moses documents which are previously backed up with the backup command
 	Examples
 	restore --prefix ES/123 --source-bucket meta-moses-bkp-pn-02 --target-bucket meta-moses-prod-pn-02 
@@ -51,7 +51,7 @@ var (
 	all the documents which are backed up and stored in the meta-moses-bkp-pn-02 bucket
                  `,
 		Run:    Restore_bucket,
-		Hidden: true,
+		// Hidden: true,
 	}
 	replace bool
 )
@@ -331,7 +331,7 @@ func restore_pn(request datatype.GetObjRequest, replace bool) (int, int, int) {
 			}
 			gLog.Info.Printf("Document id %s is retrieved - Number of pages %d - Document size %d - Elapsed time %v ", document.DocId, document.NumberOfPages, document.Size, time.Since(start3))
 			/*
-					restore all th pages of the dcoument
+					restore every pages of a document
 				    if the number of pages >  maxPage -> PutBlob1
 				    else -> PutBig1
 			*/

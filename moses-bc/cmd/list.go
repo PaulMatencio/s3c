@@ -22,20 +22,20 @@ var (
 		Use:    "list-objects",
 		Short:  loshort,
 		Long:   ``,
-		Hidden: true,
+	//	Hidden: true,
 		Run:    listObjectV2,
 	}
 	listBlobCmd = &cobra.Command{
 		Use:    "list-blobs",
 		Short:  loshort,
 		Long:   ``,
-		Hidden: true,
+	//	Hidden: true,
 		Run:    listBlobs,
 	}
 	lbCmd = &cobra.Command{
 		Use:    "list-buckets",
 		Short:  "list buckets of a given S3 location",
-		Hidden: true,
+	//	Hidden: true,
 		Long:   ``,
 		Run:    listBucket,
 	}
@@ -44,7 +44,7 @@ var (
 		Use:    "list-object-versions",
 		Short:  "Command to list objects and their versions of a given bucket",
 		Long:   ``,
-		Hidden: true,
+	//	Hidden: true,
 		Run:    listObjVersions,
 	}
 	location string

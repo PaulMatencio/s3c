@@ -38,9 +38,9 @@ import (
 var (
 	migrateCmd = &cobra.Command{
 		Use:   "_migrate_",
-		Short: "Command to backup MOSES objects and directories",
+		Short: "Command to migrate MOSES objects to S3 objects",
 		Long: `        
-        Command to backup Moses data and Moses directories
+        Command to migrate  Moses data and Moses directories
       
         Moses data are stored in Scality Ring native object storage accessed via sproxyd driver 
         Moses directories are stored in S3 buckets. Each bucket name has a suffix ( <bucket-name>-xx ; xx=00..05)
@@ -52,32 +52,32 @@ var (
         Config file: 
       	The Default config file is located $HOME/.clone/config.file 
 
-        Example of full backup: 
+        Example of full migrate: 
 
         Backup all the objects listed in the S3 --source-bucket meta-moses-prod-pn-01  to the S3 bucket meta-moses-prod-bkup-pn-01 
      	
-        moses-bc -c $HOME/.clone/config.yaml _backup_ --source-bucket meta-moses-prod-pn-01 \ 
-        --target-bucket meta-moses-prod-bkup-pn-01 --max-loop 0
+        moses-bc -c $HOME/.clone/config.yaml _migrate_ --source-bucket meta-moses-prod-pn-01 \ 
+        --target-bucket meta-moses-prod-migr-pn-01 --max-loop 0
         **  suffix is requird and both source and target bucket must have the same suffix, for instance -01 ** 
 
         Example of backup of all document name started with a specific --prefix 
 
-        moses-bc -c $HOME/.clone/config.yaml _backup_ --source-bucket meta-moses-prod-pn --prefix  FR/ 
-        --target-bucket meta-moses-prod-bkup-pn   --max-loop 0   ** bucket suffix is not required **
+        moses-bc -c $HOME/.clone/config.yaml _migrate_ --source-bucket meta-moses-prod-pn --prefix  FR/ 
+        --target-bucket meta-moses-prod-migr-pn   --max-loop 0   ** bucket suffix is not required **
 		
         Example of an incremental backup of all documents created between  YYY-MM-DDT10:00:00Z and  YYY-MM-DDT012:00:00Z
         
-        moses-bc -c $HOME/.clone/config.yaml _backup_ --input-bucket last-loaded-prod --prefix dd/mm/yy \
+        moses-bc -c $HOME/.clone/config.yaml _migrate_ --input-bucket last-loaded-prod --prefix dd/mm/yy \
         --from-date YYY-MM-DDT00:00:00Z --to-date YYY-MM-DDT00:00:00Z \
-        --target-bucket meta-moses-prod-bkup-pn  --max-loop 0  ** bucket suffix is not required  **
+        --target-bucket meta-moses-prod-migr-pn  --max-loop 0  ** bucket suffix is not required  **
 
-        Example of an incremental backup of all publication numbers listed in the --input-file
+        Example of an incremental migration of all publication numbers listed in the --input-file
 
-        moses-bc -c $HOME/.clone/config.yaml _backup_ --input-file <file containing a list of publication numbers>  \
-        --target-bucket meta-moses-prod-bkup-pn  --max-loop 0   ** bucket suffix is not required **
+        moses-bc -c $HOME/.clone/config.yaml _migrate_ --input-file <file containing a list of publication numbers>  \
+        --target-bucket meta-moses-prod-migr-pn  --max-loop 0   ** bucket suffix is not required **
          
 		`,
-		Hidden: true,
+		//Hidden: true,
 		Run:    Bucket_migrate,
 	}
 )

@@ -22,7 +22,7 @@ var (
 		Use:    "head-objects",
 		Short:  gmshort,
 		Long:   ``,
-		Hidden: true,
+	//	Hidden: true,
 		Run:    statObjects,
 	}
 	odir,pdir  string

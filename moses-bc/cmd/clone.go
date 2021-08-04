@@ -32,10 +32,9 @@ import (
 var (
 	cloneCmd = &cobra.Command{
 		Use:   "_clone_",
-		Short: "Command to cloneMOSES objects and directories",
-		Long: `        
-        Command to clone Moses data and Moses directories
-      
+		Short: "Command to clone MOSES objects to another Scality Ring",
+		Long: ` 
+        Command to clone MOSES objects to another Scality Ring
         Moses data are stored in Scality Ring native object storage accessed via sproxyd driver 
         Moses directories are stored in S3 buckets. Each bucket name has a suffix ( <bucket-name>-xx ; xx=00..05)
         
@@ -70,7 +69,7 @@ var (
         --target-bucket meta-moses-prod-bkup-pn    ** bucket suffix is not required **
          
 		`,
-		Hidden: true,
+		// Hidden: true,
 		Run:    Clone_bucket,
 	}
 	// s3Src, s3Tgt  datatype.CreateSession

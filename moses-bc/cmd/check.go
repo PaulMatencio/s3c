@@ -30,8 +30,8 @@ import (
 var (
 	checkCmd = &cobra.Command{
 		Use:   "check",
-		Short: "Command to compare Moses objects",
-		Long:  `Check a restored blobs against its source blobs`,
+		Short: "Command check objects between two Moses instances",
+		Long:  `Check  objects between two Moses instances`,
 		Run:   Check,
 	}
 

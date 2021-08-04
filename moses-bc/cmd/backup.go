@@ -39,9 +39,9 @@ import (
 var (
 	backupCmd = &cobra.Command{
 		Use:   "_backup_",
-		Short: "Command to backup MOSES objects and directories",
+		Short: "Command to backup a MOSES  objects to S3 or files",
 		Long: `        
-        Command to backup Moses data and Moses directories
+        Command to backup Moses data and Moses directories to S3 or files
       
         Moses data are stored in Scality Ring native object storage accessed via sproxyd driver 
         Moses directories are stored in S3 buckets. Each bucket name has a suffix ( <bucket-name>-xx ; xx=00..05)
@@ -78,7 +78,7 @@ var (
         --target-bucket meta-moses-prod-bkup-pn  --max-loop 0   ** bucket suffix is not required **
          
 		`,
-		Hidden: true,
+	//	Hidden: true,
 		Run:    Bucket_backup,
 	}
 
