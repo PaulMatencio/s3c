@@ -210,14 +210,17 @@ func CreateSession2(req datatype.CreateSession) *session.Session {
 		}
 
 		client := http.Client{}
+		// ctx := context.Background()
 		Transport := &http.Transport{
-			DialContext: (&net.Dialer{
+			DialContext: ( &net.Dialer{
 				Timeout:   time.Duration(conTimeout) * time.Millisecond, // connection timeout
 				KeepAlive: time.Duration(keepAlive) * time.Millisecond,
 			}).DialContext,
 			TLSHandshakeTimeout:   10 * time.Second,
 			ForceAttemptHTTP2:     true,
 			MaxIdleConns:          100,
+			MaxConnsPerHost: 100,
+			// MaxIdleConnsPerHost: 100,
 			IdleConnTimeout:       90 * time.Second,
 			ExpectContinueTimeout: 1 * time.Second,
 		}

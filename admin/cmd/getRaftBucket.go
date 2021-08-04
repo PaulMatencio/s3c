@@ -9,6 +9,9 @@ import (
 	"github.com/paulmatencio/s3c/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"net"
+	"net/http"
+	"time"
 )
 
 var (
@@ -46,6 +49,24 @@ func initGrbFlags(cmd *cobra.Command) {
 
 func getRaftBucket(cmd *cobra.Command, args []string){
 
+	var (
+		client    = &http.Client{}
+		transport = &http.Transport{
+			DialContext: (&net.Dialer{
+				Timeout:   time.Duration(CONTIMEOUT) * time.Millisecond, // connection timeout
+				KeepAlive: time.Duration(KEEPALIVE) * time.Millisecond,
+			}).DialContext,
+			TLSHandshakeTimeout: 10 * time.Second,
+			ForceAttemptHTTP2:   true,
+			MaxIdleConns:        100,
+			MaxConnsPerHost:     100,
+			// MaxIdleConnsPerHost: 100,
+			IdleConnTimeout:       90 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		}
+	)
+	client.Transport = transport
+
 	if len(url) == 0 {
 		if url = utils.GetBucketdUrl(*viper.GetViper()); len(url) == 0 {
 			if url = utils.GetLevelDBUrl(*viper.GetViper()); len(url) == 0 {
@@ -54,12 +75,12 @@ func getRaftBucket(cmd *cobra.Command, args []string){
 			}
 		}
 	}
+
 	gLog.Info.Printf("Url: %s",url)
 
-	if err,rb := api.GetRaftBucket(url,bucket); err == nil {
+	if err,rb := api.GetRaftBucket(client,url,bucket); err == nil {
 		printBucket(*rb)
-
-		if err,rs := api.GetRaftSession(url,rb.RaftSessionID); err == nil {
+		if err,rs := api.GetRaftSession(client,url,rb.RaftSessionID); err == nil {
 			fmt.Printf("Leader\n")
 			printMember(rs.Leader)
 			fmt.Printf("Connected\n")

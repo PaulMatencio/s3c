@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func GetRaftState(url string) (error,*datatype.RaftState) {
+func GetRaftState(client *http.Client,url string) (error,*datatype.RaftState) {
 	var (
 		req = "raft/state"
 		err error
@@ -18,7 +18,7 @@ func GetRaftState(url string) (error,*datatype.RaftState) {
 	url  = url + "/_/" + req
 	gLog.Trace.Printf("GetRaft Leader url: %s",url)
 	for i := 1; i <= retryNumber; i++ {
-		if response, err := http.Get(url); err == nil {
+		if response, err := client.Get(url); err == nil {
 			gLog.Trace.Printf("Response: %v",response)
 			if response.StatusCode == 200 {
 				defer response.Body.Close()

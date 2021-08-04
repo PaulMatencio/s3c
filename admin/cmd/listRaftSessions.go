@@ -23,47 +23,47 @@ import (
 	"github.com/paulmatencio/s3c/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"net"
+	"net/http"
 	URL "net/url"
 	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var (
 	listRaftCmd = &cobra.Command{
 		Use:   "listRaftSessions",
 		Short: "list Raft Bucket sessions info",
-		Long: ``,
+		Long:  ``,
 		Run: func(cmd *cobra.Command, args []string) {
-			listRaft(cmd,args)
+			listRaft(cmd, args)
 		},
-
 	}
-	lrs= &cobra.Command{
-		Use:   "lrs",
-		Short: "list Raft sessions info",
-		Long: ``,
+	lrs = &cobra.Command{
+		Use:    "lrs",
+		Short:  "list Raft sessions info",
+		Long:   ``,
 		Hidden: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			listRaft(cmd,args)
+			listRaft(cmd, args)
 		},
 	}
-	raft,Host,status,topology  string
-	buckets []string
-	leader *datatype.RaftLeader
-	state *datatype.RaftState
-	set,conf,notInit bool
-	err error
-	id,aPort int
-	filePath,cluster string
-	mWsb = [][]datatype.Wsbs{}
-	c  datatype.Clusters
-	HOST,SUBNET   string
-
-
+	raft, Host, status, topology string
+	buckets                      []string
+	leader                       *datatype.RaftLeader
+	state                        *datatype.RaftState
+	set, conf, notInit           bool
+	err                          error
+	id, aPort                    int
+	filePath, cluster            string
+	mWsb                         = [][]datatype.Wsbs{}
+	c                            datatype.Clusters
+	HOST, SUBNET                 string
 )
-const http ="http://"
+
 
 
 func init() {
@@ -74,16 +74,32 @@ func init() {
 }
 
 func initLrsFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVarP(&url,"url","u","","bucketd url <htp://ip:port>")
-	cmd.Flags().IntVarP(&id,"id","i",-1,"raft session id")
-	cmd.Flags().BoolVarP(&conf,"conf","",false,"Print Raft config information ")
-	cmd.Flags().BoolVarP(&notInit,"notInit","e",false," Print only not initialized member")
-	cmd.Flags().StringVarP(&topoLogy, "topoLogy", "t", ".admin/topology.json","path to the S3 metadata configuration file")
+	cmd.Flags().StringVarP(&url, "url", "u", "", "bucketd url <htp://ip:port>")
+	cmd.Flags().IntVarP(&id, "id", "i", -1, "raft session id")
+	cmd.Flags().BoolVarP(&conf, "conf", "", false, "Print Raft config information ")
+	cmd.Flags().BoolVarP(&notInit, "notInit", "e", false, " Print only not initialized member")
+	cmd.Flags().StringVarP(&topoLogy, "topoLogy", "t", ".admin/topology.json", "path to the S3 metadata configuration file")
 }
 
+func listRaft(cmd *cobra.Command, args []string) {
 
-func listRaft(cmd *cobra.Command,args []string) {
-
+	var (
+		client    = &http.Client{}
+		transport = &http.Transport{
+			DialContext: (&net.Dialer{
+				Timeout:   time.Duration(CONTIMEOUT) * time.Millisecond, // connection timeout
+				KeepAlive: time.Duration(KEEPALIVE) * time.Millisecond,
+			}).DialContext,
+			TLSHandshakeTimeout: 10 * time.Second,
+			ForceAttemptHTTP2:   true,
+			MaxIdleConns:        100,
+			MaxConnsPerHost:     100,
+			// MaxIdleConnsPerHost: 100,
+			IdleConnTimeout:       90 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		}
+	)
+	client.Transport = transport
 	if len(url) == 0 {
 		if url = utils.GetBucketdUrl(*viper.GetViper()); len(url) == 0 {
 			if url = utils.GetLevelDBUrl(*viper.GetViper()); len(url) == 0 {
@@ -93,7 +109,7 @@ func listRaft(cmd *cobra.Command,args []string) {
 		}
 	}
 	/* check URL validity */
-	if U,err := URL.ParseRequestURI(url); err != nil {
+	if U, err := URL.ParseRequestURI(url); err != nil {
 		gLog.Error.Printf("Invalid URL, valid syntax URL =>  http://<ip>:<port>")
 		return
 
@@ -104,58 +120,58 @@ func listRaft(cmd *cobra.Command,args []string) {
 			return
 		}
 
-		SUBNET = strings.Split(HOST,".")[2]
+		SUBNET = strings.Split(HOST, ".")[2]
 	}
 	/* get Wsbs if they exists . */
-	mWsb = *getWsbs(topoLogy,SUBNET)
+	mWsb = *getWsbs(topoLogy, SUBNET)
 
-	gLog.Info.Printf("Url: %s",url)
+	gLog.Info.Printf("Url: %s", url)
 
-	if err,raftSess := api.ListRaftSessions(url); err == nil {
+	if err, raftSess := api.ListRaftSessions(url); err == nil {
 		if id >= 0 && id < len(*raftSess) {
-			getRaftSession((*raftSess)[id])
+			getRaftSession((*raftSess)[id], client)
 		} else {
 			for _, r := range *raftSess {
-				getRaftSession(r)
+				getRaftSession(r, client)
 			}
 		}
 	} else {
-		gLog.Error.Printf("%v",err)
+		gLog.Error.Printf("%v", err)
 	}
 }
 
-func getWsbs(topology string, subnet string ) (*[][]datatype.Wsbs){
+func getWsbs(topology string, subnet string) *[][]datatype.Wsbs {
 	if home, err := homedir.Dir(); err == nil {
 		filePath := filepath.Join(home, topology)
 		if err, cl := c.New(filePath); err == nil {
-			wrong:= false
+			wrong := false
 			for _, r := range cl.GetCluster() {
 				a := []datatype.Wsbs{}
-				for _, v := range r.GetWsbs(){
-					if strings.Split(v.Host,".")[2]  != subnet{
-						gLog.Warning.Printf("Wrong toplogy file: %s - Only Ralf sessions members will be displayed\n",filePath)
-						wrong= true
+				for _, v := range r.GetWsbs() {
+					if strings.Split(v.Host, ".")[2] != subnet {
+						gLog.Warning.Printf("Wrong toplogy file: %s - Only Ralf sessions members will be displayed\n", filePath)
+						wrong = true
 						break
 					}
-					a= append(a,v)
+					a = append(a, v)
 				}
 				if wrong {
 					break
 				}
-				mWsb= append(mWsb,a)
+				mWsb = append(mWsb, a)
 			}
 
 		} else {
-			gLog.Warning.Printf("readToplogy error: %v\tInput file:%d", err,filePath)
+			gLog.Warning.Printf("readToplogy error: %v\tInput file:%d", err, filePath)
 		}
 	}
 	return &mWsb
 }
 
-func getRaftSession(r datatype.RaftSession) {
-	err,Host,aPort := printSessions(r)
+func getRaftSession(r datatype.RaftSession, client *http.Client) {
+	err, Host, aPort := printSessions(r, client)
 	if err == nil {
-		printBuckets(Host, aPort)
+		printBuckets(client, Host, aPort)
 		if conf {
 			printConfig(Host, aPort)
 		}
@@ -163,108 +179,106 @@ func getRaftSession(r datatype.RaftSession) {
 	fmt.Printf("\n")
 }
 
-
-func getBucket(host string,port int) (error,[]string){
-	url := http+ host+":"+strconv.Itoa(port)
-	return api.GetRaftBuckets(url)
+func getBucket(client *http.Client, host string, port int) (error, []string) {
+	url := HTTP + host + ":" + strconv.Itoa(port)
+	return api.GetRaftBuckets(client, url)
 }
 
-func getLeader(host string,port int) (error,*datatype.RaftLeader){
-	url := http+ host+":"+strconv.Itoa(port)
-	return api.GetRaftLeader(url)
+func getLeader(client *http.Client, host string, port int) (error, *datatype.RaftLeader) {
+	url := HTTP + host + ":" + strconv.Itoa(port)
+	return api.GetRaftLeader(client, url)
 }
 
-func getState(host string,port int) (error,*datatype.RaftState){
-	url := http+ host+":"+strconv.Itoa(port)
-	return api.GetRaftState(url)
+func getState(client *http.Client, host string, port int) (error, *datatype.RaftState) {
+	url := HTTP + host + ":" + strconv.Itoa(port)
+	return api.GetRaftState(client, url)
 }
 
-func getStatus(host string,port int) (error,string){
-	url := http+ host+":"+strconv.Itoa(port)
-	return api.GetRaftStatus(url)
+func getStatus(client *http.Client, host string, port int) (error, string) {
+	url := HTTP + host + ":" + strconv.Itoa(port)
+	return api.GetRaftStatus(client, url)
 }
 
-func getConfig(what string, host string,port int) (error,bool){
-	url := http+ host+":"+strconv.Itoa(port)
-	return api.GetRaftConfig(what,url)
+func getConfig(what string, host string, port int) (error, bool) {
+	url := HTTP + host + ":" + strconv.Itoa(port)
+	return api.GetRaftConfig(what, url)
 }
 
-
-func printSessions(r datatype.RaftSession) (error,string,int){
+func printSessions(r datatype.RaftSession, client *http.Client) (error, string, int) {
 	var (
-		Host string
+		Host  string
 		aPort int
-		err error
+		err   error
+		// client *http.Client
 	)
 	fmt.Printf("Id: %d\tConnected: %v\n", r.ID, r.ConnectedToLeader)
 	for _, v := range r.RaftMembers {
-		Host,aPort = v.Host,v.AdminPort
+		Host, aPort = v.Host, v.AdminPort
 		// cluster = strings.Split(v.Name,"-")[1]
-		if err, status = getStatus(Host, aPort); err !=  nil {
+		if err, status = getStatus(client, Host, aPort); err != nil {
 			fmt.Printf("\t\tError: %v\n", err)
-			return err,Host,aPort
+			return err, Host, aPort
 		}
-		if err, leader = getLeader(Host, aPort); err != nil {
+		if err, leader = getLeader(client, Host, aPort); err != nil {
 			fmt.Printf("\tError: %v\n", err)
-			return err,Host,aPort
+			return err, Host, aPort
 		}
-		Leader :=isLeader(Host,leader.IP)
-		if !notInit  { // printall
+		Leader := isLeader(Host, leader.IP)
+		if !notInit { // printall
 			fmt.Printf("\tMember Id: %d\tName: %s\tHost: %s\tPort: %d\tSite: %s\tisLeader:%v\n", v.ID, v.Name, Host, v.Port, v.Site, Leader)
-			printStatus(Host,aPort)
-			printState(Host,aPort)
+			printStatus(Host, aPort)
+			printState(client, Host, aPort)
 			fmt.Printf("\n")
 		} else {
 			if Leader || !isInitialized(status) {
 				fmt.Printf("\tMember Id: %d\tName: %s\tHost: %s\tPort: %d\tSite: %s\tisLeader:%v\n", v.ID, v.Name, Host, v.Port, v.Site, Leader)
 				printStatus(Host, aPort)
-				printState(Host, aPort)
+				printState(client, Host, aPort)
 			}
 		}
 	}
 
-    if len(mWsb) > 0 {
+	if len(mWsb) > 0 {
 		fmt.Println("\tWarm Standby members:")
 		for _, v := range mWsb[r.ID] {
 			fmt.Printf("\tWsb Id: %d\tName: %s\tHost: %s\tPort: %d\tSite: %s\n", v.ID, v.Name, v.Host, v.Port, v.Site)
-			if err, status = getStatus(v.Host, v.AdminPort); err != nil {
+			if err, status = getStatus(client, v.Host, v.AdminPort); err != nil {
 				printStatus(v.Host, v.AdminPort)
 			}
-			printState(v.Host, v.AdminPort)
+			printState(client, v.Host, v.AdminPort)
 			fmt.Printf("\n")
 		}
 	}
-	return err,Host,aPort
+	return err, Host, aPort
 }
 
-
-func printStatus(Host string, Port int){
+func printStatus(Host string, Port int) {
 	fmt.Printf("\t\tStatus:\t%+v\n", status)
 }
 
-func printState(Host string, Port int) {
-	if err, state = getState(Host, Port); err == nil {
+func printState(client *http.Client, Host string, Port int) {
+	if err, state = getState(client, Host, Port); err == nil {
 		fmt.Printf("\t\tState:\t%+v\n", *state)
 		// pStruct(state)
 	} else {
 		fmt.Printf("\t\tError: %v\n", err)
 	}
 }
-func pStruct(state *datatype.RaftState)   {
+func pStruct(state *datatype.RaftState) {
 	e := reflect.ValueOf(state).Elem()
 	fmt.Printf("\t")
 	for i := 0; i < e.NumField(); i++ {
 		varName := e.Type().Field(i).Name
 		// varType := e.Type().Field(i).Type
 		varValue := e.Field(i).Interface()
-		fmt.Printf("%v:%v - ", varName,varValue)
+		fmt.Printf("%v:%v - ", varName, varValue)
 	}
 	fmt.Printf("\n")
 }
 
-func printBuckets(Host string, Port int){
+func printBuckets(client *http.Client, Host string, Port int) {
 
-	if err, buckets = getBucket(Host, Port); err == nil {
+	if err, buckets = getBucket(client, Host, Port); err == nil {
 		l := len(buckets)
 		if l > 0 {
 			fmt.Printf("\tBuckets:\t%s\n", buckets[0])
@@ -276,7 +290,6 @@ func printBuckets(Host string, Port int){
 		fmt.Printf("\tError: %v\n", err)
 	}
 }
-
 
 func printConfig(Host string, Port int) {
 	fmt.Printf("Config:\n")
@@ -297,7 +310,7 @@ func printConfig(Host string, Port int) {
 	}
 }
 
-func isInitialized( status string) (bool){
+func isInitialized(status string) bool {
 	if status == "isInitialized" {
 		return true
 	} else {
@@ -305,12 +318,10 @@ func isInitialized( status string) (bool){
 	}
 }
 
-func isLeader( ip1 string, ip2 string) (bool){
-	if ip1==ip2 {
+func isLeader(ip1 string, ip2 string) bool {
+	if ip1 == ip2 {
 		return true
 	} else {
 		return false
 	}
 }
-
-

@@ -10,9 +10,12 @@ import (
 	"github.com/paulmatencio/s3c/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"net"
+	"net/http"
 	URL "net/url"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 var (
@@ -52,7 +55,25 @@ func initHcFlags(cmd *cobra.Command) {
 
 func healthCheck(cmd *cobra.Command,args []string) {
 
-	var cl datatype.Clusters
+	var (
+		cl datatype.Clusters
+		client    = &http.Client{}
+		transport = &http.Transport{
+			DialContext: (&net.Dialer{
+				Timeout:   time.Duration(CONTIMEOUT) * time.Millisecond, // connection timeout
+				KeepAlive: time.Duration(KEEPALIVE) * time.Millisecond,
+			}).DialContext,
+			TLSHandshakeTimeout: 10 * time.Second,
+			ForceAttemptHTTP2:   true,
+			MaxIdleConns:        100,
+			MaxConnsPerHost:     100,
+			// MaxIdleConnsPerHost: 100,
+			IdleConnTimeout:       90 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		}
+	)
+	client.Transport = transport
+
 	if len(url) == 0 {
 		if url = utils.GetBucketdUrl(*viper.GetViper()); len(url) == 0 {
 			if url = utils.GetLevelDBUrl(*viper.GetViper()); len(url) == 0 {
@@ -81,7 +102,7 @@ func healthCheck(cmd *cobra.Command,args []string) {
 						gLog.Warning.Printf("Wrong toplogy file: %s\n", filePath)
 						return
 					}
-					checkHealth(host,PORT)
+					checkHealth(client,host,PORT)
 				}
 			}
 		} else {
@@ -93,10 +114,10 @@ func healthCheck(cmd *cobra.Command,args []string) {
 }
 
 
-func checkHealth(host string,port string ){
-	url := http + host +":" + port
+func checkHealth(client *http.Client, host string,port string ){
+	url := HTTP + host +":" + port
 	fmt.Printf("Host:\t%s\n",host)
-	if err,hc := api.HeathCheck(url); err == nil {
+	if err,hc := api.HeathCheck(client,url); err == nil {
 		fmt.Printf("Sproxyd:\tCode:%s\tMessage:%s\n",hc.Sproxyd.Code,hc.Sproxyd.Message)
 		fmt.Printf("Bucket-Client:\tCode:%s\tMessage:%s\tBody:%v\n",hc.Bucketclient.Code,hc.Bucketclient)
 		fmt.Printf("Sproxyd:\tCode:%s\tMessage:%s\n",hc.Sproxyd.Code,hc.Sproxyd.Message)

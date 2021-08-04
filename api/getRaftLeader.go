@@ -9,16 +9,17 @@ import (
 	"time"
 )
 
-func GetRaftLeader(url string) (error,*datatype.RaftLeader) {
+func GetRaftLeader(client *http.Client, url string) (error,*datatype.RaftLeader) {
 	var (
 		req = "raft/leader"
 		err error
 		rl  datatype.RaftLeader
 	)
+
 	url  = url + "/_/" + req
 	gLog.Trace.Printf("GetRaft Leader url: %s",url)
 	for i := 1; i <= retryNumber; i++ {
-		if response, err := http.Get(url); err == nil {
+		if response, err := client.Get(url); err == nil {
 			gLog.Trace.Printf("Response: %v",response)
 			if response.StatusCode == 200 {
 				defer response.Body.Close()
@@ -37,7 +38,7 @@ func GetRaftLeader(url string) (error,*datatype.RaftLeader) {
 	return err,&rl
 }
 
-func GetRaftLeaderV2(url string) (error,datatype.RaftLeader) {
+func GetRaftLeaderV2(client *http.Client,url string) (error,datatype.RaftLeader) {
 	var (
 		req = "raft/leader"
 		// err error

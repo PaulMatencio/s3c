@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func GetRaftSession(url string, sessionId int) (error,*datatype.RaftSessionInfo) {
+func GetRaftSession(client *http.Client,url string, sessionId int) (error,*datatype.RaftSessionInfo) {
 	var (
 		rb      datatype.RaftSessionInfo
 		req     = "raft_sessions"
@@ -20,7 +20,7 @@ func GetRaftSession(url string, sessionId int) (error,*datatype.RaftSessionInfo)
 	url = url + "/_/" + req +"/"+ id + "/info"
 	gLog.Trace.Printf("GetRaft Session url: %s\t Retry number: %d", url, retryNumber)
 	for i := 1; i <= retryNumber; i++ {
-		if response, err := http.Get(url); err == nil {
+		if response, err := client.Get(url); err == nil {
 			gLog.Trace.Printf("Response: %v", response)
 			if response.StatusCode == 200 {
 				defer response.Body.Close()

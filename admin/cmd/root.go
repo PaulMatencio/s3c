@@ -28,7 +28,11 @@ import (
 	"github.com/spf13/viper"
 )
 
-
+const (
+	CONTIMEOUT = 2000  // connection timeout in ms
+	KEEPALIVE = 15000  // keep alive  in ms
+	HTTP = "http://"
+)
 var (
 	config,bucket,cc,url	 string
 	verbose, Debug,autoCompletion 	 bool
