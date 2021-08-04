@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/paulmatencio/protobuf-doc/src/document/documentpb"
 	meta "github.com/paulmatencio/s3c/moses-bc/datatype"
+	"net/http"
 	"strconv"
 )
 func InspectBlobs(document *documentpb.Document,  maxPage int, verbose bool) {
@@ -18,7 +19,11 @@ func InspectBlobs(document *documentpb.Document,  maxPage int, verbose bool) {
 
 func inspect_regular_blob(document *documentpb.Document,verbose bool) {
 
-	pages := document.GetPage()
+	var (
+		pages = document.GetPage()
+		tiff ,png string
+	)
+
 	for _, pg := range pages {
 		pgn := int(pg.PageNumber)
 		pageid := pg.PageId + "/p" + strconv.Itoa(pgn)
@@ -29,7 +34,15 @@ func inspect_regular_blob(document *documentpb.Document,verbose bool) {
 		} else {
 			pagmeta := meta.Pagemeta{}
 			json.Unmarshal([]byte(pagemeta), &pagmeta)
-			fmt.Printf("\t\tPage Number %d - Length %d - Png %v - Tiff %v - Pdf %v\n",pagmeta.PageNumber,pagmeta.PageLength,pagmeta.MultiMedia.Png,pagmeta.MultiMedia.Tiff,pagmeta.MultiMedia.Pdf)
+			if  pagmeta.MultiMedia.Tiff {
+				tiff = http.DetectContentType(pg.Object[pagmeta.TiffOffset.Start:pagmeta.TiffOffset.End])
+			}
+			if  pagmeta.MultiMedia.Png {
+				png = http.DetectContentType(pg.Object[pagmeta.PngOffset.Start:pagmeta.PngOffset.End])
+			}
+			fmt.Printf("\t\tPage Number %d - Length %d - Png %v %s - Tiff %v %s- Pdf %v\n",pagmeta.PageNumber,pagmeta.PageLength,pagmeta.MultiMedia.Png,png,pagmeta.MultiMedia.Tiff,tiff,pagmeta.MultiMedia.Pdf)
+
+
 		}
 
 	}
@@ -67,6 +80,7 @@ func inspect_part_large_blob(document *documentpb.Document,start int,end int,ver
 
 	var (
 		pages = document.GetPage()
+		tiff ,png string
 	)
 	for k := start; k <= end; k++ {
 		pg := *pages[k-1]
@@ -79,7 +93,14 @@ func inspect_part_large_blob(document *documentpb.Document,start int,end int,ver
 		}  else {
 			pagmeta := meta.Pagemeta{}
 			json.Unmarshal([]byte(pagemeta), &pagmeta)
-			fmt.Printf("\t\tPage Number %d - Length %d - Png %v - Tiff %v - Pdf %v\n",pagmeta.PageNumber,pagmeta.PageLength,pagmeta.MultiMedia.Png,pagmeta.MultiMedia.Tiff,pagmeta.MultiMedia.Pdf)
+			if  pagmeta.MultiMedia.Tiff {
+				tiff = http.DetectContentType(pg.Object[pagmeta.TiffOffset.Start:pagmeta.TiffOffset.End])
+			}
+			if  pagmeta.MultiMedia.Png {
+				png = http.DetectContentType(pg.Object[pagmeta.PngOffset.Start:pagmeta.PngOffset.End])
+			}
+			fmt.Printf("\t\tPage Number %d - Length %d - Png %v:%s - Tiff %v:%s- Pdf %v\n",pagmeta.PageNumber,pagmeta.PageLength,pagmeta.MultiMedia.Png,png,pagmeta.MultiMedia.Tiff,tiff,pagmeta.MultiMedia.Pdf)
+
 		}
 	}
 }
