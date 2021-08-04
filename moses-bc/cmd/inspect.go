@@ -45,9 +45,8 @@ func initInsFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&bucket, "bucket", "b", "", "name of the bucket")
 	cmd.Flags().StringVarP(&pn, "key", "k", "", "publication number to be restored")
 	cmd.Flags().StringVarP(&versionId, "versionId", "", "", "Version id of the publication number to be restored - default the last version will be restored ")
-	cmd.Flags().IntVarP(&maxPage, "max-page", "", 50, "maximum number of concurrent pages ")
-	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, "maximum number of loop, 0 means no upper limit")
 	cmd.Flags().Int64VarP(&maxPartSize, "max-part-size", "", 40, "Maximum partsize (MB) for multipart download")
+	cmd.Flags().BoolVarP(&verbose,"verbose","v",false,"Verbose display")
 }
 
 func init() {
@@ -146,7 +145,7 @@ func inspect_pn(request datatype.GetObjRequest)  {
 			if document.Clip {
 				fmt.Printf("\tDocument  %s  has a clipping page (page 0)\n",document.DocId)
 			}
-			mosesbc.InspectBlobs(document, maxPage)
+			mosesbc.InspectBlobs(document, maxPage,verbose)
 		} else {
 			gLog.Error.Printf("Error %v when retrieving the document %s\n", err, request.Key)
 			nerrors = 1
