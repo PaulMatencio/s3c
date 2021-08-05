@@ -77,7 +77,7 @@ var (
         --target-bucket meta-moses-prod-migr-pn  --max-loop 0   ** bucket suffix is not required **
          
 		`,
-		//Hidden: true,
+		Hidden: true,
 		Run:    Bucket_migrate,
 	}
 )

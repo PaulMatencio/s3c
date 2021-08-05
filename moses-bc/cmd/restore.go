@@ -51,7 +51,7 @@ var (
 	all the documents which are backed up and stored in the meta-moses-bkp-pn-02 bucket
                  `,
 		Run:    Restore_bucket,
-		// Hidden: true,
+		Hidden: true,
 	}
 	replace bool
 )

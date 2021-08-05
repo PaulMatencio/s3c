@@ -37,6 +37,7 @@ var (
 		Use:   "_inspect_",
 		Short: "Command to inspect backup objects",
 		Long:  ``,
+		Hidden: true,
 		Run:   Inspect,
 	}
 )

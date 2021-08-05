@@ -69,7 +69,7 @@ var (
         --target-bucket meta-moses-prod-bkup-pn    ** bucket suffix is not required **
          
 		`,
-		// Hidden: true,
+		Hidden: true,
 		Run:    Clone_bucket,
 	}
 	// s3Src, s3Tgt  datatype.CreateSession

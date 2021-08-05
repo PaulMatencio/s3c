@@ -78,7 +78,7 @@ var (
         --target-bucket meta-moses-prod-bkup-pn  --max-loop 0   ** bucket suffix is not required **
          
 		`,
-	//	Hidden: true,
+		Hidden: true,
 		Run:    Bucket_backup,
 	}
 
@@ -313,7 +313,6 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 			Marker:            marker,
 			Continuationtoken: token,
 		}
-
 	}
 
 	for {
@@ -373,6 +372,7 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 						}
 						wg1.Add(1)
 						go func(request datatype.StatObjRequest, method string) {
+
 							defer wg1.Done()
 							var (
 								rh = datatype.Rh{
@@ -413,7 +413,6 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 												docsize = (int)(document.Size)
 												npage = (int)(document.NumberOfPages)
 											}
-
 										} else {
 											gLog.Error.Printf(" Error %v - Status Code: %v  - Getting number of pages for %s ", err, status, pn)
 											mt.Lock()
@@ -441,6 +440,7 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 									mt.Unlock()
 								}
 							}
+
 						}(request, method)
 					}
 				}

@@ -40,7 +40,8 @@ func GetRaftSession(client *http.Client,url string, sessionId int) (error,*datat
 	return err,&rb
 }
 
-func GetRaftSessions_V2(client *http.Client,url string) (error,*datatype.RaftSessions) {
+
+func GetRaftSessionsV2(client *http.Client,url string) (error,*datatype.RaftSessions) {
 	var (
 		raftSessions    datatype.RaftSessions
 		req = "raft_sessions"

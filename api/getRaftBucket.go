@@ -67,11 +67,10 @@ func GetRaftBuckets(client *http.Client, url string) (error, []string) {
 	return err, rl
 }
 
-func GetRaftBuckets_v2(client *http.Client, url string) (error, []string) {
+func GetRaftBucketsV2(client *http.Client, url string) (error, []string) {
 	var (
 		buckets []string
 		req     = "buckets"
-		// err error
 		res Resp
 	)
 	url = url + "/_/" + req
