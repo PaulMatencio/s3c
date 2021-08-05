@@ -48,7 +48,7 @@ func GetRaftLeaderV2(client *http.Client,url string) (error,datatype.RaftLeader)
 	url  = url + "/_/" + req
 	gLog.Trace.Printf("GetRaft Leader url: %s",url)
 	for i := 1; i <= retryNumber; i++ {
-		if res = doGet(url,rl); res.Err == nil {
+		if res = doGet(client,url,rl); res.Err == nil {
 			if res.Status == 200 {
 				b := *res.Result
 				rl = b.(datatype.RaftLeader)

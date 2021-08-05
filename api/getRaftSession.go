@@ -40,7 +40,7 @@ func GetRaftSession(client *http.Client,url string, sessionId int) (error,*datat
 	return err,&rb
 }
 
-func GetRaftSessionsV2(url string) (error,*datatype.RaftSessions) {
+func GetRaftSessions_V2(client *http.Client,url string) (error,*datatype.RaftSessions) {
 	var (
 		raftSessions    datatype.RaftSessions
 		req = "raft_sessions"
@@ -49,7 +49,7 @@ func GetRaftSessionsV2(url string) (error,*datatype.RaftSessions) {
 	url  = url + "/_/" + req
 	gLog.Trace.Printf("GetRaft Sessions url: %s\t Retry number: %d",url,retryNumber)
 	for i := 1; i <= retryNumber; i++ {
-		if res = doGet(url,raftSessions); res.Err == nil {
+		if res = doGet(client,url,raftSessions); res.Err == nil {
 			if res.Status == 200 {
 				b:= *res.Result
 				raftSessions = b.(datatype.RaftSessions)

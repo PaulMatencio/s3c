@@ -21,7 +21,7 @@ var (
 	retryNumber = 3
 )
 
-func ListRaftSessions(url string) (error,*datatype.RaftSessions) {
+func ListRaftSessions(client *http.Client, url string) (error,*datatype.RaftSessions) {
 
 	var (
 		raftSessions    datatype.RaftSessions
@@ -30,7 +30,7 @@ func ListRaftSessions(url string) (error,*datatype.RaftSessions) {
 	url  = url + "/_/" + req
 	gLog.Trace.Println("URL:", url)
 	for i := 1; i <= retryNumber; i++ {
-		if response, err := http.Get(url); err == nil {
+		if response, err := client.Get(url); err == nil {
 			gLog.Trace.Printf("Response: %v",response)
 			if response.StatusCode == 200 {
 				defer response.Body.Close()
@@ -50,14 +50,14 @@ func ListRaftSessions(url string) (error,*datatype.RaftSessions) {
 }
 
 
-func doGet(url string,result interface{}) (Resp) {
+func doGet(client *http.Client,url string,result interface{}) (Resp) {
 	var (
 		err error
 		response *http.Response
 		res Resp
 	)
 
-	if response, err = http.Get(url); err == nil {
+	if response, err = client.Get(url); err == nil {
 		gLog.Trace.Printf("Response: %v", response)
 
 		if response.StatusCode == 200 {

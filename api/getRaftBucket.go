@@ -77,7 +77,7 @@ func GetRaftBuckets_v2(client *http.Client, url string) (error, []string) {
 	url = url + "/_/" + req
 	gLog.Trace.Printf("GetRaft bucket url: %s", url)
 	for i := 1; i <= retryNumber; i++ {
-		if res = doGet(url, buckets); res.Err == nil {
+		if res = doGet(client, url, buckets); res.Err == nil {
 			if res.Status == 200 {
 				b := *res.Result
 				buckets = b.([]string)
