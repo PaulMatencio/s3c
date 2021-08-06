@@ -92,7 +92,7 @@ func Restore_bucket(cmd *cobra.Command, args []string) {
 	)
 	start := time.Now()
 	mosesbc.MaxPage = maxPage
-	mosesbc.MaxPageSize = maxPartSize
+	mosesbc.MaxPartSize = maxPartSize
 	mosesbc.MaxCon = maxCon
 	mosesbc.PartNumber = partNumber
 	mosesbc.Replace = replace
@@ -225,9 +225,9 @@ func restore_bucket() (string, error) {
 							var (
 								pages, sizes, errs int
 							)
-							gLog.Info.Printf("Restoring document: %s from backup bucket %s ", request.Key, request.Bucket)
+							gLog.Info.Printf("Restoring document: %s from backup bucket %s - Size %d", request.Key, request.Bucket,size)
 							defer wg1.Done()
-							if size <= MaxPartSize {
+							if size <= maxPartSize {
 								pages, sizes, errs = restore_pn(request, replace)
 							} else {
 								pages, sizes, errs = restore_multipart_pn(request, replace)
