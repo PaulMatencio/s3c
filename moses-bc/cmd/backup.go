@@ -397,9 +397,10 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 									json.Unmarshal([]byte(usermd), &userm)
 									pn := rh.Key
 									if np, err = strconv.Atoi(userm.TotalPages); err == nil {
+										start2:= time.Now()
 										gLog.Info.Printf("Time from start %v",time.Since(start))
 										nerr, document := BackupPn(pn, np, usermd, versionId, maxPage)
-										//gLog.Info.Printf("Time from start %v",time.Since(start))
+										gLog.Info.Printf("Time from start %v",time.Since(start),time.Since(start2))
 										if nerr > 0 {
 											mt.Lock()
 											nerrors += nerr
