@@ -79,9 +79,7 @@ func initResFlags(cmd *cobra.Command) {
 func init() {
 	rootCmd.AddCommand(restoreCmd)
 	initResFlags(restoreCmd)
-	mosesbc.MaxPage = maxPage
-	mosesbc.MaxPageSize = MaxPartSize
-	mosesbc.Replace = replace
+
 }
 
 func Restore_bucket(cmd *cobra.Command, args []string) {
@@ -91,6 +89,9 @@ func Restore_bucket(cmd *cobra.Command, args []string) {
 		err        error
 	)
 	start := time.Now()
+	mosesbc.MaxPage = maxPage
+	mosesbc.MaxPageSize = MaxPartSize
+	mosesbc.Replace = replace
 
 	if err = mosesbc.SetTargetSproxyd("restore", targetUrl, targetDriver, targetEnv); err != nil {
 		gLog.Error.Printf("%v", err)
