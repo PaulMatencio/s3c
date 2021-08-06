@@ -289,9 +289,8 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 		N                               int
 		tdocs, tpages, tsizes, tdeletes int64
 		terrors                         int
-		// mu 						 sync.Mutex
-		mt                          sync.Mutex
-		mu1                             sync.Mutex
+		mu,mt,mu1 						 sync.Mutex
+
 		incr                            = reqm.Incremental
 		req, reql                       datatype.ListObjV2Request
 	)
@@ -427,10 +426,10 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 										}
 									}
 								}
-								//mu.Lock()
+								mu.Lock()
 								npages += npage
 								docsizes += docsize
-								// mu.Unlock()
+								mu.Unlock()
 							} // end PUT method
 
 							if method == "DELETE" {
@@ -446,6 +445,7 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 									mt.Unlock()
 								}
 							}
+							gLog.Info.Printf("Time from start %v",time.Since(start))
 						}(request, method)
 					}
 				}
