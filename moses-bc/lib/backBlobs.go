@@ -127,7 +127,7 @@ func backup_regular_blob(pn string, np int) ( []error,*documentpb.Document){
 			}
 			if r1 == end {
 				gLog.Info.Printf("Get pages range %d:%d for %s - Elapsed time %v ",start,np,pn,time.Since(start3))
-				gLog.Info.Printf("Create backup document %s - number of pages %d - Document size %d - Total elapsed time %v",document.DocId,document.NumberOfPages,document.Size,time.Since(start2))
+				gLog.Info.Printf("Time to create backup document %s - number of pages %d - Document size %d - Total elapsed time %v",document.DocId,document.NumberOfPages,document.Size,time.Since(start2))
 				return errs,document
 			}
 		case <-time.After(100 * time.Millisecond):
@@ -220,7 +220,7 @@ func backup_large_blob(pn string, np int, maxPage int) ([]error,*documentpb.Docu
 		errs,document = backup_part_large_blob(document, pn,np,start, np)
 		gLog.Info.Printf("Get pages range %d:%d for document %s - Elapsed time %v ",start,np,pn,time.Since(start4))
 	}
-	gLog.Info.Printf("Create backup document %s - number of pages %d - Document size %d - Elapsed time %v",document.DocId,npages,document.Size,time.Since(start2))
+	gLog.Info.Printf("Time to create backup document %s - number of pages %d - Document size %d - Elapsed time %v",document.DocId,npages,document.Size,time.Since(start2))
 	return errs,document
 }
 
