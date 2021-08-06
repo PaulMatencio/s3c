@@ -11,7 +11,7 @@ import (
 
 func RestoreBlobs(document *documentpb.Document) int {
 
-	gLog.Info.Printf("MaxPage %d",MaxPage)
+	gLog.Info.Printf("Number of pages %d - MaxPage %d -Replace %v",document.NumberOfPages, MaxPage,Replace)
 	if document.NumberOfPages <= int32(MaxPage) {
 		return restore_regular_blob(document)
 	} else {
