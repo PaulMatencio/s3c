@@ -30,3 +30,25 @@ func GetMultipart(req datatype.GetMultipartObjRequest ) (int64,error) {
 		return 0, err
 	}
 }
+
+func GetMultipartToBuffer(req datatype.GetMultipartObjRequest) (int64,*aws.WriteAtBuffer,error)  {
+
+	buff := &aws.WriteAtBuffer{}
+	input := s3.GetObjectInput{
+		Key:    aws.String(req.Key),
+		Bucket: aws.String(req.Bucket),
+	}
+
+    if req.PartNumber > 0 {
+		input.PartNumber =  aws.Int64(req.PartNumber)
+	}
+
+	downLoader := s3manager.NewDownloaderWithClient(req.Service, func(d *s3manager.Downloader) {
+		d.PartSize = req.PartSize
+		d.Concurrency = req.Concurrency
+	})
+	n,err := downLoader.Download(buff,&input)
+
+	return n, buff,err
+
+}

@@ -1,14 +1,14 @@
 package cmd
 
 import (
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/paulmatencio/s3c/api"
 	"github.com/paulmatencio/s3c/datatype"
 	"github.com/paulmatencio/s3c/gLog"
+	"github.com/paulmatencio/s3c/utils"
 	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
-	"github.com/paulmatencio/s3c/utils"
-	"github.com/aws/aws-sdk-go/service/s3"
 	"strings"
 	"time"
 )
@@ -68,7 +68,6 @@ func getMultipart(cmd *cobra.Command, args []string) {
 	}
 	gLog.Info.Printf("output directory  %s",odir)
 	outfile = filepath.Join(odir, key)
-
 	maxPartSize = maxPartSize*1024*1024  // convert into bytes
 	if maxPartSize < MinPartSize {
 		gLog.Warning.Printf("max part size %d < min part size %d", maxPartSize,MinPartSize)

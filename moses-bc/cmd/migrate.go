@@ -105,8 +105,7 @@ func initMgFlags(cmd *cobra.Command) {
 func init() {
 	rootCmd.AddCommand(migrateCmd)
 	initMgFlags(migrateCmd)
-	mosesbc.MaxPage = maxPage
-	mosesbc.Replace = replace
+
 	// viper.BindPFlag("maxPartSize",rootCmd.PersistentFlags().Lookup("maxParSize"))
 }
 
@@ -116,7 +115,12 @@ func Bucket_migrate(cmd *cobra.Command, args []string) {
 		nextmarker string
 		err        error
 	)
-	incr = false //  full backup of moses backup
+
+	mosesbc.MaxPage = maxPage
+	mosesbc.Replace = replace
+	mosesbc.MaxPageSize = maxPartSize
+
+	incr = false
 	if len(srcBucket) == 0 {
 		gLog.Error.Printf(missingSrcBucket)
 		return
