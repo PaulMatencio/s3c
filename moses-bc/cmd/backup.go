@@ -398,6 +398,7 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 									pn := rh.Key
 									if np, err = strconv.Atoi(userm.TotalPages); err == nil {
 										nerr, document := BackupPn(pn, np, usermd, versionId, maxPage)
+
 										if nerr > 0 {
 											mt.Lock()
 											nerrors += nerr
@@ -410,6 +411,7 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 										gLog.Error.Printf("Document %s - S3 metadata has an invalid number of pages in %s - Try to get it from the document user metadata ", pn, usermd)
 										if np, err, status = mosesbc.GetPageNumber(pn); err == nil {
 											nerr, document := BackupPn(pn, np, usermd, versionId, maxPage)
+											gLog.Info.Printf("Time from start %v",time.Since(start))
 											if nerr > 0 {
 												mt.Lock()
 												nerrors += nerr
