@@ -154,10 +154,9 @@ func Restore_bucket(cmd *cobra.Command, args []string) {
 		maxPartSize = MinPartSize
 		gLog.Warning.Printf("min part size %d will be used for max part size",maxPartSize)
 	}
+
 	mosesbc.MaxPartSize = maxPartSize
-
 	srcS3 = mosesbc.CreateS3Session("restore", "source")
-
 	//  create the output directory if it does not exist
 	utils.MakeDir(outDir)
 	//   bucket for indexing
@@ -218,7 +217,6 @@ func restore_bucket() (string, error) {
 				var wg1 sync.WaitGroup
 				start := time.Now()
 				for _, v := range result.Contents {
-
 					if *v.Key != nextmarker {
 						ndocs += 1
 						svc := req.Service
@@ -234,7 +232,7 @@ func restore_bucket() (string, error) {
 							)
 							gLog.Info.Printf("Restoring document: %s from backup bucket %s - Size %d - maxPartSize %d", request.Key, request.Bucket,size,MaxPartSize)
 							defer wg1.Done()
-							if size <= MaxPartSize {
+							if size <= maxPartSize {
 								pages, sizes, errs = restore_pn(request, replace)
 							} else {
 								pages, sizes, errs = restore_multipart_pn(request, replace)
@@ -408,7 +406,7 @@ func restore_multipart_pn(request datatype.GetObjRequest, replace bool) (int, in
 		Bucket:         request.Bucket,
 		Key:            request.Key,
 		PartNumber:     partNumber,
-		PartSize:       MaxPartSize,
+		PartSize:       maxPartSize,
 		Concurrency:    maxCon,
 	}
 	gLog.Info.Printf("Get Object key %s - Elapsed time %v ", request.Key, time.Since(start2))
