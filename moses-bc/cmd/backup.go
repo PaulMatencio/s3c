@@ -449,7 +449,7 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 					}
 				}
 				wg1.Wait()
-
+				gLog.Info.Printf("Time from start %v",time.Since(start))
 				if *result.IsTruncated {
 					nextmarker = *result.Contents[l-1].Key
 					if !incr {
