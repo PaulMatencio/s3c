@@ -71,7 +71,7 @@ func initResFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVarP(&replace, "replace", "r", false, "replace existing pages if exist")
 	cmd.Flags().Int64VarP(&maxPartSize, "max-part-size", "", 40, "Maximum partsize (MB) for multipart download")
 	cmd.Flags().Int64VarP(&partNumber, "part-number", "", 0, "Part number")
-	cmd.Flags().IntVarP(&maxCon, "max-con", "M", 5, "Maximum concurrent parts download , 0 => all parts")
+	cmd.Flags().IntVarP(&maxCon, "max-con", "", 5, "Maximum concurrent parts download , 0 => all parts")
 	cmd.Flags().StringVarP(&targetDriver, "target-sproxyd-driver", "", "", "target sproxyd driver [bpchord|bparc]")
 	cmd.Flags().StringVarP(&targetUrl, "target-sproxyd-url", "t", "", "target sproxyd endpoint URL http://xx.xx.xx.xx:81/proxy,http:// ...")
 	cmd.Flags().StringVarP(&targetEnv, "target-sproxyd-env", "", "", "target sproxyd environment [prod|osa]")
