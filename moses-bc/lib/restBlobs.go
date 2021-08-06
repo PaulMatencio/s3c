@@ -11,7 +11,7 @@ import (
 
 func RestoreBlobs(document *documentpb.Document) int {
 
-	gLog.Info.Printf("Number of pages %d - MaxPage %d -Replace %v",document.NumberOfPages, MaxPage,Replace)
+	gLog.Trace.Printf("Restore blobs - Number of pages %d - MaxPage %d - Replace %v",document.NumberOfPages, MaxPage,Replace)
 	if document.NumberOfPages <= int32(MaxPage) {
 		return restore_regular_blob(document)
 	} else {
@@ -34,7 +34,7 @@ func restore_regular_blob(document *documentpb.Document) int {
 		pu      sync.Mutex
 		wg1     sync.WaitGroup
 	)
-
+	gLog.Trace.Printf("Restore regular blobs - Number of pages %d - MaxPage %d - Replace %v",document.NumberOfPages, MaxPage,Replace)
 	//   Write document metadata
 	if nerr, status := WriteDocMetadata(&request, document,Replace); nerr > 0 {
 		gLog.Warning.Printf("Document %s is not restored", document.DocId)
@@ -82,7 +82,7 @@ func restore_large_blob(document *documentpb.Document) int {
 			// ReqHeader: map[string]string{},
 		}
 	)
-
+	gLog.Trace.Printf("Restore large blobs - Number of pages %d - MaxPage %d - Replace %v",document.NumberOfPages, MaxPage,Replace)
 	if nerr, status := WriteDocMetadata(&request, document, Replace); nerr > 0 {
 		gLog.Warning.Printf("Document %s is not restored", document.DocId)
 		perrors += nerr
