@@ -11,7 +11,7 @@ import (
 
 func RestoreBlobs(document *documentpb.Document) int {
 
-	gLog.Trace.Printf("Restore blobs - Number of pages %d - MaxPage %d - Replace %v",document.NumberOfPages, MaxPage,Replace)
+	gLog.Info.Printf("Restore blobs - Number of pages %d - MaxPage %d - Replace %v",document.NumberOfPages, MaxPage,Replace)
 	if document.NumberOfPages <= int32(MaxPage) {
 		return restore_regular_blob(document)
 	} else {
@@ -82,7 +82,7 @@ func restore_large_blob(document *documentpb.Document) int {
 			// ReqHeader: map[string]string{},
 		}
 	)
-	gLog.Trace.Printf("Restore large blobs - Number of pages %d - MaxPage %d - Replace %v",document.NumberOfPages, MaxPage,Replace)
+	gLog.Info.Printf("Restore large blobs - Number of pages %d - MaxPage %d - Replace %v",document.NumberOfPages, MaxPage,Replace)
 	if nerr, status := WriteDocMetadata(&request, document, Replace); nerr > 0 {
 		gLog.Warning.Printf("Document %s is not restored", document.DocId)
 		perrors += nerr
@@ -119,7 +119,7 @@ func restore_part_large_blob(request *sproxyd.HttpRequest, document *documentpb.
 	/*
 		loading
 	*/
-	gLog.Trace.Printf("Docid: %s - Starting slot %d - Ending slot  %d - Number of pages %d  - Length of pages array: %d ", document.DocId, start, end, document.NumberOfPages, len(pages))
+	gLog.Info.Printf("Docid: %s - Starting slot %d - Ending slot  %d - Number of pages %d  - Length of pages array: %d ", document.DocId, start, end, document.NumberOfPages, len(pages))
 	for k := start; k <= end; k++ {
 		pg := *pages[k-1]
 		wg1.Add(1)

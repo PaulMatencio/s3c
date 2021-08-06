@@ -92,6 +92,7 @@ func Restore_bucket(cmd *cobra.Command, args []string) {
 	mosesbc.MaxPage = maxPage
 	mosesbc.MaxPageSize = MaxPartSize
 	mosesbc.Replace = replace
+	gLog.Info.Printf("Restore bucket - MaxPage %d - Replace %v",mosesbc.MaxPage,mosesbc.Replace)
 
 	if err = mosesbc.SetTargetSproxyd("restore", targetUrl, targetDriver, targetEnv); err != nil {
 		gLog.Error.Printf("%v", err)
