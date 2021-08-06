@@ -79,6 +79,9 @@ func initResFlags(cmd *cobra.Command) {
 func init() {
 	rootCmd.AddCommand(restoreCmd)
 	initResFlags(restoreCmd)
+	mosesbc.MaxPage = maxPage
+	mosesbc.MaxPageSize = MaxPartSize
+	mosesbc.Replace = replace
 }
 
 func Restore_bucket(cmd *cobra.Command, args []string) {
@@ -337,7 +340,7 @@ func restore_pn(request datatype.GetObjRequest, replace bool) (int, int, int) {
 			*/
 			start4 := time.Now()
 
-			nerr += mosesbc.RestoreAllBlob(document, maxPage, replace)
+			nerr += mosesbc.RestoreAllBlob(document)
 			npages = (int)(document.NumberOfPages)
 			docsizes = int(document.Size)
 

@@ -213,7 +213,7 @@ func UploadPart(upload datatype.UploadPartRequest) (*s3.CompletedPart, error) {
 	}
 }
 
-func WriteS3Metadata(service *s3.S3,bucket string, document *documentpb.Document, replace bool) (*s3.PutObjectOutput, error) {
+func WriteS3Metadata(service *s3.S3,bucket string, document *documentpb.Document) (*s3.PutObjectOutput, error) {
 	var metadata = map[string]*string{
 		"Usermd": &document.Metadata,
 		"s3Meta": &document.S3Meta,
@@ -230,7 +230,7 @@ func WriteS3Metadata(service *s3.S3,bucket string, document *documentpb.Document
 }
 
 
-func WriteS3Pdf(service *s3.S3, bucket string, pdf *documentpb.Pdf, replace bool) (*s3.PutObjectOutput, error) {
+func WriteS3Pdf(service *s3.S3, bucket string, pdf *documentpb.Pdf) (*s3.PutObjectOutput, error) {
 
 	var metadata = map[string]*string{
 		"Usermd": &pdf.Metadata,
@@ -248,7 +248,7 @@ func WriteS3Pdf(service *s3.S3, bucket string, pdf *documentpb.Pdf, replace bool
 
 }
 
-func WriteS3Page(service *s3.S3, bucket string, page *documentpb.Page, replace bool) (*s3.PutObjectOutput, error) {
+func WriteS3Page(service *s3.S3, bucket string, page *documentpb.Page) (*s3.PutObjectOutput, error) {
 
 	var metadata = map[string]*string{
 		"Usermd": &page.Metadata,

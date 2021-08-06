@@ -17,19 +17,19 @@ import (
 	Migrate Scality Blobs to  S3 objects
 */
 
-func Migrate_blob(reqm datatype.Reqm, s3meta string, pn string, np int, maxPage int, replace bool) (int, *documentpb.Document) {
+func Migrate_blob(reqm datatype.Reqm, s3meta string, pn string, np int) (int, *documentpb.Document) {
 
-	if np <= maxPage {
-		return migrate_regular_blob(reqm, s3meta, pn, np, replace)
+	if np <= MaxPage {
+		return migrate_regular_blob(reqm, s3meta, pn, np)
 	} else {
-		return migrate_large_blob(reqm, s3meta, pn, np, maxPage, replace)
+		return migrate_large_blob(reqm, s3meta, pn, np)
 	}
 }
 
 /*
 document with  smaller pages number than the maxPage value
 */
-func migrate_regular_blob(reqm datatype.Reqm, s3meta string, pn string, np int, replace bool) (int, *documentpb.Document) {
+func migrate_regular_blob(reqm datatype.Reqm, s3meta string, pn string, np int) (int, *documentpb.Document) {
 
 	var (
 		request = sproxyd.HttpRequest{
@@ -70,7 +70,7 @@ func migrate_regular_blob(reqm datatype.Reqm, s3meta string, pn string, np int, 
 	} else {
 		buck = reqm.TgtBucket
 	}
-	if result, err := WriteS3Metadata(reqm.TgtS3, buck, document, replace); err != nil {
+	if result, err := WriteS3Metadata(reqm.TgtS3, buck, document); err != nil {
 		gLog.Warning.Printf("Document %s is not migrated", document.DocId)
 		return 1, document
 	} else {
@@ -86,7 +86,7 @@ func migrate_regular_blob(reqm datatype.Reqm, s3meta string, pn string, np int, 
 			gLog.Info.Printf("Document %s has a PDF object - size %d", request.Path, len(*body))
 			pd := doc.CreatePdf(pdfId, pmeta, body)
 			document.Size += pd.Size // increment the document size
-			if _, err = WriteS3Pdf(reqm.TgtS3, buck, pd, replace); err != nil {
+			if _, err = WriteS3Pdf(reqm.TgtS3, buck, pd); err != nil {
 				gLog.Warning.Printf("Error %v writing pdf document  %s ", err, pdfId)
 				return 1, document
 			}
@@ -112,7 +112,7 @@ func migrate_regular_blob(reqm datatype.Reqm, s3meta string, pn string, np int, 
 			pn := document.DocId
 			if err, usermd, body = GetObject(request, pn); err == nil {
 				pg := doc.CreatePage(pn, usermd, k, body)
-				if result, err := WriteS3Page(reqm.TgtS3, buck, pg, replace); err != nil {
+				if result, err := WriteS3Page(reqm.TgtS3, buck, pg); err != nil {
 					gLog.Error.Printf("%v", err)
 					pu.Lock()
 					perrors += 1
@@ -140,7 +140,7 @@ func migrate_regular_blob(reqm datatype.Reqm, s3meta string, pn string, np int, 
 	get document of which  the number of pages > maxPages
 
 */
-func migrate_large_blob(reqm datatype.Reqm, s3meta string, pn string, np int, maxPage int, replace bool) (int, *documentpb.Document) {
+func migrate_large_blob(reqm datatype.Reqm, s3meta string, pn string, np int) (int, *documentpb.Document) {
 
 	var (
 		start, q, r, end, npages int
@@ -178,7 +178,7 @@ func migrate_large_blob(reqm datatype.Reqm, s3meta string, pn string, np int, ma
 		buck = reqm.TgtBucket
 	}
 
-	if result, err := WriteS3Metadata(reqm.TgtS3, buck, document, replace); err != nil {
+	if result, err := WriteS3Metadata(reqm.TgtS3, buck, document); err != nil {
 		gLog.Warning.Printf("Document %s is not restored", document.DocId)
 		return 1, document
 	} else {
@@ -193,7 +193,7 @@ func migrate_large_blob(reqm datatype.Reqm, s3meta string, pn string, np int, ma
 			gLog.Info.Printf("Document %s has a PDF object - size %d", request.Path, len(*body))
 			pd := doc.CreatePdf(pdfId, pmeta, body)
 			document.Size += pd.Size
-			WriteS3Pdf(reqm.TgtS3, buck, pd, replace)
+			WriteS3Pdf(reqm.TgtS3, buck, pd)
 		} else {
 			gLog.Warning.Printf("Error %v getting object %s ", err, request.Path)
 		}
@@ -204,18 +204,18 @@ func migrate_large_blob(reqm datatype.Reqm, s3meta string, pn string, np int, ma
 	} else {
 		start = 1
 	}
-	end = maxPage
+	end = MaxPage
 	npages = end - start + 1
 
-	q = np / maxPage
-	r = np % maxPage
+	q = np / MaxPage
+	r = np % MaxPage
 
 	for s := 1; s <= q; s++ {
 		start3 := time.Now()
-		nerr = migrate_part_large_blob(reqm, document, pn, np, start, end, replace)
+		nerr = migrate_part_large_blob(reqm, document, pn, np, start, end)
 		gLog.Info.Printf("Get pages range %d:%d for document %s - Elapsed time %v ", start, end, pn, time.Since(start3))
 		start = end + 1
-		end += maxPage
+		end += MaxPage
 		if end > np {
 			end = np
 		}
@@ -223,15 +223,15 @@ func migrate_large_blob(reqm datatype.Reqm, s3meta string, pn string, np int, ma
 	}
 	if r > 0 {
 		start4 := time.Now()
-		start := q*maxPage + 1
-		nerr = migrate_part_large_blob(reqm, document, pn, np, start, np, replace)
+		start := q*MaxPage + 1
+		nerr = migrate_part_large_blob(reqm, document, pn, np, start, np)
 		gLog.Info.Printf("Get pages range %d:%d for document %s - Elapsed time %v ", start, np, pn, time.Since(start4))
 	}
 	gLog.Info.Printf("Migrate document %s - number of pages %d - Document size %d - Elapsed time %v", document.DocId, npages, document.Size, time.Since(start2))
 	return nerr, document
 }
 
-func migrate_part_large_blob(reqm datatype.Reqm, document *documentpb.Document, pn string, np int, start int, end int, replace bool) int {
+func migrate_part_large_blob(reqm datatype.Reqm, document *documentpb.Document, pn string, np int, start int, end int) int {
 
 	var (
 		//  sproxyd request for the source Ring
@@ -262,7 +262,7 @@ func migrate_part_large_blob(reqm datatype.Reqm, document *documentpb.Document, 
 		} else {
 			buck = reqm.TgtBucket
 		}
-		go func(request sproxyd.HttpRequest, document *documentpb.Document, buck string, k int, replace bool) {
+		go func(request sproxyd.HttpRequest, document *documentpb.Document, buck string, k int) {
 			defer wg1.Done()
 			/*
 				get the source object and user metadata
@@ -272,7 +272,7 @@ func migrate_part_large_blob(reqm datatype.Reqm, document *documentpb.Document, 
 					create a corresponding page
 				*/
 				pg := doc.CreatePage(pn, usermd, k, body)
-				if _, err := WriteS3Page(reqm.TgtS3, buck, pg, replace); err != nil {
+				if _, err := WriteS3Page(reqm.TgtS3, buck, pg); err != nil {
 					gLog.Error.Printf("%v", err)
 					pu.Lock()
 					perrors += 1
@@ -289,7 +289,7 @@ func migrate_part_large_blob(reqm datatype.Reqm, document *documentpb.Document, 
 				perrors += 1
 				pu.Unlock()
 			}
-		}(request, document, buck, k, replace)
+		}(request, document, buck, k)
 	}
 	wg1.Wait()
 

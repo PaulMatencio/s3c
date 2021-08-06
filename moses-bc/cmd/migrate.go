@@ -105,7 +105,8 @@ func initMgFlags(cmd *cobra.Command) {
 func init() {
 	rootCmd.AddCommand(migrateCmd)
 	initMgFlags(migrateCmd)
-
+	mosesbc.MaxPage = maxPage
+	mosesbc.Replace = replace
 	// viper.BindPFlag("maxPartSize",rootCmd.PersistentFlags().Lookup("maxParSize"))
 }
 
@@ -365,7 +366,7 @@ func migrate_bucket(marker string, reqm datatype.Reqm) (string, error) {
 							defer wg1.Done()
 							gLog.Trace.Printf("Method %s - Key %s ", method, request.Key)
 							if method == "PUT" {
-								r := migrate_pn(request, reqm, replace)
+								r := migrate_pn(request, reqm)
 								if r.Nerrors > 0 {
 									mu.Lock()
 									nerrors += r.Nerrors
@@ -425,7 +426,7 @@ func migrate_bucket(marker string, reqm datatype.Reqm) (string, error) {
 	return nextmarker, nil
 }
 
-func migrate_pn(request datatype.StatObjRequest, reqm datatype.Reqm, replace bool) datatype.Rm {
+func migrate_pn(request datatype.StatObjRequest, reqm datatype.Reqm) datatype.Rm {
 
 	var (
 		rh = datatype.Rh{
@@ -446,7 +447,7 @@ func migrate_pn(request datatype.StatObjRequest, reqm datatype.Reqm, replace boo
 			if np, err = strconv.Atoi(userm.TotalPages); err == nil {
 				start3 := time.Now()
 				s3meta := rh.Result.Metadata["Usermd"] //  Metadata map  must contain "usermd" entry encoded 64
-				nerr, document := mosesbc.Migrate_blob(reqm, *s3meta, pn, np, maxPage, replace)
+				nerr, document := mosesbc.Migrate_blob(reqm, *s3meta, pn, np)
 				if nerr == 0 {
 					npages = int(document.NumberOfPages)
 					docsizes = document.Size

@@ -251,6 +251,8 @@ type UploadPartRequest struct {
 	WaitTime  time.Duration
 }
 
+
+/* migration request */
 type Reqm struct {
 	SrcS3 *s3.S3
 	SrcBucket string
@@ -258,3 +260,4 @@ type Reqm struct {
 	TgtBucket string
 	Incremental bool
 }
+

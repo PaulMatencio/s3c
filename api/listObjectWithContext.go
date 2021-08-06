@@ -1,14 +1,15 @@
+
 package api
 
 import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/paulmatencio/s3c/datatype"
+	"time"
 )
 
-func ListObject(req datatype.ListObjRequest)  ( *s3.ListObjectsOutput, error) {
-
-
+func ListObjectWithContext(timeout time.Duration, req datatype.ListObjRequest)  ( *s3.ListObjectsOutput, error) {
+	
 	input := &s3.ListObjectsInput{
 
 		Bucket: aws.String(req.Bucket),
@@ -18,15 +19,17 @@ func ListObject(req datatype.ListObjRequest)  ( *s3.ListObjectsOutput, error) {
 		Delimiter: aws.String(req.Delimiter),
 	}
 
-	// svc.ListObjectsRequest(input)
-
-	return  req.Service.ListObjects(input);
+	ctx,cancel := SetContext(timeout)
+	defer cancel()
+	return  req.Service.ListObjectsWithContext(ctx,input);
 
 }
 
-func ListObjectV2(req datatype.ListObjV2Request)  ( *s3.ListObjectsV2Output, error) {
+func ListObjectWithContextV2(timeout time.Duration,req datatype.ListObjV2Request)  ( *s3.ListObjectsV2Output, error) {
+
 
 	input := &s3.ListObjectsV2Input{
+
 		Bucket: aws.String(req.Bucket),
 		Prefix: aws.String(req.Prefix),
 		MaxKeys: aws.Int64(req.MaxKey),
@@ -36,14 +39,13 @@ func ListObjectV2(req datatype.ListObjV2Request)  ( *s3.ListObjectsV2Output, err
 	if len(req.Continuationtoken) > 0 {
 		input.ContinuationToken = &req.Continuationtoken
 	}
-
-	// svc.ListObjectsRequest(input)
-
-	return  req.Service.ListObjectsV2(input)
+	ctx,cancel := SetContext(timeout)
+	defer cancel()
+	return  req.Service.ListObjectsV2WithContext(ctx,input)
 
 }
 
-func ListObjectVersions( req datatype.ListObjVersionsRequest)  ( *s3.ListObjectVersionsOutput, error) {
+func ListObjectVersionsWithContext( req datatype.ListObjVersionsRequest)  ( *s3.ListObjectVersionsOutput, error) {
 
 	input := &s3.ListObjectVersionsInput{
 		Bucket: aws.String(req.Bucket),
@@ -55,7 +57,3 @@ func ListObjectVersions( req datatype.ListObjVersionsRequest)  ( *s3.ListObjectV
 	}
 	return  req.Service.ListObjectVersions(input);
 }
-
-
-
-

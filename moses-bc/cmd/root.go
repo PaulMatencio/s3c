@@ -42,10 +42,12 @@ const (
 )
 
 var (
+
 	config string
 	bucket,levelDBUrl,prefix	 string
 	verbose, Debug,autoCompletion 	 bool
 	loglevel,profiling, bucketNumber, retryNumber  int
+
 	waitTime time.Duration
 	srcBucket, tgtBucket              string
 	srcEnv, tgtEnv 					 string
@@ -75,6 +77,7 @@ var (
 	missingSrcBucket = "Missing source S3 bucket --source-bucket argument. Use  --help or -h for help"
 	missingTgtBucket = "Missing target S3 bucket --target-bucket argument. Use  --help or -h for help"
 	missingBucket = "Missing S3 bucket--bucket argument. Use  --help or -h for help"
+
 
 )
 
