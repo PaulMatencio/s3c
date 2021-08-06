@@ -325,6 +325,7 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 			docsizes         int = 0
 			nerrors          int = 0
 			key, method      string
+			start = time.Now()
 		)
 		N++ // number of loop
 		if !incr {
@@ -341,7 +342,10 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 		}
 		if err == nil {
 			if l := len(result.Contents); l > 0 {
-				var wg1 sync.WaitGroup
+				var (
+					wg1 sync.WaitGroup
+
+				)
 				for _, v := range result.Contents {
 					if *v.Key != nextmarker {
 						gLog.Info.Printf("Key: %s - Size: %d - LastModified: %v", *v.Key, *v.Size, v.LastModified)
@@ -370,6 +374,7 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 						if method == "PUT" {
 							ndocs += 1
 						}
+
 						wg1.Add(1)
 						go func(request datatype.StatObjRequest, method string) {
 
@@ -440,11 +445,11 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 									mt.Unlock()
 								}
 							}
-
 						}(request, method)
 					}
 				}
 				wg1.Wait()
+
 				if *result.IsTruncated {
 					nextmarker = *result.Contents[l-1].Key
 					if !incr {
@@ -452,7 +457,7 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 					}
 					gLog.Warning.Printf("Truncated %v - Next marker: %s ", *result.IsTruncated, nextmarker)
 				}
-				gLog.Info.Printf("Number of backed up documents: %d  - Number of pages: %d  - Document size: %d - Number of deletes: %d - Number of errors: %d", ndocs, npages, docsizes, ndeletes, nerrors)
+				gLog.Info.Printf("Number of backed up documents: %d  - Number of pages: %d  - Document size: %d - Number of deletes: %d - Number of errors: %d - Elapsed time: %v", ndocs, npages, docsizes, ndeletes, nerrors,time.Since(start))
 				tdocs += int64(ndocs)
 				tpages += int64(npages)
 				tsizes += int64(docsizes)
@@ -468,7 +473,7 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 			// req1.Marker = nextmarker
 			req.Continuationtoken = token
 		} else {
-			gLog.Info.Printf("Total number of backed up documents: %d - total number of pages: %d  - Total document size: %d - Total number of older versions deleted %d -  Total number of errors: %d", tdocs, tpages, tsizes, tdeletes, terrors)
+			gLog.Info.Printf("Total number of backed up documents: %d - total number of pages: %d  - Total document size: %d - Total number of older versions deleted %d - Total number of errors: %d - Elapsed time: %v", tdocs, tpages, tsizes, tdeletes, terrors,time.Since(start))
 			break
 		}
 	}
