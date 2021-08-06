@@ -289,10 +289,10 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 		N                               int
 		tdocs, tpages, tsizes, tdeletes int64
 		terrors                         int
-		mu,mt,mu1 						 sync.Mutex
+		mu, mt, mu1                     sync.Mutex
 
-		incr                            = reqm.Incremental
-		req, reql                       datatype.ListObjV2Request
+		incr      = reqm.Incremental
+		req, reql datatype.ListObjV2Request
 	)
 
 	req = datatype.ListObjV2Request{
@@ -325,18 +325,18 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 			docsizes         int = 0
 			nerrors          int = 0
 			key, method      string
-			start = time.Now()
+			start            = time.Now()
 		)
 		N++ // number of loop
 		if !incr {
-			gLog.Info.Printf("Listing documents from  %s",reqm.SrcBucket)
+			gLog.Info.Printf("Listing documents from  %s", reqm.SrcBucket)
 			result, err = api.ListObjectV2(req)
 		} else {
 			if len(inFile) > 0 {
-				gLog.Info.Printf("Listing documents from file %s",inFile)
+				gLog.Info.Printf("Listing documents from file %s", inFile)
 				result, err = ListPn(listpn, int(maxKey))
 			} else {
-				gLog.Info.Printf("Listing documents from bucket  %s",iBucket)
+				gLog.Info.Printf("Listing documents from bucket  %s", iBucket)
 				result, err = api.ListObjectV2(reql)
 			}
 		}
@@ -344,7 +344,6 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 			if l := len(result.Contents); l > 0 {
 				var (
 					wg1 sync.WaitGroup
-
 				)
 				for _, v := range result.Contents {
 					if *v.Key != nextmarker {
@@ -397,10 +396,7 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 									json.Unmarshal([]byte(usermd), &userm)
 									pn := rh.Key
 									if np, err = strconv.Atoi(userm.TotalPages); err == nil {
-										start2:= time.Now()
-										gLog.Info.Printf("Time from start %v",time.Since(start))
 										nerr, document := BackupPn(pn, np, usermd, versionId, maxPage)
-										gLog.Info.Printf("Time from start %v",time.Since(start),time.Since(start2))
 										if nerr > 0 {
 											mt.Lock()
 											nerrors += nerr
@@ -413,7 +409,7 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 										gLog.Error.Printf("Document %s - S3 metadata has an invalid number of pages in %s - Try to get it from the document user metadata ", pn, usermd)
 										if np, err, status = mosesbc.GetPageNumber(pn); err == nil {
 											nerr, document := BackupPn(pn, np, usermd, versionId, maxPage)
-											gLog.Info.Printf("Time from start %v",time.Since(start))
+											gLog.Info.Printf("Time from start %v", time.Since(start))
 											if nerr > 0 {
 												mt.Lock()
 												nerrors += nerr
@@ -462,7 +458,7 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 					}
 					gLog.Warning.Printf("Truncated %v - Next marker: %s ", *result.IsTruncated, nextmarker)
 				}
-				gLog.Info.Printf("Number of backed up documents: %d  - Number of pages: %d  - Document size: %d - Number of deletes: %d - Number of errors: %d - Elapsed time: %v", ndocs, npages, docsizes, ndeletes, nerrors,time.Since(start))
+				gLog.Info.Printf("Number of backed up documents: %d  - Number of pages: %d  - Document size: %d - Number of deletes: %d - Number of errors: %d - Elapsed time: %v", ndocs, npages, docsizes, ndeletes, nerrors, time.Since(start))
 				tdocs += int64(ndocs)
 				tpages += int64(npages)
 				tsizes += int64(docsizes)
@@ -478,7 +474,7 @@ func backup_bucket(reqm datatype.Reqm) (string, error) {
 			// req1.Marker = nextmarker
 			req.Continuationtoken = token
 		} else {
-			gLog.Info.Printf("Total number of backed up documents: %d - total number of pages: %d  - Total document size: %d - Total number of older versions deleted %d - Total number of errors: %d - Elapsed time: %v", tdocs, tpages, tsizes, tdeletes, terrors,time.Since(start))
+			gLog.Info.Printf("Total number of backed up documents: %d - total number of pages: %d  - Total document size: %d - Total number of older versions deleted %d - Total number of errors: %d - Elapsed time: %v", tdocs, tpages, tsizes, tdeletes, terrors, time.Since(start))
 			break
 		}
 	}
@@ -550,9 +546,12 @@ func BackupPn(pn string, np int, usermd string, versionId string, maxPage int) (
 		} else {
 			buck1 = tgtBucket
 		}
+		start := time.Now()
 		if _, err := writeS3(tgtS3, buck1, maxPartSize, document); err != nil {
 			gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
 			nerrs += 1
+		} else {
+			gLog.Info.Printf("Time to upload the backup document %s to bucket %s : %v ", err, document.DocId, bucket,time.Since(start))
 		}
 		/*
 			version management can be implement here
