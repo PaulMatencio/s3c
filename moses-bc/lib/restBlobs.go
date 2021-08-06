@@ -9,8 +9,9 @@ import (
 	"sync"
 )
 
-func RestoreAllBlob(document *documentpb.Document) int {
+func RestoreBlobs(document *documentpb.Document) int {
 
+	gLog.Info.Printf("MaxPage %d",MaxPage)
 	if document.NumberOfPages <= int32(MaxPage) {
 		return restore_regular_blob(document)
 	} else {

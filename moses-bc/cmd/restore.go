@@ -339,8 +339,7 @@ func restore_pn(request datatype.GetObjRequest, replace bool) (int, int, int) {
 				    else -> PutBig1
 			*/
 			start4 := time.Now()
-
-			nerr += mosesbc.RestoreAllBlob(document)
+			nerr += mosesbc.RestoreBlobs(document)
 			npages = (int)(document.NumberOfPages)
 			docsizes = int(document.Size)
 
@@ -359,16 +358,13 @@ func restore_pn(request datatype.GetObjRequest, replace bool) (int, int, int) {
 				if _, err = mosesbc.IndexDocument(document, tgtBucket, tgtS3); err != nil {
 					gLog.Error.Printf("Error %v while indexing the  document id %s into  bucket %s", err, document.DocId, tgtBucket)
 					nerrors = 1
-
 				} else {
 					gLog.Info.Printf("Document id %s is now indexed in the bucket %s - Elapsed time %v", document.DocId, tgtBucket, time.Since(start5))
 				}
 			}
-
 		} else {
 			gLog.Error.Printf("Error %v when retrieving the document %s", err, request.Key)
 			nerrors = 1
-
 		}
 	}
 	return npages, docsizes, nerrors
