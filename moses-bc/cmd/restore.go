@@ -92,7 +92,7 @@ func Restore_bucket(cmd *cobra.Command, args []string) {
 	)
 	start := time.Now()
 	mosesbc.MaxPage = maxPage
-	mosesbc.MaxPartSize = maxPartSize
+
 	mosesbc.MaxCon = maxCon
 	mosesbc.PartNumber = partNumber
 	mosesbc.Replace = replace
@@ -148,6 +148,14 @@ func Restore_bucket(cmd *cobra.Command, args []string) {
 			return
 		}
 	}
+
+	maxPartSize = maxPartSize*1024*1024  // convert into bytes
+	if maxPartSize < MinPartSize {
+		gLog.Warning.Printf("max part size %d < min part size %d", maxPartSize,MinPartSize)
+		maxPartSize = MinPartSize
+		gLog.Warning.Printf("min part size %d will be used for max part size",maxPartSize)
+	}
+	mosesbc.MaxPartSize = maxPartSize
 
 	srcS3 = mosesbc.CreateS3Session("restore", "source")
 
@@ -227,7 +235,7 @@ func restore_bucket() (string, error) {
 							)
 							gLog.Info.Printf("Restoring document: %s from backup bucket %s - Size %d", request.Key, request.Bucket,size)
 							defer wg1.Done()
-							if size <= maxPartSize {
+							if size <= MaxPartSize {
 								pages, sizes, errs = restore_pn(request, replace)
 							} else {
 								pages, sizes, errs = restore_multipart_pn(request, replace)
@@ -395,18 +403,13 @@ func restore_multipart_pn(request datatype.GetObjRequest, replace bool) (int, in
 		nerr, status int
 		start2       = time.Now()
 	)
-	maxPartSize = maxPartSize*1024*1024  // convert into bytes
-	if maxPartSize < MinPartSize {
-		gLog.Warning.Printf("max part size %d < min part size %d", maxPartSize,MinPartSize)
-		maxPartSize = MinPartSize
-		gLog.Warning.Printf("min part size %d will be used for max part size",maxPartSize)
-	}
+	
 	req := datatype.GetMultipartObjRequest{
 		Service:        request.Service,
 		Bucket:         request.Bucket,
 		Key:            request.Key,
 		PartNumber:     partNumber,
-		PartSize:       maxPartSize,
+		PartSize:       MaxPartSize,
 		Concurrency:    maxCon,
 	}
 	gLog.Info.Printf("Get Object key %s - Elapsed time %v ", request.Key, time.Since(start2))
