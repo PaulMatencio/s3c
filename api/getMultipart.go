@@ -5,6 +5,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/paulmatencio/s3c/datatype"
+	"github.com/paulmatencio/s3c/gLog"
 	"io"
 	"os"
 )
@@ -42,7 +43,7 @@ func GetMultipartToBuffer(req datatype.GetMultipartObjRequest) (int64,*aws.Write
     if req.PartNumber > 0 {
 		input.PartNumber =  aws.Int64(req.PartNumber)
 	}
-
+	gLog.Info.Printf("Start ")
 	downLoader := s3manager.NewDownloaderWithClient(req.Service, func(d *s3manager.Downloader) {
 		d.PartSize = req.PartSize
 		d.Concurrency = req.Concurrency

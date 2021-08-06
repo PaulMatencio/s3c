@@ -380,9 +380,7 @@ func UploadMultipart3(fd *os.File, fileSize int64, svc *s3.S3) {
 		}
 
 		for q := 0; q <= q1; q++ {
-
 			start := time.Now()
-
 			b := (q * maxCon) +1
 			e := (q + 1) * maxCon
 			if e > int(numberPart) {

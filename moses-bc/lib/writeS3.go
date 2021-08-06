@@ -161,7 +161,7 @@ func WriteS3Multipart(service *s3.S3, bucket string, maxPartSize int64, document
 		CompletedUpload(service, resp, completedParts)
 		elapsed := time.Since(start)
 		MBsec := len(buffer) / int(elapsed)
-		gLog.Info.Printf("Elapsed time %v MB/sec %f3.1", elapsed, MBsec)
+		gLog.Info.Printf("Elapsed time %v MB/sec %3.1f", elapsed, MBsec)
 	}
 	return errs, err
 }
