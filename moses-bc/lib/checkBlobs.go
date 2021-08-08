@@ -41,7 +41,7 @@ func CheckBlobs(request datatype.ListObjRequest,maxLoop int,maxPage int) {
 						defer wg1.Done()
 						if np, err, status := GetPageNumber(pn); err == nil && status == 200 {
 							if np > 0 {
-								CheckBlob1(pn, np, maxPage)
+								CheckBlob(pn, np, maxPage)
 							} else {
 								gLog.Error.Printf("The number of pages is %d ", np)
 							}
@@ -74,15 +74,15 @@ func CheckBlobs(request datatype.ListObjRequest,maxLoop int,maxPage int) {
 
 */
 
-func CheckBlob1(pn string, np int, maxPage int) int {
+func CheckBlob(pn string, np int, maxPage int) int {
 
 	start := time.Now()
 	if np <= maxPage {
-		r := _checkBlob1(pn, np)
+		r := checkBlob(pn, np)
 		gLog.Info.Printf("Elapsed time %v", time.Since(start))
 		return r
 	} else {
-		r := _checkBig1(pn, np, maxPage)
+		r := checkLargeBlob(pn, np, maxPage)
 		gLog.Info.Printf("Elapsed time %v", time.Since(start))
 		return r
 	}
@@ -90,12 +90,12 @@ func CheckBlob1(pn string, np int, maxPage int) int {
 
 /*
 
-	document with  smaller number if pages number than --maxPage
-	called bz CheckBlob1
+	Check document with number of pages <  --maxPage
+	called by CheckBlob
 
 */
 
-func _checkBlob1(pn string, np int) int {
+func checkBlob(pn string, np int) int {
 	var (
 		request1 = sproxyd.HttpRequest{
 			Hspool: sproxyd.HP,
@@ -183,9 +183,16 @@ func _checkBlob1(pn string, np int) int {
 }
 
 
-//  document with bigger  pages number than maxPage
 
-func _checkBig1(pn string, np int, maxPage int) int {
+
+/*
+
+	Check document with number of pages >  --maxPage
+	called by CheckBlob
+
+*/
+
+func checkLargeBlob(pn string, np int, maxPage int) int {
 
 	var (
 		q, r, start, end int
@@ -225,7 +232,7 @@ func _checkBig1(pn string, np int, maxPage int) int {
 	gLog.Warning.Printf("Big document %s  - number of pages %d ", pn, np)
 
 	for s := 1; s <= q; s++ {
-		nerrors = _CheckPart1(pn, np, start, end)
+		nerrors = checkBlobPart(pn, np, start, end)
 		start = end + 1
 		end += maxPage
 		if end > np {
@@ -234,7 +241,7 @@ func _checkBig1(pn string, np int, maxPage int) int {
 		terrors += nerrors
 	}
 	if r > 0 {
-		nerrors = _CheckPart1(pn, np, q*maxPage+1, np)
+		nerrors = checkBlobPart(pn, np, q*maxPage+1, np)
 		if nerrors > 0 {
 			terrors += nerrors
 		}
@@ -245,7 +252,7 @@ func _checkBig1(pn string, np int, maxPage int) int {
 /*
 	called by checkBig1
  */
-func _CheckPart1(pn string, np int, start int, end int) int {
+func checkBlobPart(pn string, np int, start int, end int) int {
 
 	var (
 		request = sproxyd.HttpRequest{

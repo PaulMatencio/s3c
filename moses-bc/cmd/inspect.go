@@ -76,7 +76,7 @@ func Inspect(cmd *cobra.Command, args []string) {
 		Bucket:  bucket,
 		Key:     pn,
 	}
-	inspect_pn(req)
+	inspectPn(req)
 
 }
 
@@ -92,7 +92,7 @@ func Inspect(cmd *cobra.Command, args []string) {
 
 */
 
-func inspect_pn(request datatype.GetObjRequest)  {
+func inspectPn(request datatype.GetObjRequest)  {
 
 	var (
 		result                    *s3.GetObjectOutput
@@ -130,7 +130,6 @@ func inspect_pn(request datatype.GetObjRequest)  {
 			retrieve the backup document
 		*/
 
-
 		if body, err := utils.ReadObjectv(result.Body, CHUNKSIZE); err == nil {
 			defer result.Body.Close()
 			document, err = mosesbc.GetDocument(body.Bytes())
@@ -150,8 +149,6 @@ func inspect_pn(request datatype.GetObjRequest)  {
 		} else {
 			gLog.Error.Printf("Error %v when retrieving the document %s\n", err, request.Key)
 			nerrors = 1
-
 		}
 	}
-
 }

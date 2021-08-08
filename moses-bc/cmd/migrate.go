@@ -451,7 +451,7 @@ func migrate_pn(request datatype.StatObjRequest, reqm datatype.Reqm) datatype.Rm
 			if np, err = strconv.Atoi(userm.TotalPages); err == nil {
 				start3 := time.Now()
 				s3meta := rh.Result.Metadata["Usermd"] //  Metadata map  must contain "usermd" entry encoded 64
-				nerr, document := mosesbc.Migrate_blob(reqm, *s3meta, pn, np)
+				nerr, document := mosesbc.MigrateBlob(reqm, *s3meta, pn, np)
 				if nerr == 0 {
 					npages = int(document.NumberOfPages)
 					docsizes = document.Size

@@ -23,20 +23,23 @@ type GetBlobResponse struct {
 
 
 /*
-	Get blobs  for backup
+	pn  with number of pages > --max-Page -> backupBlob
+    otherwise -> backupLargeBlob
 */
 
 
-func Backup_blob(pn string, np int, maxPage int) ([]error,*documentpb.Document){
+func BackupBlob(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 	if np <= maxPage {
-		return backup_regular_blob(pn,np)
+		return backupBlob(pn,np)
 	} else {
-		return backup_large_blob(pn, np, maxPage)
+		return backupLargeBlob(pn, np, maxPage)
 	}
 }
 
-//  document with  smaller pages number than maxPage
-func backup_regular_blob(pn string, np int) ( []error,*documentpb.Document){
+/*
+	backup document with  smaller pages number than maxPage
+ */
+func backupBlob(pn string, np int) ( []error,*documentpb.Document){
 	var (
 		request = sproxyd.HttpRequest{
 			Hspool: sproxyd.HP,
@@ -127,20 +130,22 @@ func backup_regular_blob(pn string, np int) ( []error,*documentpb.Document){
 			}
 			if r1 == end {
 				gLog.Info.Printf("Get pages range %d:%d for %s - Elapsed time %v ",start,np,pn,time.Since(start3))
-				gLog.Info.Printf("Time to create backup document %s - number of pages %d - Document size %d - Total elapsed time %v",document.DocId,document.NumberOfPages,document.Size,time.Since(start2))
+				gLog.Info.Printf("Time to build the backup document %s - number of pages %d - Document size %d - Total elapsed time %v",document.DocId,document.NumberOfPages,document.Size,time.Since(start2))
 				return errs,document
 			}
 		case <-time.After(100 * time.Millisecond):
 			fmt.Printf("r")
 		}
 	}
-
 }
 
 /*
-	get document of which  the number of pages > maxPages
+	 backup  document with  number of pages > --max-page
+     split document in group with  smaller number of pages = --max-page
+     
 */
-func backup_large_blob(pn string, np int, maxPage int) ([]error,*documentpb.Document){
+
+func backupLargeBlob(pn string, np int, maxPage int) ([]error,*documentpb.Document){
 	var (
 
 		start,q,r,end ,npages int
@@ -205,7 +210,7 @@ func backup_large_blob(pn string, np int, maxPage int) ([]error,*documentpb.Docu
 
 	for s := 1; s <= q; s++ {
 		start3 := time.Now()
-		errs,document = backup_part_large_blob(document, pn, np,start, end)
+		errs,document = backupLargeBlobPart(document, pn, np,start, end)
 		gLog.Info.Printf("Get pages range %d-%d for document %s - Elapsed time %v ",start,end,pn,time.Since(start3))
 		start = end + 1
 		end += maxPage
@@ -217,15 +222,15 @@ func backup_large_blob(pn string, np int, maxPage int) ([]error,*documentpb.Docu
 	if r > 0 {
 		start4 := time.Now()
 		start:= q*maxPage+1
-		errs,document = backup_part_large_blob(document, pn,np,start, np)
+		errs,document = backupLargeBlobPart(document, pn,np,start, np)
 		gLog.Info.Printf("Get pages range %d:%d for document %s - Elapsed time %v ",start,np,pn,time.Since(start4))
 	}
-	gLog.Info.Printf("Time to create backup document %s - number of pages %d - Document size %d - Elapsed time %v",document.DocId,npages,document.Size,time.Since(start2))
+	gLog.Info.Printf("Time to build the backup document %s - number of pages %d - Document size %d - Elapsed time %v",document.DocId,npages,document.Size,time.Since(start2))
 	return errs,document
 }
 
 //  document with the number of pages > maxPages
-func backup_part_large_blob(document *documentpb.Document, pn string, np int, start int, end int) ([]error, *documentpb.Document) {
+func backupLargeBlobPart(document *documentpb.Document, pn string, np int, start int, end int) ([]error, *documentpb.Document) {
 
 	var (
 		request = sproxyd.HttpRequest{

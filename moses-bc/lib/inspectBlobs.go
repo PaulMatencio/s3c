@@ -9,15 +9,16 @@ import (
 	"net/http"
 	"strconv"
 )
+
 func InspectBlobs(document *documentpb.Document,  maxPage int, verbose bool) {
 	if document.NumberOfPages <= int32(maxPage) {
-		inspect_regular_blob(document,verbose)
+		inspectBlob(document,verbose)
 	} else {
-		inspect_large_blob(document,maxPage,verbose)
+		inspectLargeBlob(document,maxPage,verbose)
 	}
 }
 
-func inspect_regular_blob(document *documentpb.Document,verbose bool) {
+func inspectBlob(document *documentpb.Document,verbose bool) {
 
 	var (
 		pages = document.GetPage()
@@ -44,16 +45,13 @@ func inspect_regular_blob(document *documentpb.Document,verbose bool) {
 				pngl = pagmeta.PngOffset.End - pagmeta.PngOffset.Start +1
 			}
 			fmt.Printf("\t\tPage Number %d - Length %d - Png %v:%s:%d - Tiff %v:%s:%d - Pdf %v\n",pagmeta.PageNumber,pagmeta.PageLength,pagmeta.MultiMedia.Png,png,pngl,pagmeta.MultiMedia.Tiff,tiff,tiffl,pagmeta.MultiMedia.Pdf)
-
-
 		}
-
 	}
-
 }
 
 
-func inspect_large_blob(document *documentpb.Document,maxPage int,verbose bool) {
+func inspectLargeBlob(document *documentpb.Document,maxPage int,verbose bool) {
+
 	var (
 		np = int (document.NumberOfPages)
 		q     int = np  / maxPage
@@ -62,10 +60,8 @@ func inspect_large_blob(document *documentpb.Document,maxPage int,verbose bool) 
 		end   int = start + maxPage-1
 	)
 
-
-
 	for s := 1; s <= q; s++ {
-		inspect_part_large_blob(document,start, end,verbose)
+		inspectLargeBlobPart(document,start, end,verbose)
 		start = end + 1
 		end += maxPage
 		if end > np {
@@ -73,13 +69,13 @@ func inspect_large_blob(document *documentpb.Document,maxPage int,verbose bool) 
 		}
 	}
 	if r > 0 {
-		inspect_part_large_blob(document,q*maxPage+1 , np,verbose)
+		inspectLargeBlobPart(document,q*maxPage+1 , np,verbose)
 	}
 
 }
 
 
-func inspect_part_large_blob(document *documentpb.Document,start int,end int,verbose bool)  {
+func inspectLargeBlobPart(document *documentpb.Document,start int,end int,verbose bool)  {
 
 	var (
 		pages = document.GetPage()

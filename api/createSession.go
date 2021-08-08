@@ -152,12 +152,10 @@ func CreateSession() *session.Session {
 			MaxRetries:                     aws.Int(maxRetries),
 			HTTPClient:                     &client,
 		})
-
 	}
-
 	return sess
-
 }
+
 func CreateSession2(req datatype.CreateSession) *session.Session {
 
 	var (

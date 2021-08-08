@@ -50,7 +50,7 @@ var (
 	restore --source-bucket meta-moses-bkp-pn-02 --target-bucket meta-moses-prod-pn-02 will restore  
 	all the documents which are backed up and stored in the meta-moses-bkp-pn-02 bucket
                  `,
-		Run:    Restore_bucket,
+		Run:    RestoreBucket,
 		Hidden: true,
 	}
 	replace bool
@@ -84,7 +84,7 @@ func init() {
 
 }
 
-func Restore_bucket(cmd *cobra.Command, args []string) {
+func RestoreBucket(cmd *cobra.Command, args []string) {
 
 	var (
 		nextMarker string
@@ -164,7 +164,7 @@ func Restore_bucket(cmd *cobra.Command, args []string) {
 	//   bucket for indexing
 	tgtS3 = mosesbc.CreateS3Session("restore", "target")
 
-	if nextMarker, err = restore_bucket(); err != nil {
+	if nextMarker, err = restoreBucket(); err != nil {
 		gLog.Error.Printf("error %v - Next marker %s", err, nextMarker)
 	} else {
 		gLog.Info.Printf("Next Marker %s", nextMarker)
@@ -177,7 +177,7 @@ func Restore_bucket(cmd *cobra.Command, args []string) {
     Restore every document of the returned list if it was backed up
 
 */
-func restore_bucket() (string, error) {
+func restoreBucket() (string, error) {
 	var (
 		nextmarker, token     string
 		N                     int
@@ -211,10 +211,11 @@ func restore_bucket() (string, error) {
 		if len(inFile) > 0 {
 			result, err = ListPn(listpn, int(maxKey)) //  listpn returns the list of documents to be restored
 		} else {
-			result, err = api.ListObjectV2(req) // listobject returns the list of documents to be restored
+			result, err = api.ListObjectV2(req)       // listobject returns the list of documents to be restored
 		}
 		if err == nil {
-			gLog.Info.Printf("Backup bucket %s - target metadata bucket %s - number of documents: %d", srcBucket, tgtBucket, len(result.Contents))
+			tgtSproxyd := targetUrl+"/"+ targetDriver+"/"+targetEnv
+			gLog.Info.Printf("Restoring from backup bucket %s to target sproxyd %s and metadata bucket %s - number of documents: %d", srcBucket,tgtSproxyd, tgtBucket, len(result.Contents))
 			if l := len(result.Contents); l > 0 {
 				var wg1 sync.WaitGroup
 				start := time.Now()
@@ -235,9 +236,9 @@ func restore_bucket() (string, error) {
 							gLog.Info.Printf("Restoring document: %s from backup bucket %s - Size %d - maxPartSize %d", request.Key, request.Bucket,size, maxPartSize)
 							defer wg1.Done()
 							if size <= maxPartSize {
-								pages, sizes, errs = restore_pn(request, replace)
+								pages, sizes, errs = restorePn(request, replace)
 							} else {
-								pages, sizes, errs = restore_multipart_pn(request, replace)
+								pages, sizes, errs = restoreMultipartPn(request, replace)
 							}
 							if errs > 0 {
 								re.Lock()
@@ -258,7 +259,7 @@ func restore_bucket() (string, error) {
 					gLog.Warning.Printf("Truncated %v - Next marker: %s ", *result.IsTruncated, nextmarker)
 				}
 				ndocs = ndocs - nerrors
-				gLog.Info.Printf("Number of restored documents: %d - Number of pages: %d - Documents size: %d - Number of errors: %d -  Elapsed time: %v", ndocs, npages, docsizes, nerrors, time.Since(start))
+				gLog.Info.Printf("Number of restored documents: %d - Number of pages: %d - Documents size: %d - Number of errors: %d - Elapsed time: %v", ndocs, npages, docsizes, nerrors, time.Since(start))
 				tdocs += int64(ndocs)
 				tpages += int64(npages)
 				tsizes += int64(docsizes)
@@ -296,7 +297,7 @@ func restore_bucket() (string, error) {
 			reindexing the document if requested
 */
 
-func restore_pn(request datatype.GetObjRequest, replace bool) (int, int, int) {
+func restorePn(request datatype.GetObjRequest, replace bool) (int, int, int) {
 
 	var (
 		result                    *s3.GetObjectOutput
@@ -392,7 +393,7 @@ func restore_pn(request datatype.GetObjRequest, replace bool) (int, int, int) {
 	return npages, docsizes, nerrors
 }
 
-func restore_multipart_pn(request datatype.GetObjRequest, replace bool) (int, int, int) {
+func restoreMultipartPn(request datatype.GetObjRequest, replace bool) (int, int, int) {
 
 	var (
 		// result                    *s3.GetObjectOutput
@@ -472,14 +473,4 @@ func restore_multipart_pn(request datatype.GetObjRequest, replace bool) (int, in
 	return npages, docsizes, nerrors
 
 }
-/*
-func readS3(service *s3.S3, bucket string, size int64, key string) (interface{}, error) {
 
-	if size > MaxPartSize {
-		return mosesbc.ReadMultipartS3(service, bucket, key)
-	} else {
-		return mosesbc.ReadS3(service, bucket, key)
-	}
-
-}
- */

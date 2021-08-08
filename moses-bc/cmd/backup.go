@@ -79,7 +79,7 @@ var (
          
 		`,
 		Hidden: true,
-		Run:    Bucket_backup,
+		Run:    BackupBucket,
 	}
 
 	inFile, outDir, iBucket, delimiter string
@@ -127,7 +127,7 @@ func init() {
 	// viper.BindPFlag("maxPartSize",rootCmd.PersistentFlags().Lookup("maxParSize"))
 }
 
-func Bucket_backup(cmd *cobra.Command, args []string) {
+func BackupBucket(cmd *cobra.Command, args []string) {
 
 	var (
 		nextmarker string
@@ -271,7 +271,7 @@ func Bucket_backup(cmd *cobra.Command, args []string) {
 	}
 	// start the backup
 	start := time.Now()
-	if nextmarker, err = backup_bucket(reqm); err != nil {
+	if nextmarker, err = backupBucket(reqm); err != nil {
 		gLog.Error.Printf("error %v - Next marker %s", err, nextmarker)
 	} else {
 		gLog.Info.Printf("Next Marker %s", nextmarker)
@@ -283,7 +283,7 @@ func Bucket_backup(cmd *cobra.Command, args []string) {
 /*
 	func backup_bucket(marker string, srcS3 *s3.S3, srcBucket string, tgtS3 *s3.S3, tgtBucket string) (string, error) {
 */
-func backup_bucket(reqm datatype.Reqm) (string, error) {
+func backupBucket(reqm datatype.Reqm) (string, error) {
 	var (
 		nextmarker, token               string
 		N                               int
@@ -530,7 +530,7 @@ func BackupPn(pn string, np int, usermd string, versionId string, maxPage int) (
 		document *documentpb.Document
 		errs     []error
 	)
-	if errs, document = mosesbc.Backup_blob(pn, np, maxPage); len(errs) == 0 {
+	if errs, document = mosesbc.BackupBlob(pn, np, maxPage); len(errs) == 0 {
 
 		/*
 			Add  s3 moses metadata to the document even if it may be  invalid in the source bucket

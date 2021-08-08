@@ -70,7 +70,7 @@ var (
          
 		`,
 		Hidden: true,
-		Run:    Clone_bucket,
+		Run:    CloneBucket,
 	}
 	// s3Src, s3Tgt  datatype.CreateSession
 	reIndex bool
@@ -101,7 +101,7 @@ func init() {
 	initCloFlags(cloneCmd)
 }
 
-func Clone_bucket(cmd *cobra.Command, args []string) {
+func CloneBucket(cmd *cobra.Command, args []string) {
 
 	var err error
 	if err = mosesbc.SetSourceSproxyd("clone", srcUrl, driver, env); err != nil {
@@ -234,7 +234,7 @@ func Clone_bucket(cmd *cobra.Command, args []string) {
 		Incremental: incr,
 	}
 	start := time.Now()
-	if nextMarker, err := clone_bucket(reqm); err != nil {
+	if nextMarker, err := cloneBucket(reqm); err != nil {
 		gLog.Error.Printf("error %v - Next marker %s", err, nextMarker)
 	} else {
 		gLog.Info.Printf("Next Marker %s", nextMarker)
@@ -242,7 +242,7 @@ func Clone_bucket(cmd *cobra.Command, args []string) {
 	gLog.Info.Printf("Total Elapsed time: %v", time.Since(start))
 }
 
-func clone_bucket(reqm datatype.Reqm) (string, error) {
+func cloneBucket(reqm datatype.Reqm) (string, error) {
 
 	var (
 		nextmarker, token            string
@@ -323,7 +323,7 @@ func clone_bucket(reqm datatype.Reqm) (string, error) {
 						wg1.Add(1)
 						go func(request datatype.StatObjRequest, replace bool) {
 							defer wg1.Done()
-							r := clone_pn(request, replace)
+							r := clonePn(request, replace)
 							if r.Nerrors > 0 {
 								re.Lock()
 								nerrors += r.Nerrors
@@ -374,7 +374,7 @@ func clone_bucket(reqm datatype.Reqm) (string, error) {
 
 */
 
-func clone_pn(request datatype.StatObjRequest, replace bool) datatype.Rm {
+func clonePn(request datatype.StatObjRequest, replace bool) datatype.Rm {
 	var (
 		rh = datatype.Rh{
 			Key: request.Key,
@@ -393,15 +393,17 @@ func clone_pn(request datatype.StatObjRequest, replace bool) datatype.Rm {
 			pn = rh.Key
 			if np, err = strconv.Atoi(userm.TotalPages); err == nil {
 				start3 := time.Now()
-				nerr, document := mosesbc.Clone_blob(pn, np, maxPage, replace)
+				nerr, document := mosesbc.CloneBlob(pn, np, maxPage, replace)
 				if nerr == 0 {
 					npages = int(document.NumberOfPages)
 					docsizes = document.Size
 					ndocs = 1
 					gLog.Info.Printf("Document id %s is cloned - Number of pages %d - Document size %d - Number of errors %d - Elapsed time %v ", document.DocId, document.NumberOfPages, document.Size, nerr, time.Since(start3))
+
 					/*
 						indexing the document if no cloning error
 					*/
+
 					if reIndex {
 						start5 := time.Now()
 						if _, err = mosesbc.IndexDocument(document, tgtBucket, tgtS3); err != nil {

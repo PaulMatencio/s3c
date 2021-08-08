@@ -2,6 +2,8 @@ package lib
 
 import (
 	"github.com/paulmatencio/protobuf-doc/src/document/documentpb"
+	// "github.com/paulmatencio/s3c/datatype"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/paulmatencio/s3c/gLog"
 	"github.com/paulmatencio/s3c/sproxyd/lib"
 	"net/http"
@@ -13,14 +15,14 @@ func RestoreBlobs(document *documentpb.Document) int {
 
 	gLog.Info.Printf("Restore blobs - Number of pages %d - MaxPage %d - Replace %v",document.NumberOfPages, MaxPage,Replace)
 	if document.NumberOfPages <= int32(MaxPage) {
-		return restore_regular_blob(document)
+		return restoreBlob(document)
 	} else {
-		return restore_large_blob(document)
+		return restoreLargeBlob(document)
 	}
 }
 
 //  Put  sproxyd blobs
-func restore_regular_blob(document *documentpb.Document) int {
+func restoreBlob(document *documentpb.Document) int {
 	var (
 		request = sproxyd.HttpRequest{
 			Hspool: sproxyd.TargetHP, // IP of target sproxyd
@@ -65,7 +67,7 @@ func restore_regular_blob(document *documentpb.Document) int {
 	return perrors
 }
 
-func restore_large_blob(document *documentpb.Document) int {
+func restoreLargeBlob(document *documentpb.Document) int {
 	var (
 		np          = int(document.NumberOfPages)
 		q       int = np / MaxPage
@@ -95,7 +97,7 @@ func restore_large_blob(document *documentpb.Document) int {
 	}
 
 	for s := 1; s <= q; s++ {
-		perrors = restore_part_large_blob(&request, document, start, end)
+		perrors = restoreLargeBlobPart(&request, document, start, end)
 		start = end + 1
 		end += MaxPage
 		if end > np {
@@ -103,12 +105,12 @@ func restore_large_blob(document *documentpb.Document) int {
 		}
 	}
 	if r > 0 {
-		perrors = restore_part_large_blob(&request, document, q*MaxPage+1, np)
+		perrors = restoreLargeBlobPart(&request, document, q*MaxPage+1, np)
 	}
 	return perrors
 }
 
-func restore_part_large_blob(request *sproxyd.HttpRequest, document *documentpb.Document, start int, end int) int {
+func restoreLargeBlobPart(request *sproxyd.HttpRequest, document *documentpb.Document, start int, end int) int {
 
 	var (
 		perrors int
@@ -141,49 +143,112 @@ func restore_part_large_blob(request *sproxyd.HttpRequest, document *documentpb.
 
 }
 
-//  Put  sproxyd blobs
-func restore_regular_toS3(document *documentpb.Document, replace bool) int {
-	var (
-		request = sproxyd.HttpRequest{
-			Hspool: sproxyd.TargetHP, // IP of target sproxyd
-			Client: &http.Client{
-				Timeout:   sproxyd.ReadTimeout,
-				Transport: sproxyd.Transport,
-			},
-			//  ReqHeader: map[string]string{},
-		}
-		perrors int
-		pu      sync.Mutex
-		wg1     sync.WaitGroup
-	)
 
+func restoreS3Object( service *s3.S3,bucket string, document *documentpb.Document, replace bool) int {
+
+	var (
+		perrors int
+		result  *s3.PutObjectOutput
+		err error
+		wg1 sync.WaitGroup
+		pu sync.Mutex
+	)
 	//   Write document metadata
 
-	if nerr, status := WriteDocMetadata(&request, document, replace); nerr > 0 {
-		gLog.Warning.Printf("Document %s is not restored", document.DocId)
-		perrors += nerr
+	if result,err  = WriteS3Metadata(service,bucket , document); err!= nil  {
+		gLog.Warning.Printf("Error %v writing document  %s metadata", err,document.DocId)
+		perrors += 1
 		return perrors
 	} else {
-		if status == 412 {
-			gLog.Warning.Printf("Document %s is not restored - use --replace=true  ou -r=true to replace the existing document", document.DocId)
-			return 1
-		}
+		gLog.Info.Printf("Document metadata is restored",result.ETag)
 	}
 	//  get the number of pages
 	// start := time.Now()
 	pages := document.GetPage()
 	for _, pg := range pages {
 		wg1.Add(1)
-		go func(request sproxyd.HttpRequest, pg *documentpb.Page) {
+		go func(service *s3.S3, bucket string, pg *documentpb.Page) {
 			defer wg1.Done()
-			if perr, _ := WriteDocPage(request, pg, replace); perr > 0 {
+			if _,err = WriteS3Page(service,bucket,pg); err != nil {
 				pu.Lock()
-				perrors += perr
+				perrors += 1
 				pu.Unlock()
+				gLog.Error.Printf("Error %v writing page %d",err,pg.PageNumber)
 			}
-		}(request, pg)
+		}(service,bucket, pg)
 	}
 	wg1.Wait()
-	request.Client.CloseIdleConnections()
 	return perrors
+}
+
+func restoreLargeS3Object(service *s3.S3, bucket string, document *documentpb.Document) int {
+	var (
+		np          = int(document.NumberOfPages)
+		q       int = np / MaxPage
+		r       int = np % MaxPage
+		start   int = 1
+		perrors int
+		end     int = start + MaxPage - 1
+
+	)
+	gLog.Info.Printf("Restore large blobs - Number of pages %d - MaxPage %d - Replace %v",document.NumberOfPages, MaxPage,Replace)
+	if result, err := WriteS3Metadata(service,bucket, document); err != nil  {
+		gLog.Warning.Printf("Error %v writing document  %s metadata", err,document.DocId)
+		perrors += 1
+		return perrors
+	} else {
+		gLog.Info.Printf("Document metadata is restored",result.ETag)
+	}
+
+	for s := 1; s <= q; s++ {
+		perrors = restoreLargeS3Object1(service,bucket, document, start, end)
+		start = end + 1
+		end += MaxPage
+		if end > np {
+			end = np
+		}
+	}
+	if r > 0 {
+		perrors = restoreLargeS3Object1(service,bucket, document, q*MaxPage+1, np)
+	}
+	return perrors
+}
+
+
+func restoreLargeS3Object1(service *s3.S3,bucket string, document *documentpb.Document, start int, end int) int {
+
+	var (
+		perrors int
+		pages   = document.GetPage()
+		pu      sync.Mutex
+		wg1     sync.WaitGroup
+		err error
+	)
+
+	/*
+		loading
+	*/
+
+	gLog.Info.Printf("Docid: %s - Starting slot %d - Ending slot  %d - Number of pages %d  - Length of pages array: %d ", document.DocId, start, end, document.NumberOfPages, len(pages))
+	for k := start; k <= end; k++ {
+		pg := *pages[k-1]
+		wg1.Add(1)
+
+		go func(service *s3.S3,bucket string, pg *documentpb.Page) {
+
+			defer wg1.Done()
+			if _,err = WriteS3Page(service,bucket,pg); err != nil {
+				pu.Lock()
+				perrors += 1
+				pu.Unlock()
+				gLog.Error.Printf("Error %v writing page %d",err,pg.PageNumber)
+			}
+
+		}(service,bucket, &pg)
+	}
+	wg1.Wait()
+
+	gLog.Trace.Printf("WriteS3  document %s  starting slot: %d - ending slot: %d  completed", document.DocId, start, end)
+	return perrors
+
 }

@@ -17,19 +17,19 @@ import (
 	Migrate Scality Blobs to  S3 objects
 */
 
-func Migrate_blob(reqm datatype.Reqm, s3meta string, pn string, np int) (int, *documentpb.Document) {
-
+func MigrateBlob(reqm datatype.Reqm, s3meta string, pn string, np int) (int, *documentpb.Document) {
 	if np <= MaxPage {
-		return migrate_regular_blob(reqm, s3meta, pn, np)
+		return migrateBlob(reqm, s3meta, pn, np)
 	} else {
-		return migrate_large_blob(reqm, s3meta, pn, np)
+		return migrateBlob(reqm, s3meta, pn, np)
 	}
 }
 
 /*
 document with  smaller pages number than the maxPage value
 */
-func migrate_regular_blob(reqm datatype.Reqm, s3meta string, pn string, np int) (int, *documentpb.Document) {
+
+func migrateBlob(reqm datatype.Reqm, s3meta string, pn string, np int) (int, *documentpb.Document) {
 
 	var (
 		request = sproxyd.HttpRequest{
@@ -140,7 +140,7 @@ func migrate_regular_blob(reqm datatype.Reqm, s3meta string, pn string, np int) 
 	get document of which  the number of pages > maxPages
 
 */
-func migrate_large_blob(reqm datatype.Reqm, s3meta string, pn string, np int) (int, *documentpb.Document) {
+func migrateLargeBlob(reqm datatype.Reqm, s3meta string, pn string, np int) (int, *documentpb.Document) {
 
 	var (
 		start, q, r, end, npages int
@@ -212,7 +212,7 @@ func migrate_large_blob(reqm datatype.Reqm, s3meta string, pn string, np int) (i
 
 	for s := 1; s <= q; s++ {
 		start3 := time.Now()
-		nerr = migrate_part_large_blob(reqm, document, pn, np, start, end)
+		nerr = migrateLargeBlobPart(reqm, document, pn, np, start, end)
 		gLog.Info.Printf("Get pages range %d:%d for document %s - Elapsed time %v ", start, end, pn, time.Since(start3))
 		start = end + 1
 		end += MaxPage
@@ -224,14 +224,14 @@ func migrate_large_blob(reqm datatype.Reqm, s3meta string, pn string, np int) (i
 	if r > 0 {
 		start4 := time.Now()
 		start := q*MaxPage + 1
-		nerr = migrate_part_large_blob(reqm, document, pn, np, start, np)
+		nerr = migrateLargeBlobPart(reqm, document, pn, np, start, np)
 		gLog.Info.Printf("Get pages range %d:%d for document %s - Elapsed time %v ", start, np, pn, time.Since(start4))
 	}
 	gLog.Info.Printf("Migrate document %s - number of pages %d - Document size %d - Elapsed time %v", document.DocId, npages, document.Size, time.Since(start2))
 	return nerr, document
 }
 
-func migrate_part_large_blob(reqm datatype.Reqm, document *documentpb.Document, pn string, np int, start int, end int) int {
+func migrateLargeBlobPart(reqm datatype.Reqm, document *documentpb.Document, pn string, np int, start int, end int) int {
 
 	var (
 		//  sproxyd request for the source Ring

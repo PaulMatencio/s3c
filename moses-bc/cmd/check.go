@@ -78,13 +78,13 @@ func Check(cmd *cobra.Command, args []string) {
 	gLog.Info.Printf("Source Env: %s - Source Driver: %s - Source Url: %s",sproxyd.Env, sproxyd.Driver, sproxyd.Url)
 	gLog.Info.Printf("Target Env: %s - Target Driver: %s - Target Url: %s",sproxyd.TargetEnv, sproxyd.TargetDriver, sproxyd.TargetUrl)
 	if len(pn) > 0 {
-		ChekBlob1(pn)
+		chekBlob(pn)
 	} else if len(prefix) > 0 {
 		if len(srcBucket) == 0 {
 			gLog.Error.Printf("Source S3  bucket is missing")
 			return
 		}
-		CheckBlobs(srcBucket, marker, prefix, maxKey, maxPage, maxLoop)
+		checkBlobs(srcBucket, marker, prefix, maxKey, maxPage, maxLoop)
 	} else {
 		gLog.Error.Printf("Both publication number --pn   and  --prefix arguments are missing. Please specify either --pn or --prefix or --help for help")
 		return
@@ -94,10 +94,10 @@ func Check(cmd *cobra.Command, args []string) {
 /*
 	called by Check()  for a given publication number
 */
-func ChekBlob1(pn string) {
+func chekBlob(pn string) {
 	if np, err, status := mosesbc.GetPageNumber(pn); err == nil && status == 200 {
 		if np > 0 {
-			mosesbc.CheckBlob1(pn, np, maxPage)
+			mosesbc.CheckBlob(pn, np, maxPage)
 		} else {
 			gLog.Error.Printf("The number of pages is %d ", np)
 		}
@@ -111,7 +111,7 @@ func ChekBlob1(pn string) {
     the mose metadata buckets are used to list all the publication for a given prefix
 */
 
-func CheckBlobs(bucket string, marker string, prefix string, maxKey int64, maxPage int, maxLoop int) {
+func checkBlobs(bucket string, marker string, prefix string, maxKey int64, maxPage int, maxLoop int) {
 
 	if err, suf := mosesbc.GetBucketSuffix(bucket, prefix); err != nil {
 		gLog.Error.Printf("%v", err)

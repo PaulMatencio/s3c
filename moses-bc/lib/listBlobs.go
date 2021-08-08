@@ -39,7 +39,7 @@ func ListBlobs(request datatype.ListObjRequest, maxLoop int, maxPage int) {
 						defer wg1.Done()
 						if np, err, status := GetPageNumber(pn); err == nil && status == 200 {
 							if np > 0 {
-								ListBlob1(pn, np, maxPage)
+								ListBlob(pn, np, maxPage)
 							} else {
 								gLog.Error.Printf("The number of pages is %d ", np)
 							}
@@ -72,15 +72,15 @@ func ListBlobs(request datatype.ListObjRequest, maxLoop int, maxPage int) {
 
  */
 
-func ListBlob1(pn string, np int, maxPage int) int {
+func ListBlob(pn string, np int, maxPage int) int {
 
 	start := time.Now()
 	if np <= maxPage {
-		r := _listBlob1(pn, np)
+		r := listBlob(pn, np)
 		gLog.Info.Printf("Elapsed time %v", time.Since(start))
 		return r
 	} else {
-		r := _listBig1(pn, np, maxPage)
+		r := listLargeBlob(pn, np, maxPage)
 		gLog.Info.Printf("Elapsed time %v", time.Since(start))
 		return r
 	}
@@ -91,7 +91,7 @@ func ListBlob1(pn string, np int, maxPage int) int {
 	called by ListBlob1
 */
 
-func _listBlob1(pn string, np int) int {
+func listBlob(pn string, np int) int {
 	var (
 		request1 = sproxyd.HttpRequest{
 			Hspool: sproxyd.HP,
@@ -164,7 +164,7 @@ func _listBlob1(pn string, np int) int {
 
 //  document with bigger  pages number than maxPage
 
-func _listBig1(pn string, np int, maxPage int) int {
+func listLargeBlob(pn string, np int, maxPage int) int {
 
 	var (
 		q, r, start, end int
@@ -202,7 +202,7 @@ func _listBig1(pn string, np int, maxPage int) int {
 	gLog.Warning.Printf("Big document %s  - number of pages %d ", pn, np)
 
 	for s := 1; s <= q; s++ {
-		nerrors = _ListPart1(pn, np, start, end)
+		nerrors = listLargeBlobPart(pn, np, start, end)
 		start = end + 1
 		end += maxPage
 		if end > np {
@@ -211,7 +211,7 @@ func _listBig1(pn string, np int, maxPage int) int {
 		terrors += nerrors
 	}
 	if r > 0 {
-		nerrors = _ListPart1(pn, np, q*maxPage+1, np)
+		nerrors = listLargeBlobPart(pn, np, q*maxPage+1, np)
 		if nerrors > 0 {
 			terrors += nerrors
 		}
@@ -223,7 +223,7 @@ func _listBig1(pn string, np int, maxPage int) int {
 /*
 	called by ListBig1
 */
-func _ListPart1(pn string, np int, start int, end int) int {
+func listLargeBlobPart(pn string, np int, start int, end int) int {
 
 	var (
 		request = sproxyd.HttpRequest{
