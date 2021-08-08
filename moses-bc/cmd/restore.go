@@ -116,7 +116,7 @@ func RestorePns(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	if len(indBucket) == 0 {
+	if reIndex && len(indBucket) == 0 {
 		gLog.Warning.Printf("%s", missingIndBucket)
 		return
 	}
@@ -260,7 +260,7 @@ func restorePns() (string, error) {
 		if err == nil {
 			if !toS3 {
 				tgtSproxyd = targetUrl + "/" + targetDriver + "/" + targetEnv
-				gLog.Info.Printf("Restoring from backup bucket %s to target sproxyd %s and metadata bucket %s - number of documents: %d", srcBucket, tgtSproxyd, tgtBucket, len(result.Contents))
+				gLog.Info.Printf("Restoring from backup bucket %s to target sproxyd %s - indexing bucket %s - number of documents: %d", srcBucket, tgtSproxyd, indBucket, len(result.Contents))
 			} else {
 				gLog.Info.Printf("Restoring from backup bucket %s to S3 bucket %s - number of documents: %d", srcBucket, tgtBucket, len(result.Contents))
 			}

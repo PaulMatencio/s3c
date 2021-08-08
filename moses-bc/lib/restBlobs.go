@@ -201,13 +201,13 @@ func restoreLargeS3Object(service *s3.S3, bucket string, document *documentpb.Do
 		end     int = start + MaxPage - 1
 
 	)
-	gLog.Info.Printf("Restoring large blobs to S3 bucket - Number of pages %d - MaxPage %d - Replace %v",bucket, document.NumberOfPages, MaxPage,Replace)
+	gLog.Info.Printf("Restoring large blobs to S3 bucket %s- Number of pages %d - MaxPage %d - Replace %v",bucket, document.NumberOfPages, MaxPage,Replace)
 	if result, err := WriteS3Metadata(service,bucket, document); err != nil  {
 		gLog.Warning.Printf("Error %v writing document  %s metadata", err,document.DocId)
 		perrors += 1
 		return perrors
 	} else {
-		gLog.Info.Printf("Document %s - metadata is restored to S3 bucket %s - Etag %s ",document.DocId, bucket , result.ETag)
+		gLog.Info.Printf("Document %s - metadata is restored to S3 bucket %s - Etag %s ",document.DocId, bucket , *result.ETag)
 	}
 
 	for s := 1; s <= q; s++ {
