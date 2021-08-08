@@ -21,6 +21,15 @@ func RestoreBlobs(document *documentpb.Document) int {
 	}
 }
 
+func Restores3Objects(service *s3.S3, bucket string, document *documentpb.Document) int {
+
+	gLog.Info.Printf("Restore blobs - Number of pages %d - MaxPage %d - Replace %v",document.NumberOfPages, MaxPage,Replace)
+	if document.NumberOfPages <= int32(MaxPage) {
+		return restoreS3Object(service,bucket,document)
+	} else {
+		return restoreLargeS3Object(service,bucket,document)
+	}
+}
 //  Put  sproxyd blobs
 func restoreBlob(document *documentpb.Document) int {
 	var (
@@ -144,7 +153,7 @@ func restoreLargeBlobPart(request *sproxyd.HttpRequest, document *documentpb.Doc
 }
 
 
-func restoreS3Object( service *s3.S3,bucket string, document *documentpb.Document, replace bool) int {
+func restoreS3Object( service *s3.S3,bucket string, document *documentpb.Document) int {
 
 	var (
 		perrors int

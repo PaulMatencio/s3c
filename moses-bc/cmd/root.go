@@ -76,6 +76,7 @@ var (
 	missingiFile     = "Missing input file --input-file argument. Use  --help or -h for help "
 	missingSrcBucket = "Missing source S3 bucket --source-bucket argument. Use  --help or -h for help"
 	missingTgtBucket = "Missing target S3 bucket --target-bucket argument. Use  --help or -h for help"
+	missingIndBucket = "Missing index S3 bucket --index-bucket argument. Use  --help or -h for help"
 	missingBucket = "Missing S3 bucket--bucket argument. Use  --help or -h for help"
 
 

@@ -79,7 +79,7 @@ var (
          
 		`,
 		Hidden: true,
-		Run:    BackupBucket,
+		Run:    BackupPns,
 	}
 
 	inFile, outDir, iBucket, delimiter string
@@ -127,7 +127,7 @@ func init() {
 	// viper.BindPFlag("maxPartSize",rootCmd.PersistentFlags().Lookup("maxParSize"))
 }
 
-func BackupBucket(cmd *cobra.Command, args []string) {
+func BackupPns(cmd *cobra.Command, args []string) {
 
 	var (
 		nextmarker string
@@ -271,7 +271,7 @@ func BackupBucket(cmd *cobra.Command, args []string) {
 	}
 	// start the backup
 	start := time.Now()
-	if nextmarker, err = backupBucket(reqm); err != nil {
+	if nextmarker, err = backupPns(reqm); err != nil {
 		gLog.Error.Printf("error %v - Next marker %s", err, nextmarker)
 	} else {
 		gLog.Info.Printf("Next Marker %s", nextmarker)
@@ -283,7 +283,7 @@ func BackupBucket(cmd *cobra.Command, args []string) {
 /*
 	func backup_bucket(marker string, srcS3 *s3.S3, srcBucket string, tgtS3 *s3.S3, tgtBucket string) (string, error) {
 */
-func backupBucket(reqm datatype.Reqm) (string, error) {
+func backupPns(reqm datatype.Reqm) (string, error) {
 	var (
 		nextmarker, token               string
 		N                               int
@@ -396,7 +396,7 @@ func backupBucket(reqm datatype.Reqm) (string, error) {
 									json.Unmarshal([]byte(usermd), &userm)
 									pn := rh.Key
 									if np, err = strconv.Atoi(userm.TotalPages); err == nil {
-										nerr, document := BackupPn(pn, np, usermd, versionId, maxPage)
+										nerr, document := backupPn(pn, np, usermd, versionId, maxPage)
 										if nerr > 0 {
 											mt.Lock()
 											nerrors += nerr
@@ -408,7 +408,7 @@ func backupBucket(reqm datatype.Reqm) (string, error) {
 									} else {
 										gLog.Error.Printf("Document %s - S3 metadata has an invalid number of pages in %s - Try to get it from the document user metadata ", pn, usermd)
 										if np, err, status = mosesbc.GetPageNumber(pn); err == nil {
-											nerr, document := BackupPn(pn, np, usermd, versionId, maxPage)
+											nerr, document := backupPn(pn, np, usermd, versionId, maxPage)
 											gLog.Info.Printf("Time from start %v", time.Since(start))
 											if nerr > 0 {
 												mt.Lock()
@@ -481,8 +481,6 @@ func backupBucket(reqm datatype.Reqm) (string, error) {
 	return nextmarker, nil
 }
 
-//func inc_backup(listpn *bufio.Scanner, srcS3 *s3.S3, srcBucket string, tgtS3 *s3.S3, tgtBucket string) (string, error) {
-
 func printErr(errs []error) {
 	for _, e := range errs {
 		gLog.Error.Println(e)
@@ -523,7 +521,7 @@ func ListPn(buf *bufio.Scanner, num int) (*s3.ListObjectsV2Output, error) {
 	return result, err
 }
 
-func BackupPn(pn string, np int, usermd string, versionId string, maxPage int) (int, *documentpb.Document) {
+func backupPn(pn string, np int, usermd string, versionId string, maxPage int) (int, *documentpb.Document) {
 
 	var (
 		nerrs    = 0

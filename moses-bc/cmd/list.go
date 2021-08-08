@@ -23,21 +23,21 @@ var (
 		Short:  loshort,
 		Long:   ``,
 		Hidden: true,
-		Run:    listObjectV2,
+		Run:    ListObjectV2,
 	}
 	listBlobCmd = &cobra.Command{
 		Use:    "list-blobs",
 		Short:  loshort,
 		Long:   ``,
 		Hidden: true,
-		Run:    listBlobs,
+		Run:    ListBlobs,
 	}
 	lbCmd = &cobra.Command{
 		Use:    "list-buckets",
 		Short:  "list buckets of a given S3 location",
 		Hidden: true,
 		Long:   ``,
-		Run:    listBucket,
+		Run:    ListBuckets,
 	}
 
 	lvCmd = &cobra.Command{
@@ -45,7 +45,7 @@ var (
 		Short:  "Command to list objects and their versions of a given bucket",
 		Long:   ``,
 		Hidden: true,
-		Run:    listObjVersions,
+		Run:    ListObjVersions,
 	}
 	location string
 	prefixs  string
@@ -127,7 +127,7 @@ func createS3Session(location string) (error, *s3.S3) {
 
 }
 
-func listBlobs(cmd *cobra.Command, args []string) {
+func ListBlobs(cmd *cobra.Command, args []string) {
 
 	var (
 		req     datatype.ListObjRequest
@@ -176,7 +176,8 @@ func listBlobs(cmd *cobra.Command, args []string) {
 	}
 }
 
-func listObjectV2(cmd *cobra.Command, args []string) {
+
+func ListObjectV2(cmd *cobra.Command, args []string) {
 
 	var (
 		start   = utils.LumberPrefix(cmd)
@@ -212,8 +213,8 @@ func listObjectV2(cmd *cobra.Command, args []string) {
 	}
 }
 
-func listObjVersions(cmd *cobra.Command, args []string) {
 
+func ListObjVersions(cmd *cobra.Command, args []string) {
 	var (
 		service *s3.S3
 		req     datatype.ListObjVersionsRequest
@@ -240,7 +241,8 @@ func listObjVersions(cmd *cobra.Command, args []string) {
 	listVersions(req)
 }
 
-func listBucket(cmd *cobra.Command, args []string) {
+
+func ListBuckets(cmd *cobra.Command, args []string) {
 	if err, service = createS3Session(location); err != nil {
 		gLog.Error.Printf("%v", err)
 		return

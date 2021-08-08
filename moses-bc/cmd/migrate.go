@@ -78,7 +78,7 @@ var (
          
 		`,
 		Hidden: true,
-		Run:    Bucket_migrate,
+		Run:    MigratePns,
 	}
 )
 
@@ -109,7 +109,7 @@ func init() {
 	// viper.BindPFlag("maxPartSize",rootCmd.PersistentFlags().Lookup("maxParSize"))
 }
 
-func Bucket_migrate(cmd *cobra.Command, args []string) {
+func MigratePns(cmd *cobra.Command, args []string) {
 
 	var (
 		nextmarker string
@@ -266,7 +266,7 @@ func Bucket_migrate(cmd *cobra.Command, args []string) {
 	}
 	start := time.Now()
 
-	if nextmarker, err = migrateBucket(marker, reqm); err != nil {
+	if nextmarker, err = migratePns(marker, reqm); err != nil {
 		gLog.Error.Printf("error %v - Next marker %s", err, nextmarker)
 	} else {
 		gLog.Info.Printf("Next Marker %s", nextmarker)
@@ -278,7 +278,7 @@ func Bucket_migrate(cmd *cobra.Command, args []string) {
 /*
 	func backup_bucket(marker string, srcS3 *s3.S3, srcBucket string, tgtS3 *s3.S3, tgtBucket string) (string, error) {
 */
-func migrateBucket(marker string, reqm datatype.Reqm) (string, error) {
+func migratePns(marker string, reqm datatype.Reqm) (string, error) {
 	var (
 		nextmarker, token               string
 		N                               int
@@ -383,7 +383,6 @@ func migrateBucket(marker string, reqm datatype.Reqm) (string, error) {
 								ndocs += r.Ndocs
 								mt.Unlock()
 							}
-
 							if method == "DELETE" {
 								ndel, nerr := deleteVersions(request)
 								if ndel > 0 {

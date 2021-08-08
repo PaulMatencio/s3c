@@ -70,7 +70,7 @@ var (
          
 		`,
 		Hidden: true,
-		Run:    CloneBucket,
+		Run:    ClonePns,
 	}
 	// s3Src, s3Tgt  datatype.CreateSession
 	reIndex bool
@@ -101,7 +101,7 @@ func init() {
 	initCloFlags(cloneCmd)
 }
 
-func CloneBucket(cmd *cobra.Command, args []string) {
+func ClonePns(cmd *cobra.Command, args []string) {
 
 	var err error
 	if err = mosesbc.SetSourceSproxyd("clone", srcUrl, driver, env); err != nil {
@@ -234,7 +234,7 @@ func CloneBucket(cmd *cobra.Command, args []string) {
 		Incremental: incr,
 	}
 	start := time.Now()
-	if nextMarker, err := cloneBucket(reqm); err != nil {
+	if nextMarker, err := clonePns(reqm); err != nil {
 		gLog.Error.Printf("error %v - Next marker %s", err, nextMarker)
 	} else {
 		gLog.Info.Printf("Next Marker %s", nextMarker)
@@ -242,7 +242,7 @@ func CloneBucket(cmd *cobra.Command, args []string) {
 	gLog.Info.Printf("Total Elapsed time: %v", time.Since(start))
 }
 
-func cloneBucket(reqm datatype.Reqm) (string, error) {
+func clonePns(reqm datatype.Reqm) (string, error) {
 
 	var (
 		nextmarker, token            string
