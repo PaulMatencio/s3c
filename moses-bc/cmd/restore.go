@@ -442,12 +442,13 @@ func restorePn(request datatype.GetObjRequest, replace bool) (int, int, int) {
 				gLog.Info.Printf("Document id %s is fully restored - Number of pages %d - Document size %d - Elapsed time %v ", document.DocId, document.NumberOfPages, document.Size, time.Since(start4))
 				/* start  indexing */
 				start5 := time.Now()
-
-				if _, err = mosesbc.IndexDocument(document, indBucket, tgtS3); err != nil {
-					gLog.Error.Printf("Error %v while indexing the document id %s iwith the bucket %s", err, document.DocId, indBucket)
-					nerrors = 1
-				} else {
-					gLog.Info.Printf("Document id %s is now indexed in the bucket %s - Elapsed time %v", document.DocId, indBucket, time.Since(start5))
+				if reIndex {
+					if _, err = mosesbc.IndexDocument(document, indBucket, tgtS3); err != nil {
+						gLog.Error.Printf("Error %v while indexing the document id %s iwith the bucket %s", err, document.DocId, indBucket)
+						nerrors = 1
+					} else {
+						gLog.Info.Printf("Document id %s is now indexed in the bucket %s - Elapsed time %v", document.DocId, indBucket, time.Since(start5))
+					}
 				}
 			}
 		} else {
