@@ -141,14 +141,15 @@ func RestorePns(cmd *cobra.Command, args []string) {
 				}
 			}
 		}
-
-		if err, suf := mosesbc.GetBucketSuffix(indBucket, prefix); err != nil {
-			gLog.Error.Printf("%v", err)
-			return
-		} else {
-			if len(suf) > 0 {
-				indBucket += "-" + suf
-				gLog.Warning.Printf("A suffix %s is appended to the index Bucket %s", suf, indBucket)
+		if reIndex {
+			if err, suf := mosesbc.GetBucketSuffix(indBucket, prefix); err != nil {
+				gLog.Error.Printf("%v", err)
+				return
+			} else {
+				if len(suf) > 0 {
+					indBucket += "-" + suf
+					gLog.Warning.Printf("A suffix %s is appended to the index Bucket %s", suf, indBucket)
+				}
 			}
 		}
 
