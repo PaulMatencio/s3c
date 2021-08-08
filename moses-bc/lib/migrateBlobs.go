@@ -21,7 +21,7 @@ func MigrateBlob(reqm datatype.Reqm, s3meta string, pn string, np int) (int, *do
 	if np <= MaxPage {
 		return migrateBlob(reqm, s3meta, pn, np)
 	} else {
-		return migrateBlob(reqm, s3meta, pn, np)
+		return migrateLargeBlob(reqm, s3meta, pn, np)
 	}
 }
 

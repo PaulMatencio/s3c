@@ -235,7 +235,7 @@ func Bucket_migrate(cmd *cobra.Command, args []string) {
 	*/
 
 	if err = mosesbc.SetSourceSproxyd("migrate", srcUrl, driver, env); err != nil {
-		gLog.Warning.Printf("Checking  clone.s3.source...  and clone.sproxy.source... ")
+		gLog.Warning.Printf("Looking for clone.sproxy.source.url .driver and .env in the config file")
 		if err = mosesbc.SetSourceSproxyd("clone", srcUrl, driver, env); err != nil {
 			return
 		}
@@ -251,6 +251,7 @@ func Bucket_migrate(cmd *cobra.Command, args []string) {
 	}
 	// tgtS3 = mosesbc.CreateS3Session("backup", "target")
 	if tgtS3 = mosesbc.CreateS3Session("migrate", "target"); tgtS3 == nil {
+		gLog.Warning.Printf("Looking for clone.s3.target.url in the config file  ")
 		if tgtS3 = mosesbc.CreateS3Session("clone", "target"); tgtS3 == nil {
 			gLog.Error.Printf("Failed to create a S3 target session")
 			return
@@ -265,7 +266,7 @@ func Bucket_migrate(cmd *cobra.Command, args []string) {
 	}
 	start := time.Now()
 
-	if nextmarker, err = migrate_bucket(marker, reqm); err != nil {
+	if nextmarker, err = migrateBucket(marker, reqm); err != nil {
 		gLog.Error.Printf("error %v - Next marker %s", err, nextmarker)
 	} else {
 		gLog.Info.Printf("Next Marker %s", nextmarker)
@@ -277,7 +278,7 @@ func Bucket_migrate(cmd *cobra.Command, args []string) {
 /*
 	func backup_bucket(marker string, srcS3 *s3.S3, srcBucket string, tgtS3 *s3.S3, tgtBucket string) (string, error) {
 */
-func migrate_bucket(marker string, reqm datatype.Reqm) (string, error) {
+func migrateBucket(marker string, reqm datatype.Reqm) (string, error) {
 	var (
 		nextmarker, token               string
 		N                               int
@@ -370,7 +371,7 @@ func migrate_bucket(marker string, reqm datatype.Reqm) (string, error) {
 							defer wg1.Done()
 							gLog.Trace.Printf("Method %s - Key %s ", method, request.Key)
 							if method == "PUT" {
-								r := migrate_pn(request, reqm)
+								r := migratePn(request, reqm)
 								if r.Nerrors > 0 {
 									mu.Lock()
 									nerrors += r.Nerrors
@@ -430,7 +431,7 @@ func migrate_bucket(marker string, reqm datatype.Reqm) (string, error) {
 	return nextmarker, nil
 }
 
-func migrate_pn(request datatype.StatObjRequest, reqm datatype.Reqm) datatype.Rm {
+func migratePn(request datatype.StatObjRequest, reqm datatype.Reqm) datatype.Rm {
 
 	var (
 		rh = datatype.Rh{
