@@ -93,9 +93,9 @@ func restoreLargeBlob(document *documentpb.Document) int {
 			// ReqHeader: map[string]string{},
 		}
 	)
-	gLog.Info.Printf("Restore large blobs - Number of pages %d - MaxPage %d - Replace %v",document.NumberOfPages, MaxPage,Replace)
+	gLog.Info.Printf("Restore large blobs to sproxyd - Number of pages %d - MaxPage %d - Replace %v",document.NumberOfPages, MaxPage,Replace)
 	if nerr, status := WriteDocMetadata(&request, document, Replace); nerr > 0 {
-		gLog.Warning.Printf("Document %s is not restored", document.DocId)
+		gLog.Warning.Printf("Error writing document metadata - Document %s is not restored", document.DocId)
 		perrors += nerr
 		return perrors
 	} else {
@@ -165,11 +165,11 @@ func restoreS3Object( service *s3.S3,bucket string, document *documentpb.Documen
 	//   Write document metadata
 
 	if result,err  = WriteS3Metadata(service,bucket , document); err!= nil  {
-		gLog.Warning.Printf("Error %v writing document  %s metadata", err,document.DocId)
+		gLog.Warning.Printf("Error %v writing document metadata - Document %s is not restored", err,document.DocId)
 		perrors += 1
 		return perrors
 	} else {
-		gLog.Info.Printf("Document metadata is restored",result.ETag)
+		gLog.Info.Printf("Document %s - metadata is restored to S3 bucket %s - Etag %s ",document.DocId, bucket , result.ETag)
 	}
 	//  get the number of pages
 	// start := time.Now()
@@ -191,6 +191,7 @@ func restoreS3Object( service *s3.S3,bucket string, document *documentpb.Documen
 }
 
 func restoreLargeS3Object(service *s3.S3, bucket string, document *documentpb.Document) int {
+
 	var (
 		np          = int(document.NumberOfPages)
 		q       int = np / MaxPage
@@ -200,17 +201,17 @@ func restoreLargeS3Object(service *s3.S3, bucket string, document *documentpb.Do
 		end     int = start + MaxPage - 1
 
 	)
-	gLog.Info.Printf("Restore large blobs - Number of pages %d - MaxPage %d - Replace %v",document.NumberOfPages, MaxPage,Replace)
+	gLog.Info.Printf("Restoring large blobs to S3 bucket - Number of pages %d - MaxPage %d - Replace %v",bucket, document.NumberOfPages, MaxPage,Replace)
 	if result, err := WriteS3Metadata(service,bucket, document); err != nil  {
 		gLog.Warning.Printf("Error %v writing document  %s metadata", err,document.DocId)
 		perrors += 1
 		return perrors
 	} else {
-		gLog.Info.Printf("Document metadata is restored",result.ETag)
+		gLog.Info.Printf("Document %s - metadata is restored to S3 bucket %s - Etag %s ",document.DocId, bucket , result.ETag)
 	}
 
 	for s := 1; s <= q; s++ {
-		perrors = restoreLargeS3Object1(service,bucket, document, start, end)
+		perrors = restoreLargeS3ObjectPart(service,bucket, document, start, end)
 		start = end + 1
 		end += MaxPage
 		if end > np {
@@ -218,13 +219,13 @@ func restoreLargeS3Object(service *s3.S3, bucket string, document *documentpb.Do
 		}
 	}
 	if r > 0 {
-		perrors = restoreLargeS3Object1(service,bucket, document, q*MaxPage+1, np)
+		perrors = restoreLargeS3ObjectPart(service,bucket, document, q*MaxPage+1, np)
 	}
 	return perrors
 }
 
 
-func restoreLargeS3Object1(service *s3.S3,bucket string, document *documentpb.Document, start int, end int) int {
+func restoreLargeS3ObjectPart(service *s3.S3,bucket string, document *documentpb.Document, start int, end int) int {
 
 	var (
 		perrors int
