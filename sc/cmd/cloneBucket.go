@@ -36,6 +36,7 @@ var (
 	srcBucket,tgtBucket string
 	fromDate,inputKeys string
 	filter string
+	ctimeout time.Duration
 	check, overWrite bool
 )
 
@@ -57,7 +58,7 @@ func initCbFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVarP(&maxLoop,"maxLoop","",1,"maximum number of loop, 0 means no upper limit")
 	cmd.Flags().StringVarP(&fromDate,"fromDate","","2019-01-01T00:00:00Z","clone objects with last modified from <yyyy-mm-ddThh:mm:ss>")
 	cmd.Flags().BoolVarP(&check,"check","",true,"check for new objects ,to be used with --fromDate argument")
-
+	cmd.Flags().DurationVarP(&ctimeout, "--ctimeout", "", 10, "set context background cancel timeout in seconds")
 	// cmd.Flags().StringVarP(&delimiter,"delimiter","d","","key delimiter")
 }
 
@@ -198,7 +199,7 @@ func cloneBucket(cmd *cobra.Command,args []string) {
 										gLog.Trace.Printf("Key %s  - Bucket %s - size: %d ", put.Key, put.Bucket, put.Buffer.Len())
 										utils.PrintMetadata(put.Metadata)
 										for r2 := 0; r2 <= retryNumber; r2++ {
-											r, err := api.PutObject3(put)
+											r, err := api.PutObjectWithContext(ctimeout,put)
 											if err == nil {
 												gLog.Trace.Printf("Retry: %d - Key: %s - Etag: %s- Total cloned: %d",r2, put.Key, *r.ETag,totalc)
 												mu.Lock()
@@ -394,7 +395,7 @@ func copyBucket(cmd *cobra.Command,args []string) {
 									gLog.Trace.Printf("Key %s  - Bucket %s - size: %d ", put.Key, put.Bucket, put.Buffer.Len())
 									// utils.PrintMetadata(put.Metadata) /* debuging */
 									for r2 := 0; r2 <= retryNumber; r2++ {
-										r, err := api.PutObject3(put)
+										r, err := api.PutObjectWithContext(ctimeout,put)
 										if err == nil {
 											gLog.Trace.Printf("Object Etag: %v - Version id: %v ", *r.ETag, r.VersionId)
 											mu.Lock()
