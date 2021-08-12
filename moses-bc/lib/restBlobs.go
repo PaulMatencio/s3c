@@ -1,7 +1,22 @@
+// Copyright 2019 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 package lib
 
 import (
 	"github.com/paulmatencio/protobuf-doc/src/document/documentpb"
+	"time"
+
 	// "github.com/paulmatencio/s3c/datatype"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/paulmatencio/s3c/gLog"
@@ -11,7 +26,7 @@ import (
 	"sync"
 )
 
-func RestoreBlobs(document *documentpb.Document) int {
+func RestoreBlobs(document *documentpb.Document,ctimeout time.Duration) int {
 
 	gLog.Info.Printf("Restore blobs - Number of pages %d - MaxPage %d - Replace %v",document.NumberOfPages, MaxPage,Replace)
 	if document.NumberOfPages <= int32(MaxPage) {
@@ -21,13 +36,13 @@ func RestoreBlobs(document *documentpb.Document) int {
 	}
 }
 
-func Restores3Objects(service *s3.S3, bucket string, document *documentpb.Document) int {
+func Restores3Objects(service *s3.S3, bucket string, document *documentpb.Document,ctimeout time.Duration) int {
 
 	gLog.Info.Printf("Restore blobs - Number of pages %d - MaxPage %d - Replace %v",document.NumberOfPages, MaxPage,Replace)
 	if document.NumberOfPages <= int32(MaxPage) {
-		return restoreS3Object(service,bucket,document)
+		return restoreS3Object(service,bucket,document,ctimeout)
 	} else {
-		return restoreLargeS3Object(service,bucket,document)
+		return restoreLargeS3Object(service,bucket,document,ctimeout)
 	}
 }
 //  Put  sproxyd blobs
@@ -153,7 +168,7 @@ func restoreLargeBlobPart(request *sproxyd.HttpRequest, document *documentpb.Doc
 }
 
 
-func restoreS3Object( service *s3.S3,bucket string, document *documentpb.Document) int {
+func restoreS3Object( service *s3.S3,bucket string, document *documentpb.Document,ctimeout time.Duration) int {
 
 	var (
 		perrors int
@@ -164,7 +179,7 @@ func restoreS3Object( service *s3.S3,bucket string, document *documentpb.Documen
 	)
 	//   Write document metadata
 
-	if result,err  = WriteS3Metadata(service,bucket , document); err!= nil  {
+	if result,err  = WriteS3Metadata(service,bucket , document,ctimeout); err!= nil  {
 		gLog.Warning.Printf("Error %v writing document metadata - Document %s is not restored", err,document.DocId)
 		perrors += 1
 		return perrors
@@ -178,7 +193,7 @@ func restoreS3Object( service *s3.S3,bucket string, document *documentpb.Documen
 		wg1.Add(1)
 		go func(service *s3.S3, bucket string, pg *documentpb.Page) {
 			defer wg1.Done()
-			if _,err = WriteS3Page(service,bucket,pg); err != nil {
+			if _,err = WriteS3Page(service,bucket,pg,ctimeout); err != nil {
 				pu.Lock()
 				perrors += 1
 				pu.Unlock()
@@ -190,7 +205,7 @@ func restoreS3Object( service *s3.S3,bucket string, document *documentpb.Documen
 	return perrors
 }
 
-func restoreLargeS3Object(service *s3.S3, bucket string, document *documentpb.Document) int {
+func restoreLargeS3Object(service *s3.S3, bucket string, document *documentpb.Document,ctimeout time.Duration) int {
 
 	var (
 		np          = int(document.NumberOfPages)
@@ -202,7 +217,7 @@ func restoreLargeS3Object(service *s3.S3, bucket string, document *documentpb.Do
 
 	)
 	gLog.Info.Printf("Restoring large blobs to S3 bucket %s- Number of pages %d - MaxPage %d - Replace %v",bucket, document.NumberOfPages, MaxPage,Replace)
-	if result, err := WriteS3Metadata(service,bucket, document); err != nil  {
+	if result, err := WriteS3Metadata(service,bucket, document,ctimeout); err != nil  {
 		gLog.Warning.Printf("Error %v writing document  %s metadata", err,document.DocId)
 		perrors += 1
 		return perrors
@@ -211,7 +226,7 @@ func restoreLargeS3Object(service *s3.S3, bucket string, document *documentpb.Do
 	}
 
 	for s := 1; s <= q; s++ {
-		perrors = restoreLargeS3ObjectPart(service,bucket, document, start, end)
+		perrors = restoreLargeS3ObjectPart(service,bucket, document, start, end,ctimeout)
 		start = end + 1
 		end += MaxPage
 		if end > np {
@@ -219,13 +234,13 @@ func restoreLargeS3Object(service *s3.S3, bucket string, document *documentpb.Do
 		}
 	}
 	if r > 0 {
-		perrors = restoreLargeS3ObjectPart(service,bucket, document, q*MaxPage+1, np)
+		perrors = restoreLargeS3ObjectPart(service,bucket, document, q*MaxPage+1, np,ctimeout)
 	}
 	return perrors
 }
 
 
-func restoreLargeS3ObjectPart(service *s3.S3,bucket string, document *documentpb.Document, start int, end int) int {
+func restoreLargeS3ObjectPart(service *s3.S3,bucket string, document *documentpb.Document, start int, end int,ctimeout time.Duration) int {
 
 	var (
 		perrors int
@@ -247,7 +262,7 @@ func restoreLargeS3ObjectPart(service *s3.S3,bucket string, document *documentpb
 		go func(service *s3.S3,bucket string, pg *documentpb.Page) {
 
 			defer wg1.Done()
-			if _,err = WriteS3Page(service,bucket,pg); err != nil {
+			if _,err = WriteS3Page(service,bucket,pg,ctimeout); err != nil {
 				pu.Lock()
 				perrors += 1
 				pu.Unlock()

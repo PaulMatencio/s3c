@@ -42,12 +42,10 @@ const (
 )
 
 var (
-
 	config string
 	bucket,levelDBUrl,prefix	 string
 	verbose, Debug,autoCompletion 	 bool
 	loglevel,profiling, bucketNumber, retryNumber  int
-
 	waitTime time.Duration
 	srcBucket, tgtBucket              string
 	srcEnv, tgtEnv 					 string
@@ -78,14 +76,12 @@ var (
 	missingTgtBucket = "Missing target S3 bucket --target-bucket argument. Use  --help or -h for help"
 	missingIndBucket = "Missing index S3 bucket --index-bucket argument. Use  --help or -h for help"
 	missingBucket = "Missing S3 bucket--bucket argument. Use  --help or -h for help"
-
-
 )
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "moses-bc",
-	Short: "Command to backup/clone moses",
+	Short: "Command to backup/clone/restore/migrate moses assets",
 	Long: ``,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
@@ -108,7 +104,6 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&config,"config", "c","", "sc config file; default $HOME/.clone/config.yaml")
 	rootCmd.PersistentFlags().BoolVarP(&autoCompletion,"autoCompletion", "C",false, "generate bash auto completion")
 	rootCmd.PersistentFlags().IntVarP(&profiling,"profiling", "P",0, "display memory usage every P seconds")
-
 	viper.BindPFlag("loglevel",rootCmd.PersistentFlags().Lookup("loglevel"))
 	viper.BindPFlag("autoCompletion",rootCmd.PersistentFlags().Lookup("autoCompletion"))
 	viper.BindPFlag("profiling",rootCmd.PersistentFlags().Lookup("profiling"))
@@ -132,17 +127,14 @@ func initConfig() {
 
 		configPath = filepath.Join("/etc/clone") // call multiple times to add many search paths
 		viper.AddConfigPath(configPath)            // another path to look for the config file
-
 		configPath = filepath.Join(home,".clone")
 		viper.AddConfigPath(configPath)            // path to look for the config file
-
 		viper.AddConfigPath(".")               // optionally look for config in the working directory
 		viper.SetConfigName("config")          // name of the config file without the extension
 		viper.SetConfigType("yaml")
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match
-
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
 		log.Printf("Using config file: %s", viper.ConfigFileUsed())

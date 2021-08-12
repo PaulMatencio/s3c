@@ -1,3 +1,16 @@
+// Copyright 2019 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 package lib
 
 import (
@@ -31,7 +44,8 @@ type Resp struct {
 	Write document to S3
 */
 
-func WriteS3(service *s3.S3, bucket string, document *documentpb.Document) (*s3.PutObjectOutput, error) {
+func WriteS3(service *s3.S3, bucket string, document *documentpb.Document,ctimeout time.Duration) (*s3.PutObjectOutput, error) {
+
 	if data, err := proto.Marshal(document); err == nil {
 		var (
 			usermd    = document.GetS3Meta()
@@ -49,13 +63,13 @@ func WriteS3(service *s3.S3, bucket string, document *documentpb.Document) (*s3.
 			Metadata:    metadata,              // user metadata
 			ContentType: http.DetectContentType(data),
 		}
-		return api.PutObject3(req)
+		return api.PutObjectWithContext(ctimeout,req)
 	} else {
 		return nil, err
 	}
 }
 
-func WriteS3Multipart(service *s3.S3, bucket string, maxPartSize int64, document *documentpb.Document) ([]error, error) {
+func WriteS3Multipart(service *s3.S3, bucket string, maxPartSize int64, document *documentpb.Document,ctimeout time.Duration) ([]error, error) {
 
 	var (
 		n, t                      = 0, 0
@@ -213,7 +227,7 @@ func UploadPart(upload datatype.UploadPartRequest) (*s3.CompletedPart, error) {
 	}
 }
 
-func WriteS3Metadata(service *s3.S3,bucket string, document *documentpb.Document) (*s3.PutObjectOutput, error) {
+func WriteS3Metadata(service *s3.S3,bucket string, document *documentpb.Document,ctimeout time.Duration) (*s3.PutObjectOutput, error) {
 	var metadata = map[string]*string{
 		"Usermd": &document.Metadata,
 		"s3Meta": &document.S3Meta,
@@ -226,11 +240,11 @@ func WriteS3Metadata(service *s3.S3,bucket string, document *documentpb.Document
 		Metadata:    metadata,                      // user metadata
 
 	}
-	return api.PutObject3(req)
+	return api.PutObjectWithContext(ctimeout,req)
 }
 
 
-func WriteS3Pdf(service *s3.S3, bucket string, pdf *documentpb.Pdf) (*s3.PutObjectOutput, error) {
+func WriteS3Pdf(service *s3.S3, bucket string, pdf *documentpb.Pdf,ctimeout time.Duration) (*s3.PutObjectOutput, error) {
 
 	var metadata = map[string]*string{
 		"Usermd": &pdf.Metadata,
@@ -244,11 +258,11 @@ func WriteS3Pdf(service *s3.S3, bucket string, pdf *documentpb.Pdf) (*s3.PutObje
 		Metadata:    metadata,                 // user metadata
 		ContentType: http.DetectContentType(pdf.Pdf),
 	}
-	return api.PutObject3(req)
+	return api.PutObjectWithContext(ctimeout,req)
 
 }
 
-func WriteS3Page(service *s3.S3, bucket string, page *documentpb.Page) (*s3.PutObjectOutput, error) {
+func WriteS3Page(service *s3.S3, bucket string, page *documentpb.Page,ctimeout time.Duration) (*s3.PutObjectOutput, error) {
 
 	var metadata = map[string]*string{
 		"Usermd": &page.Metadata,
@@ -261,6 +275,6 @@ func WriteS3Page(service *s3.S3, bucket string, page *documentpb.Page) (*s3.PutO
 		Metadata:    metadata,                      // user metadata
 		ContentType: page.GetContentType(),
 	}
-	return api.PutObject3(req)
+	return api.PutObjectWithContext(ctimeout,req)
 
 }

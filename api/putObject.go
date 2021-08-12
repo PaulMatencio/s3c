@@ -8,6 +8,7 @@ import (
 	"github.com/paulmatencio/s3c/datatype"
 	"github.com/paulmatencio/s3c/utils"
 	"os"
+	"time"
 )
 
 func FputObject(req datatype.FputObjRequest) (*s3.PutObjectOutput,error){
@@ -73,7 +74,8 @@ func PutObject2(req datatype.PutObjRequest) (*s3.PutObjectOutput,error){
 	return req.Service.PutObject(input)
 }
 
-func PutObject3(req datatype.PutObjRequest3) (*s3.PutObjectOutput,error){
+func PutObjectWithContext(timeout time.Duration,req datatype.PutObjRequest3) (*s3.PutObjectOutput,error){
+
 	input := &s3.PutObjectInput{
 		Bucket: aws.String(req.Bucket),
 		Key:    aws.String(req.Key),
@@ -81,7 +83,9 @@ func PutObject3(req datatype.PutObjRequest3) (*s3.PutObjectOutput,error){
 		Metadata: req.Metadata,
 		ContentType: aws.String(req.ContentType),
 	}
-	return req.Service.PutObject(input)
+	ctx,cancel := SetContext(timeout)
+	defer cancel()
+	return req.Service.PutObjectWithContext(ctx,input)
 }
 
 

@@ -94,6 +94,7 @@ func initCloFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&targetUrl, "target-sproxyd-url", "t", "", "target sproxyd endpoint URL http://xx.xx.xx.xx:81/proxy,http:// ...")
 	cmd.Flags().StringVarP(&env, "source-sproxyd-env", "", "", "source sproxyd environment [prod|osa]")
 	cmd.Flags().StringVarP(&targetEnv, "target-sproxyd-env", "", "", "target sproxyd environment [prod|osa]")
+	cmd.Flags().DurationVarP(&ctimeout, "--ctimeout", "", 10, "set context background cancel timeout in seconds")
 }
 
 func init() {
@@ -406,7 +407,7 @@ func clonePn(request datatype.StatObjRequest, replace bool) datatype.Rm {
 
 					if reIndex {
 						start5 := time.Now()
-						if _, err = mosesbc.IndexDocument(document, tgtBucket, tgtS3); err != nil {
+						if _, err = mosesbc.IndexDocument(document, tgtBucket, tgtS3,ctimeout); err != nil {
 							gLog.Error.Printf("Error %v while indexing the  document id %s into  bucket %s", err, document.DocId, tgtBucket)
 							nerrors = 1
 						} else {

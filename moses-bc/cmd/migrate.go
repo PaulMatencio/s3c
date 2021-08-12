@@ -86,6 +86,7 @@ func initMgFlags(cmd *cobra.Command) {
 
 	cmd.Flags().StringVarP(&srcBucket, "source-bucket", "", "", "name of source s3 bucket. Ex: meta-moses-prod-pn-xx, suffix xx is only required for bucket backup")
 	cmd.Flags().StringVarP(&tgtBucket, "target-bucket", "", "", "name of the target s3 bucket. Ex: meta-moses-prod-bkp-pn-xx, xx must be the same as source-bucket")
+	cmd.Flags().StringVarP(&indBucket, "index-bucket", "", "", "name of the index metadata bucket")
 	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "prefix of a Moses document in the form of cc/pn/kc. Ex: FR/1234")
 	cmd.Flags().Int64VarP(&maxKey, "max-key", "m", 20, "maximum number of moses documents  to be cloned concurrently")
 	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key; key= moses-document in the form of cc/pn/kc")
@@ -100,6 +101,8 @@ func initMgFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&srcUrl, "source-sproxyd-url", "s", "", "source sproxyd endpoints  http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
 	cmd.Flags().StringVarP(&driver, "source-sproxyd-driver", "", "", "source sproxyd driver [bpchord|bparc]")
 	cmd.Flags().StringVarP(&env, "source-sproxyd-env", "", "", "source sproxyd environment [prod|osa]")
+	cmd.Flags().BoolVarP(&reIndex, "re-index", "", true, "re-index the target moses documents in the index bucket")
+	cmd.Flags().DurationVarP(&ctimeout, "--ctimeout", "", 10, "set context background cancel timeout in seconds")
 }
 
 func init() {
@@ -128,6 +131,11 @@ func MigratePns(cmd *cobra.Command, args []string) {
 
 	if len(tgtBucket) == 0 {
 		gLog.Warning.Printf("%s", missingTgtBucket)
+		return
+	}
+
+	if reIndex && len(indBucket) == 0 {
+		gLog.Warning.Printf("%s", missingIndBucket)
 		return
 	}
 
@@ -166,6 +174,12 @@ func MigratePns(cmd *cobra.Command, args []string) {
 			gLog.Error.Printf("target bucket %s must not have a suffix", tgtBucket)
 			return
 		}
+		if reIndex {
+			if mosesbc.HasSuffix(indBucket) {
+				gLog.Error.Printf(" Indexing bucket %s must not have a suffix", indBucket)
+				return
+			}
+		}
 
 	}
 	/*
@@ -202,6 +216,18 @@ func MigratePns(cmd *cobra.Command, args []string) {
 				gLog.Warning.Printf("A suffix %s is appended to the target Bucket %s", suf, tgtBucket)
 			}
 		}
+
+		if reIndex {
+			if err, suf := mosesbc.GetBucketSuffix(indBucket, prefix); err != nil {
+				gLog.Error.Printf("%v", err)
+				return
+			} else {
+				if len(suf) > 0 {
+					indBucket += "-" + suf
+					gLog.Warning.Printf("A suffix %s is appended to the index Bucket %s", suf, indBucket)
+				}
+			}
+		}
 	} else {
 		//  Full backup
 		if !incr && !mosesbc.HasSuffix(srcBucket) {
@@ -212,12 +238,26 @@ func MigratePns(cmd *cobra.Command, args []string) {
 			gLog.Error.Printf("Target bucket %s does not have a suffix. It should be  00..05 ", tgtBucket)
 			return
 		}
+		if reIndex {
+			if !incr && !mosesbc.HasSuffix(tgtBucket) {
+				gLog.Error.Printf("Indexing bucket %s does not have a suffix. It should be  00..05 ", indBucket)
+				return
+			}
+		}
+
 	}
 
 	// Check  the suffix of both and target buckets
 	if err := mosesbc.CheckBucketName(srcBucket, tgtBucket); err != nil {
 		gLog.Warning.Printf("%v", err)
 		return
+	}
+
+	if reIndex {
+		if err := mosesbc.CheckBucketName(srcBucket, indBucket); err != nil {
+			gLog.Warning.Printf("%v", err)
+			return
+		}
 	}
 
 	// validate fram date format
@@ -451,12 +491,21 @@ func migratePn(request datatype.StatObjRequest, reqm datatype.Reqm) datatype.Rm 
 			if np, err = strconv.Atoi(userm.TotalPages); err == nil {
 				start3 := time.Now()
 				s3meta := rh.Result.Metadata["Usermd"] //  Metadata map  must contain "usermd" entry encoded 64
-				nerr, document := mosesbc.MigrateBlob(reqm, *s3meta, pn, np)
+				nerr, document := mosesbc.MigrateBlob(reqm, *s3meta, pn, np,ctimeout)
 				if nerr == 0 {
 					npages = int(document.NumberOfPages)
 					docsizes = document.Size
 					ndocs = 1
 					gLog.Info.Printf("Document id %s is migrated - Number of pages %d - Document size %d - Number of errors %d - Elapsed time %v ", document.DocId, document.NumberOfPages, document.Size, nerr, time.Since(start3))
+					start4:= time.Now()
+					if reIndex {
+						if _, err = mosesbc.IndexDocument(document, indBucket, tgtS3,ctimeout); err != nil {
+							gLog.Error.Printf("Error %v while indexing the document id %s iwith the bucket %s", err, document.DocId, indBucket)
+							nerrors += 1
+						} else {
+							gLog.Info.Printf("Document id %s is now indexed in the bucket %s - Elapsed time %v", document.DocId, indBucket, time.Since(start4))
+						}
+					}
 				} else {
 					nerrors = nerr
 					ndocs = 0

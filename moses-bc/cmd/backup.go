@@ -90,6 +90,7 @@ var (
 	fromDate                           string
 	maxVersions                        int
 	frDate                             time.Time
+	ctimeout time.Duration
 )
 
 type UserMd struct {
@@ -118,6 +119,7 @@ func initBkFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&srcUrl, "source-sproxyd-url", "s", "", "source sproxyd endpoints  http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
 	cmd.Flags().StringVarP(&driver, "source-sproxyd-driver", "", "", "source sproxyd driver [bpchord|bparc]")
 	cmd.Flags().StringVarP(&env, "source-sproxyd-env", "", "", "source sproxyd environment [prod|osa]")
+	cmd.Flags().DurationVarP(&ctimeout, "--ctimeout", "", 10, "set context background cancel timeout in seconds")
 }
 
 func init() {
@@ -283,7 +285,7 @@ func BackupPns(cmd *cobra.Command, args []string) {
 /*
 	func backup_bucket(marker string, srcS3 *s3.S3, srcBucket string, tgtS3 *s3.S3, tgtBucket string) (string, error) {
 */
-func backupPns(reqm datatype.Reqm) (string, error) {
+func backupPns( reqm datatype.Reqm) (string, error) {
 	var (
 		nextmarker, token               string
 		N                               int
@@ -303,7 +305,6 @@ func backupPns(reqm datatype.Reqm) (string, error) {
 		Marker:            marker,
 		Continuationtoken: token,
 	}
-
 	if len(iBucket) > 0 {
 		reql = datatype.ListObjV2Request{
 			Service:           reqm.SrcS3,
@@ -330,14 +331,14 @@ func backupPns(reqm datatype.Reqm) (string, error) {
 		N++ // number of loop
 		if !incr {
 			gLog.Info.Printf("Listing documents from  %s", reqm.SrcBucket)
-			result, err = api.ListObjectV2(req)
+			result, err = api.ListObjectWithContextV2(ctimeout,req)
 		} else {
 			if len(inFile) > 0 {
 				gLog.Info.Printf("Listing documents from file %s", inFile)
 				result, err = ListPn(listpn, int(maxKey))
 			} else {
 				gLog.Info.Printf("Listing documents from bucket  %s", iBucket)
-				result, err = api.ListObjectV2(reql)
+				result, err = api.ListObjectWithContextV2(ctimeout,reql)
 			}
 		}
 		if err == nil {
@@ -528,7 +529,7 @@ func backupPn(pn string, np int, usermd string, versionId string, maxPage int) (
 		document *documentpb.Document
 		errs     []error
 	)
-	if errs, document = mosesbc.BackupBlob(pn, np, maxPage); len(errs) == 0 {
+	if errs, document = mosesbc.BackupBlob(pn, np, maxPage,ctimeout); len(errs) == 0 {
 
 		/*
 			Add  s3 moses metadata to the document even if it may be  invalid in the source bucket
@@ -567,9 +568,9 @@ func writeS3(service *s3.S3, bucket string, maxPartSize int64, document *documen
 
 	if maxPartSize > 0 && document.Size > maxPartSize {
 		gLog.Warning.Printf("Multipart upload %s - size %d - max part size %d", document.DocId, document.Size, maxPartSize)
-		return mosesbc.WriteS3Multipart(service, bucket, maxPartSize, document)
+		return mosesbc.WriteS3Multipart(service, bucket, maxPartSize, document,ctimeout)
 	} else {
-		return mosesbc.WriteS3(service, bucket, document)
+		return mosesbc.WriteS3(service, bucket, document,ctimeout)
 	}
 }
 

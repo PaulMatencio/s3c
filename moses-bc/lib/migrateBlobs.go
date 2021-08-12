@@ -1,3 +1,16 @@
+// Copyright 2019 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 package lib
 
 import (
@@ -17,11 +30,11 @@ import (
 	Migrate Scality Blobs to  S3 objects
 */
 
-func MigrateBlob(reqm datatype.Reqm, s3meta string, pn string, np int) (int, *documentpb.Document) {
+func MigrateBlob(reqm datatype.Reqm, s3meta string, pn string, np int,ctimeout time.Duration) (int, *documentpb.Document) {
 	if np <= MaxPage {
-		return migrateBlob(reqm, s3meta, pn, np)
+		return migrateBlob(reqm, s3meta, pn, np,ctimeout)
 	} else {
-		return migrateLargeBlob(reqm, s3meta, pn, np)
+		return migrateLargeBlob(reqm, s3meta, pn, np,ctimeout)
 	}
 }
 
@@ -29,7 +42,7 @@ func MigrateBlob(reqm datatype.Reqm, s3meta string, pn string, np int) (int, *do
 document with  smaller pages number than the maxPage value
 */
 
-func migrateBlob(reqm datatype.Reqm, s3meta string, pn string, np int) (int, *documentpb.Document) {
+func migrateBlob(reqm datatype.Reqm, s3meta string, pn string, np int,ctimeout time.Duration) (int, *documentpb.Document) {
 
 	var (
 		request = sproxyd.HttpRequest{
@@ -70,7 +83,7 @@ func migrateBlob(reqm datatype.Reqm, s3meta string, pn string, np int) (int, *do
 	} else {
 		buck = reqm.TgtBucket
 	}
-	if result, err := WriteS3Metadata(reqm.TgtS3, buck, document); err != nil {
+	if result, err := WriteS3Metadata(reqm.TgtS3, buck, document,ctimeout); err != nil {
 		gLog.Warning.Printf("Document %s is not migrated", document.DocId)
 		return 1, document
 	} else {
@@ -86,7 +99,7 @@ func migrateBlob(reqm datatype.Reqm, s3meta string, pn string, np int) (int, *do
 			gLog.Info.Printf("Document %s has a PDF object - size %d", request.Path, len(*body))
 			pd := doc.CreatePdf(pdfId, pmeta, body)
 			document.Size += pd.Size // increment the document size
-			if _, err = WriteS3Pdf(reqm.TgtS3, buck, pd); err != nil {
+			if _, err = WriteS3Pdf(reqm.TgtS3, buck, pd,ctimeout); err != nil {
 				gLog.Warning.Printf("Error %v writing pdf document  %s ", err, pdfId)
 				return 1, document
 			}
@@ -112,7 +125,7 @@ func migrateBlob(reqm datatype.Reqm, s3meta string, pn string, np int) (int, *do
 			pn := document.DocId
 			if err, usermd, body = GetObject(request, pn); err == nil {
 				pg := doc.CreatePage(pn, usermd, k, body)
-				if result, err := WriteS3Page(reqm.TgtS3, buck, pg); err != nil {
+				if result, err := WriteS3Page(reqm.TgtS3, buck, pg,ctimeout); err != nil {
 					gLog.Error.Printf("%v", err)
 					pu.Lock()
 					perrors += 1
@@ -140,7 +153,7 @@ func migrateBlob(reqm datatype.Reqm, s3meta string, pn string, np int) (int, *do
 	get document of which  the number of pages > maxPages
 
 */
-func migrateLargeBlob(reqm datatype.Reqm, s3meta string, pn string, np int) (int, *documentpb.Document) {
+func migrateLargeBlob(reqm datatype.Reqm, s3meta string, pn string, np int,ctimeout time.Duration) (int, *documentpb.Document) {
 
 	var (
 		start, q, r, end, npages int
@@ -178,7 +191,7 @@ func migrateLargeBlob(reqm datatype.Reqm, s3meta string, pn string, np int) (int
 		buck = reqm.TgtBucket
 	}
 
-	if result, err := WriteS3Metadata(reqm.TgtS3, buck, document); err != nil {
+	if result, err := WriteS3Metadata(reqm.TgtS3, buck, document,ctimeout); err != nil {
 		gLog.Warning.Printf("Document %s is not restored", document.DocId)
 		return 1, document
 	} else {
@@ -193,7 +206,7 @@ func migrateLargeBlob(reqm datatype.Reqm, s3meta string, pn string, np int) (int
 			gLog.Info.Printf("Document %s has a PDF object - size %d", request.Path, len(*body))
 			pd := doc.CreatePdf(pdfId, pmeta, body)
 			document.Size += pd.Size
-			WriteS3Pdf(reqm.TgtS3, buck, pd)
+			WriteS3Pdf(reqm.TgtS3, buck, pd,ctimeout)
 		} else {
 			gLog.Warning.Printf("Error %v getting object %s ", err, request.Path)
 		}
@@ -212,7 +225,7 @@ func migrateLargeBlob(reqm datatype.Reqm, s3meta string, pn string, np int) (int
 
 	for s := 1; s <= q; s++ {
 		start3 := time.Now()
-		nerr = migrateLargeBlobPart(reqm, document, pn, np, start, end)
+		nerr = migrateLargeBlobPart(reqm, document, pn, np, start, end,ctimeout)
 		gLog.Info.Printf("Get pages range %d:%d for document %s - Elapsed time %v ", start, end, pn, time.Since(start3))
 		start = end + 1
 		end += MaxPage
@@ -224,14 +237,14 @@ func migrateLargeBlob(reqm datatype.Reqm, s3meta string, pn string, np int) (int
 	if r > 0 {
 		start4 := time.Now()
 		start := q*MaxPage + 1
-		nerr = migrateLargeBlobPart(reqm, document, pn, np, start, np)
+		nerr = migrateLargeBlobPart(reqm, document, pn, np, start, np,ctimeout)
 		gLog.Info.Printf("Get pages range %d:%d for document %s - Elapsed time %v ", start, np, pn, time.Since(start4))
 	}
 	gLog.Info.Printf("Migrate document %s - number of pages %d - Document size %d - Elapsed time %v", document.DocId, npages, document.Size, time.Since(start2))
 	return nerr, document
 }
 
-func migrateLargeBlobPart(reqm datatype.Reqm, document *documentpb.Document, pn string, np int, start int, end int) int {
+func migrateLargeBlobPart(reqm datatype.Reqm, document *documentpb.Document, pn string, np int, start int, end int,ctimeout time.Duration) int {
 
 	var (
 		//  sproxyd request for the source Ring
@@ -272,7 +285,7 @@ func migrateLargeBlobPart(reqm datatype.Reqm, document *documentpb.Document, pn 
 					create a corresponding page
 				*/
 				pg := doc.CreatePage(pn, usermd, k, body)
-				if _, err := WriteS3Page(reqm.TgtS3, buck, pg); err != nil {
+				if _, err := WriteS3Page(reqm.TgtS3, buck, pg,ctimeout); err != nil {
 					gLog.Error.Printf("%v", err)
 					pu.Lock()
 					perrors += 1
