@@ -226,6 +226,7 @@ func ClonePns(cmd *cobra.Command, args []string) {
 			return
 		}
 	}
+	mosesbc.Profiling(profiling)
 
 	reqm := datatype.Reqm{
 		SrcS3:       srcS3,
@@ -348,7 +349,7 @@ func clonePns(reqm datatype.Reqm) (string, error) {
 				tdocs += int64(ndocs)
 				tdocr += int64(ndocr)
 				tpages += int64(npages)
-				tsizes += int64(docsizes)
+				tsizes += docsizes
 				terrors += nerrors
 			}
 		} else {

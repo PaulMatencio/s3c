@@ -214,6 +214,8 @@ func RestorePns(cmd *cobra.Command, args []string) {
 		return
 	}
 
+	mosesbc.Profiling(profiling)
+
 	if nextMarker, err = restorePns(); err != nil {
 		gLog.Error.Printf("error %v - Next marker %s", err, nextMarker)
 	} else {

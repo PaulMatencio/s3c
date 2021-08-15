@@ -338,7 +338,7 @@ func checkPdfP0(pn string) (error, bool, bool) {
 			Transport: sproxyd.Transport,
 		},
 	}
-	if err, usermd := GetMetadata(request1, pn); err != nil {
+	if err, usermd := GetUserMeta(request1, pn); err != nil {
 		gLog.Error.Printf("Error %v  getting usermeta of %s", err, pn)
 		return err, false, false
 	} else {

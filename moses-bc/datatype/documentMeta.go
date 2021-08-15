@@ -1,5 +1,9 @@
 package datatype
 
+/*
+	used by inspectBlobs
+ */
+
 type DocumentMetadata struct {
 	PubId struct {
 		CountryCode string `json: "countryCode`

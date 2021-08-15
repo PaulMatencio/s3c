@@ -3,6 +3,7 @@ package cmd
 import (
 	"bufio"
 	"github.com/aws/aws-sdk-go/aws/awserr"
+	"runtime"
 	"strings"
 
 	// "github.com/aws/aws-sdk-go/aws/session"
@@ -71,6 +72,7 @@ func initCpFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVarP(&maxLoop,"maxLoop","",1,"maximum number of loop, 0 means no upper limit")
 	cmd.Flags().BoolVarP(&check,"check","",true,"check mode")
 	cmd.Flags().BoolVarP(&overWrite,"overWrite","",false,"overwrite existing object")
+	cmd.Flags().DurationVarP(&ctimeout, "--ctimeout", "", 10, "set context background cancel timeout in seconds")
 	// cmd.Flags().StringVarP(&delimiter,"delimiter","d","","key delimiter")
 }
 
@@ -132,7 +134,20 @@ func cloneBucket(cmd *cobra.Command,args []string) {
 		return
 	}
 
+	if profiling >0  {
+		go func() {
+			for {
+				var m runtime.MemStats
+				runtime.ReadMemStats(&m)
+				// debug.FreeOSMemory()
+				gLog.Info.Printf("PROFILING: System memory %d MB",float64(m.Sys) / 1024 / 1024)
+				gLog.Info.Printf("PROFILING: Heap allocation %d MB",float64(m.HeapAlloc) / 1024 / 1024)
+				gLog.Info.Printf("PROFILING: Total allocation %d MB",float64(m.TotalAlloc) / 1024 / 1024)
+				time.Sleep(time.Duration(profiling) * time.Second)
 
+			}
+		}()
+	}
 	waitTime = utils.GetWaitTime(*viper.GetViper());
 	retryNumber =utils.GetRetryNumber(*viper.GetViper())
 	gLog.Info.Printf("Cloning from date %v",frDate)

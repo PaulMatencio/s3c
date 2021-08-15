@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -66,6 +67,22 @@ func getMultipart(cmd *cobra.Command, args []string) {
 			utils.MakeDir(odir)
 		}
 	}
+
+	if profiling >0  {
+		go func() {
+			for {
+				var m runtime.MemStats
+				runtime.ReadMemStats(&m)
+				// debug.FreeOSMemory()
+				gLog.Info.Printf("PROFILING: System memory %d MB",float64(m.Sys) / 1024 / 1024)
+				gLog.Info.Printf("PROFILING: Heap allocation %d MB",float64(m.HeapAlloc) / 1024 / 1024)
+				gLog.Info.Printf("PROFILING: Total allocation %d MB",float64(m.TotalAlloc) / 1024 / 1024)
+				time.Sleep(time.Duration(profiling) * time.Second)
+
+			}
+		}()
+	}
+
 	gLog.Info.Printf("output directory  %s",odir)
 	outfile = filepath.Join(odir, key)
 	maxPartSize = maxPartSize*1024*1024  // convert into bytes

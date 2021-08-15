@@ -72,7 +72,7 @@ func backupBlob(pn string, np int) ( []error,*documentpb.Document){
 
 	//  get document
 
-	if err, usermd = GetMetadata(request, pn); err != nil {
+	if err, usermd = GetUserMeta(request, pn); err != nil {
 		errs = append(errs, err)
 		return errs,nil
 	}
@@ -177,7 +177,7 @@ func backupLargeBlob(pn string, np int, maxPage int) ([]error,*documentpb.Docume
 	)
 	start2 := time.Now()
 	//  Get  document metadata
-	if err, usermd = GetMetadata(request, pn); err != nil {
+	if err, usermd = GetUserMeta(request, pn); err != nil {
 		errs = append(errs, err)
 		return errs,nil
 	}

@@ -3,9 +3,9 @@ package bns
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	base64 "github.com/paulmatencio/ring/user/base64j"
 	goLog "github.com/paulmatencio/s3c/gLog"
+	"io/ioutil"
 	"os"
 	"strconv"
 )
@@ -21,6 +21,7 @@ type Pagemeta struct {
 		CountryCode string `json:"countryCode"`
 		PubNumber   string `json:"pubNumber`
 		KindCode    string `json:"kindCode"`
+		BnsId22     string  `json:"bnsId22,omitempty"`
 	} `json:"bnsId"`
 	PublicationOffice string `json:"publicationOffice"`
 	PageNumber        int    `json:"pageNumber"`

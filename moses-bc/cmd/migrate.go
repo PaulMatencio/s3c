@@ -297,6 +297,9 @@ func MigratePns(cmd *cobra.Command, args []string) {
 			return
 		}
 	}
+
+	mosesbc.Profiling(profiling)
+
 	reqm := datatype.Reqm{
 		SrcS3:       srcS3,
 		SrcBucket:   srcBucket,
@@ -375,6 +378,7 @@ func migratePns(marker string, reqm datatype.Reqm) (string, error) {
 		/*
 			result contains the list of documents to be migrated
 		*/
+
 		if err == nil {
 			if l := len(result.Contents); l > 0 {
 				var wg1 sync.WaitGroup

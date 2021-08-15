@@ -14,6 +14,7 @@
 package lib
 
 import (
+	"encoding/json"
 	"github.com/aws/aws-sdk-go/service/s3"
 	base64 "github.com/paulmatencio/ring/user/base64j"
 	"github.com/paulmatencio/s3c/api"
@@ -47,17 +48,25 @@ func ListBlobs(request datatype.ListObjRequest, maxLoop int, maxPage int) {
 				var wg1 sync.WaitGroup
 				for _, v := range result.Contents {
 					pn := *v.Key
+
 					wg1.Add(1)
 					go func(pn string) {
 						defer wg1.Done()
-						if np, err, status := GetPageNumber(pn); err == nil && status == 200 {
+					//	if np, err, status := GetPageNumber(pn); err == nil && status == 200 {
+						if docmd,err,_ := GetDocumentMeta(pn); err == nil {
+							// print the document meta data
+							if docMd,err := json.Marshal(docmd); err == nil{
+								gLog.Info.Printf("%s",string(docMd))
+							}
+							np := docmd.TotalPage
 							if np > 0 {
+								// print Page metadata
 								ListBlob(pn, np, maxPage)
 							} else {
 								gLog.Error.Printf("The number of pages is %d ", np)
 							}
 						} else {
-							gLog.Error.Printf("Error %v getting  the number of pages  run  with  -l 4  (trace)", err)
+							gLog.Error.Printf("Error %v getting document metadata", err)
 						}
 					}(pn)
 				}

@@ -71,7 +71,7 @@ func cloneBlob(pn string, np int,replace bool) (int,*documentpb.Document){
 		document = &documentpb.Document{}
 	)
 	//  get document
-	if err, usermd = GetMetadata(request, pn); err != nil {
+	if err, usermd = GetUserMeta(request, pn); err != nil {
 		gLog.Error.Printf("%v",err)
 		return 1,document
 	}
@@ -170,7 +170,7 @@ func cloneLargeBlob(pn string, np int, maxPage int,replace bool) (int,*documentp
 	start2 := time.Now()
 
 	//  retrieve the  document metadata and clone it
-	if err, usermd = GetMetadata(request, pn); err != nil {
+	if err, usermd = GetUserMeta(request, pn); err != nil {
 		gLog.Error.Printf("%v",err)
 		return 1,document
 	}

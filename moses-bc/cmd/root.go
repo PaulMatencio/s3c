@@ -51,7 +51,7 @@ var (
 	srcEnv, tgtEnv 					 string
 	check        bool
 	listpn     *bufio.Scanner
-	tgtS3, srcS3 *s3.S3
+	tgtS3, srcS3 , logS3 *s3.S3
 	// conTimeout,readTimeout,writeTimeout, copyTimeout,timeout time.Duration
 	invalidBucket = "Invalid bucket name, it should not contain a suffix"
 	missingInputFile = "Missing input file  --input-file"
@@ -75,7 +75,7 @@ var (
 	missingSrcBucket = "Missing source S3 bucket --source-bucket argument. Use  --help or -h for help"
 	missingTgtBucket = "Missing target S3 bucket --target-bucket argument. Use  --help or -h for help"
 	missingIndBucket = "Missing index S3 bucket --index-bucket argument. Use  --help or -h for help"
-	missingBucket = "Missing S3 bucket--bucket argument. Use  --help or -h for help"
+	missingBucket = "Missing S3 bucket --bucket argument. Use  --help or -h for help"
 )
 
 // rootCmd represents the base command when called without any subcommands

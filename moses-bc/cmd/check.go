@@ -60,6 +60,7 @@ func initCkFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&targetEnv, "target-sproxyd-env", "", "", "target sproxyd environment [prod|osa]")
 
 }
+
 func init() {
 	rootCmd.AddCommand(checkCmd)
 	initCkFlags(checkCmd)

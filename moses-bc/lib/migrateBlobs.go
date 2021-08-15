@@ -64,7 +64,7 @@ func migrateBlob(reqm datatype.Reqm, s3meta string, pn string, np int,ctimeout t
 		incr     = reqm.Incremental
 	)
 	//  get the document  metadata
-	if err, usermd = GetMetadata(request, pn); err != nil {
+	if err, usermd = GetUserMeta(request, pn); err != nil {
 		gLog.Error.Printf("%v", err)
 		return 1, document
 	}
@@ -175,7 +175,7 @@ func migrateLargeBlob(reqm datatype.Reqm, s3meta string, pn string, np int,ctime
 	start2 := time.Now()
 
 	//  retrieve the  document metadata and migrate it
-	if err, usermd = GetMetadata(request, pn); err != nil {
+	if err, usermd = GetUserMeta(request, pn); err != nil {
 		gLog.Error.Printf("%v", err)
 		return 1, document
 	}

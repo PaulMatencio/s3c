@@ -1,5 +1,9 @@
 package datatype
 
+/*
+	used by inspectBlobs and backup
+ */
+
 type Pagemeta struct {
 	PubId struct {
 		CountryCode string `json:"countryCode"`
@@ -10,6 +14,7 @@ type Pagemeta struct {
 		CountryCode string `json:"countryCode"`
 		PubNumber   string `json:"pubNumber`
 		KindCode    string `json:"kindCode"`
+		BnsId22     string  `json:"bnsId22,omitempty"`
 	} `json:"bnsId"`
 	PublicationOffice string `json:"publicationOffice"`
 	PageNumber        int    `json:"pageNumber"`

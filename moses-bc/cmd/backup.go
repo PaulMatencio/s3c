@@ -20,12 +20,13 @@ import (
 	"encoding/json"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/paulmatencio/protobuf-doc/src/document/documentpb"
+	meta "github.com/paulmatencio/s3c/moses-bc/datatype"
+
 	"github.com/paulmatencio/s3c/api"
 	"github.com/paulmatencio/s3c/datatype"
 	mosesbc "github.com/paulmatencio/s3c/moses-bc/lib"
 	"github.com/spf13/viper"
 	"google.golang.org/protobuf/types/known/timestamppb"
-
 	// "github.com/golang/protobuf/proto"
 	"github.com/paulmatencio/s3c/gLog"
 	"github.com/paulmatencio/s3c/utils"
@@ -82,15 +83,15 @@ var (
 		Run:    BackupPns,
 	}
 
-	inFile, outDir, iBucket, delimiter string
-	maxPartSize, maxKey                int64
-	marker                             string
-	maxLoop, maxPage                   int
-	incr                               bool
-	fromDate                           string
-	maxVersions                        int
-	frDate                             time.Time
-	ctimeout time.Duration
+	inFile, outDir, iBucket, logBucket, delimiter string
+	maxPartSize, maxKey                           int64
+	marker                                        string
+	maxLoop, maxPage                              int
+	incr, logit                                   bool
+	fromDate                                      string
+	maxVersions                                   int
+	frDate                                        time.Time
+	ctimeout                                      time.Duration
 )
 
 type UserMd struct {
@@ -100,6 +101,8 @@ type UserMd struct {
 	SubPartFP  string `json:"subPartFP"`
 	TotalPages string `json:"totalPages"`
 }
+
+
 
 func initBkFlags(cmd *cobra.Command) {
 
@@ -120,6 +123,7 @@ func initBkFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&driver, "source-sproxyd-driver", "", "", "source sproxyd driver [bpchord|bparc]")
 	cmd.Flags().StringVarP(&env, "source-sproxyd-env", "", "", "source sproxyd environment [prod|osa]")
 	cmd.Flags().DurationVarP(&ctimeout, "--ctimeout", "", 10, "set context background cancel timeout in seconds")
+	cmd.Flags().BoolVarP(&logit, "--logit", "", false, "log it")
 }
 
 func init() {
@@ -264,6 +268,16 @@ func BackupPns(cmd *cobra.Command, args []string) {
 		gLog.Error.Printf("Failed to create a S3 target session")
 		return
 	}
+	if logit {
+		if logS3 = mosesbc.CreateS3Session("backup", "log"); logS3 == nil {
+			gLog.Error.Printf("Failed to create a S3  backup loggingsession")
+			return
+			/* log log bucket */
+		}
+	}
+
+	mosesbc.Profiling(profiling)
+
 	reqm := datatype.Reqm{
 		SrcS3:       srcS3,
 		SrcBucket:   srcBucket,
@@ -285,16 +299,16 @@ func BackupPns(cmd *cobra.Command, args []string) {
 /*
 	func backup_bucket(marker string, srcS3 *s3.S3, srcBucket string, tgtS3 *s3.S3, tgtBucket string) (string, error) {
 */
-func backupPns( reqm datatype.Reqm) (string, error) {
+func backupPns(reqm datatype.Reqm) (string, error) {
+
 	var (
 		nextmarker, token               string
 		N                               int
 		tdocs, tpages, tsizes, tdeletes int64
 		terrors                         int
 		mu, mt, mu1                     sync.Mutex
-
-		incr      = reqm.Incremental
-		req, reql datatype.ListObjV2Request
+		incr                            = reqm.Incremental
+		req, reql                       datatype.ListObjV2Request
 	)
 
 	req = datatype.ListObjV2Request{
@@ -321,30 +335,31 @@ func backupPns( reqm datatype.Reqm) (string, error) {
 			result           *s3.ListObjectsV2Output
 			versionId        string
 			err              error
-			ndocs            int = 0
-			npages, ndeletes int = 0, 0
-			docsizes         int = 0
-			nerrors          int = 0
+			ndocs            int   = 0
+			npages, ndeletes int   = 0, 0
+			docsizes         int64 = 0
+			nerrors          int   = 0
 			key, method      string
 			start            = time.Now()
 		)
 		N++ // number of loop
 		if !incr {
 			gLog.Info.Printf("Listing documents from  %s", reqm.SrcBucket)
-			result, err = api.ListObjectWithContextV2(ctimeout,req)
+			result, err = api.ListObjectWithContextV2(ctimeout, req)
 		} else {
 			if len(inFile) > 0 {
 				gLog.Info.Printf("Listing documents from file %s", inFile)
 				result, err = ListPn(listpn, int(maxKey))
 			} else {
 				gLog.Info.Printf("Listing documents from bucket  %s", iBucket)
-				result, err = api.ListObjectWithContextV2(ctimeout,reql)
+				result, err = api.ListObjectWithContextV2(ctimeout, reql)
 			}
 		}
 		if err == nil {
 			if l := len(result.Contents); l > 0 {
 				var (
-					wg1 sync.WaitGroup
+					wg1       sync.WaitGroup
+					backupLog = []*mosesbc.LogBackup{}
 				)
 				for _, v := range result.Contents {
 					if *v.Key != nextmarker {
@@ -383,42 +398,54 @@ func backupPns( reqm datatype.Reqm) (string, error) {
 								rh = datatype.Rh{
 									Key: request.Key,
 								}
-								np, status, docsize, npage int
-								err                        error
-								usermd                     string
+								np,  npage int
+								err               error
+								docsize           int64
+								s3md            string
+								pubDate           string
+								loadDate          string
+
 							)
 
 							gLog.Trace.Printf("Method %s - Key %s ", method, request.Key)
 							if method == "PUT" {
 								rh.Result, rh.Err = api.StatObject(request)
 								versionId = *rh.Result.VersionId
-								if usermd, err = utils.GetUserMeta(rh.Result.Metadata); err == nil {
+								if s3md, err = utils.GetUserMeta(rh.Result.Metadata); err == nil {
 									userm := UserMd{}
-									json.Unmarshal([]byte(usermd), &userm)
+									if err := json.Unmarshal([]byte(s3md), &userm); err == nil {
+										pubDate = userm.PubDate
+									}
 									pn := rh.Key
 									if np, err = strconv.Atoi(userm.TotalPages); err == nil {
-										nerr, document := backupPn(pn, np, usermd, versionId, maxPage)
+										nerr, document := backupPn(pn, np, s3md, versionId, maxPage)
 										if nerr > 0 {
 											mt.Lock()
 											nerrors += nerr
 											mt.Unlock()
 										} else {
-											docsize = (int)(document.Size)
+											docsize = document.Size
 											npage = (int)(document.NumberOfPages)
 										}
+										loadDate,_ = getLoadDate(document)
 									} else {
-										gLog.Error.Printf("Document %s - S3 metadata has an invalid number of pages in %s - Try to get it from the document user metadata ", pn, usermd)
-										if np, err, status = mosesbc.GetPageNumber(pn); err == nil {
-											nerr, document := backupPn(pn, np, usermd, versionId, maxPage)
-											gLog.Info.Printf("Time from start %v", time.Since(start))
+										gLog.Error.Printf("Document %s - S3 metadata has an invalid number of pages in %s - Try to get it from the document metadata ", pn, s3md)
+
+										if  docmd, err, status := mosesbc.GetDocumentMeta(pn); err == nil {
+											np = docmd.TotalPage
+											pubDate = docmd.PubDate
+											nerr, document := backupPn(pn, np, s3md, versionId, maxPage)
+											gLog.Trace.Printf("Time from start %v", time.Since(start))
 											if nerr > 0 {
 												mt.Lock()
 												nerrors += nerr
 												mt.Unlock()
 											} else {
-												docsize = (int)(document.Size)
+												docsize = document.Size
 												npage = (int)(document.NumberOfPages)
 											}
+											loadDate,_ = getLoadDate(document)
+
 										} else {
 											gLog.Error.Printf(" Error %v - Status Code: %v  - Getting number of pages for %s ", err, status, pn)
 											mt.Lock()
@@ -426,11 +453,17 @@ func backupPns( reqm datatype.Reqm) (string, error) {
 											mt.Unlock()
 										}
 									}
+
 								}
 								mu.Lock()
 								npages += npage
 								docsizes += docsize
 								mu.Unlock()
+								/*
+									Prepare to log
+								 */
+
+								backupLog = append(backupLog, &mosesbc.LogBackup{Method: method,Incremental:reqm.Incremental, Key: request.Key, Bucket: request.Bucket, Pages: npage, Size: docsize, Pubdate: pubDate, Loaddate: loadDate,Errors: nerrors})
 							} // end PUT method
 
 							if method == "DELETE" {
@@ -459,12 +492,26 @@ func backupPns( reqm datatype.Reqm) (string, error) {
 					}
 					gLog.Warning.Printf("Truncated %v - Next marker: %s ", *result.IsTruncated, nextmarker)
 				}
-				gLog.Info.Printf("Number of backed up documents: %d  - Number of pages: %d  - Document size: %d - Number of deletes: %d - Number of errors: %d - Elapsed time: %v", ndocs, npages, docsizes, ndeletes, nerrors, time.Since(start))
+				gLog.Info.Printf("Number of backup documents: %d  - Number of pages: %d  - Document size: %d - Number of deletes: %d - Number of errors: %d - Elapsed time: %v", ndocs, npages, docsizes, ndeletes, nerrors, time.Since(start))
 				tdocs += int64(ndocs)
 				tpages += int64(npages)
 				tsizes += int64(docsizes)
 				tdeletes += int64(ndeletes)
 				terrors += nerrors
+				/*
+					log backup before returning
+				*/
+				if logit {
+					logReq := mosesbc.LogRequest{
+						Service: logS3,
+						Bucket: logBucket,
+						LogBackup: backupLog,
+						Ctimeout: ctimeout,
+					}
+					// mosesbc.Logit(logS3, logBucket, backupLog, ctimeout)
+					mosesbc.Logit(logReq)
+				}
+
 			}
 		} else {
 			gLog.Error.Printf("%v", err)
@@ -479,6 +526,7 @@ func backupPns( reqm datatype.Reqm) (string, error) {
 			break
 		}
 	}
+
 	return nextmarker, nil
 }
 
@@ -529,7 +577,7 @@ func backupPn(pn string, np int, usermd string, versionId string, maxPage int) (
 		document *documentpb.Document
 		errs     []error
 	)
-	if errs, document = mosesbc.BackupBlob(pn, np, maxPage,ctimeout); len(errs) == 0 {
+	if errs, document = mosesbc.BackupBlob(pn, np, maxPage, ctimeout); len(errs) == 0 {
 
 		/*
 			Add  s3 moses metadata to the document even if it may be  invalid in the source bucket
@@ -550,7 +598,7 @@ func backupPn(pn string, np int, usermd string, versionId string, maxPage int) (
 			gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
 			nerrs += 1
 		} else {
-			gLog.Info.Printf("Time to upload the backup document %s to bucket %s : %v ",  document.DocId, bucket,time.Since(start))
+			gLog.Info.Printf("Time to upload the backup document %s to bucket %s : %v ", document.DocId, bucket, time.Since(start))
 		}
 		/*
 			version management can be implement here
@@ -567,10 +615,10 @@ func backupPn(pn string, np int, usermd string, versionId string, maxPage int) (
 func writeS3(service *s3.S3, bucket string, maxPartSize int64, document *documentpb.Document) (interface{}, error) {
 
 	if maxPartSize > 0 && document.Size > maxPartSize {
-		gLog.Warning.Printf("Multipart upload %s - size %d - max part size %d", document.DocId, document.Size, maxPartSize)
-		return mosesbc.WriteS3Multipart(service, bucket, maxPartSize, document,ctimeout)
+		gLog.Info.Printf("Multipart uploading of %s - size %d - max part size %d", document.DocId, document.Size, maxPartSize)
+		return mosesbc.WriteS3Multipart(service, bucket, maxPartSize, document, ctimeout)
 	} else {
-		return mosesbc.WriteS3(service, bucket, document,ctimeout)
+		return mosesbc.WriteS3(service, bucket, document, ctimeout)
 	}
 }
 
@@ -625,4 +673,16 @@ func deleteVersions(request datatype.StatObjRequest) (int, int) {
 		nerrors += 1
 	}
 	return ndeletes, nerrors
+}
+
+
+func getLoadDate( document *documentpb.Document) (string,error) {
+	var (
+		docmd = meta.DocumentMetadata{}
+	)
+	if err:= json.Unmarshal([]byte(document.GetMetadata()),docmd); err == nil {
+		return docmd.LoadDate, err
+	} else {
+		return "",err
+	}
 }
