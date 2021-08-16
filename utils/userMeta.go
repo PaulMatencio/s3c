@@ -134,11 +134,17 @@ func PrintUsermd(key string, metad map[string]*string) {
 	for k,v := range metad {
 		switch k {
 		case "Usermd" :
-			val,_ :=  base64.StdEncoding.DecodeString(*v)
-			gLog.Info.Printf("%s: %s",k,string(val))
+			if val,err :=  base64.StdEncoding.DecodeString(*v);err == nil {
+				gLog.Info.Printf("%s: %s", k, string(val))
+			} else {
+				gLog.Info.Printf("%s: %s", k, *v)
+			}
 		case "S3meta" :
-			val,_ :=  base64.StdEncoding.DecodeString(*v)
-			gLog.Info.Printf("%s: %s",k,string(val))
+			if val,err :=  base64.StdEncoding.DecodeString(*v);err == nil {
+				gLog.Info.Printf("%s: %s", k, string(val))
+			} else {
+				gLog.Info.Printf("%s: %s", k, *v)
+			}
 		default:
 			gLog.Info.Printf("%s: %s", k, *v)
 		}
