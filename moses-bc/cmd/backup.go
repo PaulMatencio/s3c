@@ -354,14 +354,14 @@ func backupPns(reqm datatype.Reqm) (string, error) {
 		)
 		N++ // number of loop
 		if !incr {
-			gLog.Info.Printf("Listing documents from  %s", reqm.SrcBucket)
+			gLog.Info.Printf("List documents from bucket %s", reqm.SrcBucket)
 			result, err = api.ListObjectWithContextV2(ctimeout, req)
 		} else {
 			if len(inFile) > 0 {
-				gLog.Info.Printf("Listing documents from file %s", inFile)
+				gLog.Info.Printf("List documents from file %s", inFile)
 				result, err = ListPn(listpn, int(maxKey))
 			} else {
-				gLog.Info.Printf("Listing documents from bucket  %s", iBucket)
+				gLog.Info.Printf("List documents from bucket  %s", iBucket)
 				result, err = api.ListObjectWithContextV2(ctimeout, reql)
 			}
 		}

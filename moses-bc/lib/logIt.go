@@ -68,7 +68,7 @@ func (logb *LogBackup) Logit(request datatype.PutObjRequest3, timeout time.Durat
 
 	if jsoni, err := json.Marshal(logb); err == nil {
 		jsonb := string(jsoni)
-		meta["usermd"] = &jsonb
+		meta["Usermd"] = &jsonb
 		request.Metadata = meta
 		if _, err := api.PutObjectWithContext(timeout, request); err != nil {
 			err1 = errors.New(fmt.Sprintf("Failed to log backup of %s to %s", request.Key, request.Bucket))
