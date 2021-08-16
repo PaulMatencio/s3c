@@ -15,15 +15,15 @@ import (
 )
 
 type LogBackup struct {
-	Method  string `json:"method,omitempty"`
-	Incremental bool `json:"incremental,omitempty"`
-	Key     string `json:"document-id"`
-	Bucket  string `json:"bucket-name"`
-	Pages   int    `json:"number-pages"`
-	Size    int64  `json:"document-size"`
-	Pubdate string `json:"publication-date,omitempty"`
-	Loaddate string `json:"load-date,omitempty"`
-	Errors  int    `json:"number-errors"`
+	Method      string `json:"method,omitempty"`
+	Incremental bool   `json:"incremental,omitempty"`
+	Key         string `json:"document-id"`
+	Bucket      string `json:"bucket-name"`
+	Pages       int    `json:"number-pages"`
+	Size        int64  `json:"document-size"`
+	Pubdate     string `json:"publication-date,omitempty"`
+	Loaddate    string `json:"load-date,omitempty"`
+	Errors      int    `json:"number-errors"`
 }
 
 type LogRequest struct {
@@ -33,17 +33,39 @@ type LogRequest struct {
 	Ctimeout  time.Duration
 }
 
-func (logb *LogBackup) Logit( request datatype.PutObjRequest3,incr bool, timeout time.Duration) (error, string) {
+func Logit(logReq LogRequest) {
+
+	req := datatype.PutObjRequest3{
+		Service: logReq.Service,
+		Bucket:  logReq.Bucket,
+		Buffer:  bytes.NewBuffer([]byte{}),
+	}
+
+	wg := sync.WaitGroup{}
+	for _, logb := range logReq.LogBackup {
+		wg.Add(1)
+		go func(*LogBackup, datatype.PutObjRequest3) {
+			defer wg.Done()
+			if err, msg := logb.Logit(req, logReq.Ctimeout); err != nil {
+				gLog.Error.Printf("%v", err)
+			} else {
+				gLog.Trace.Printf("%s", msg)
+			}
+		}(logb, req)
+	}
+	wg.Wait()
+}
+
+func (logb *LogBackup) Logit(request datatype.PutObjRequest3, timeout time.Duration) (error, string) {
 
 	var (
 		meta       = map[string]*string{}
 		err1 error = nil
 		msg  string
 	)
-	request.Key = GetCurrentDate() + "/" + logb.Method + "/" + logb.Key
-	if !incr &&  len(logb.Loaddate) >= 8 {
-		request.Key = ToDate(logb.Loaddate) + "/" + logb.Method + "/" + logb.Key
-	}
+
+	request.Key = logb.GetDate() + "/" + logb.Method + "/" + logb.Key
+
 	if jsoni, err := json.Marshal(logb); err == nil {
 		jsonb := string(jsoni)
 		meta["usermd"] = &jsonb
@@ -59,45 +81,44 @@ func (logb *LogBackup) Logit( request datatype.PutObjRequest3,incr bool, timeout
 	return err1, msg
 }
 
-
-func Logit(logReq LogRequest) {
-
-	req := datatype.PutObjRequest3{
-		Service: logReq.Service,
-		Bucket:  logReq.Bucket,
-		Buffer:  bytes.NewBuffer([]byte{}),
-	}
-
-	wg := sync.WaitGroup{}
-	for _, logb := range logReq.LogBackup {
-		wg.Add(1)
-		go func(*LogBackup, datatype.PutObjRequest3) {
-			defer wg.Done()
-			if err, msg := logb.Logit(req,logb.Incremental, logReq.Ctimeout); err != nil {
-				gLog.Error.Printf("%v", err)
-			} else {
-				gLog.Trace.Printf("%s", msg)
-			}
-		}(logb, req)
-	}
-	wg.Wait()
-}
-
 /*
 	current date
     format YYYY/MM/DD
+
 */
+
 func GetCurrentDate() string {
 	d := fmt.Sprintln(time.Now().Format(cmd.ISOLayout))
 	return fmt.Sprintf("%s/%s/%s", d[0:4], d[5:7], d[8:10])
 }
 
-func ToDate(date string) string {
-	mydate := date[0:4]+"-"+date[4:6]+"-" + date[6:8]
-	if _,err := time.Parse(cmd.ISOLayout,mydate); err == nil {
-		return date[0:4] + "/" + date[4:6] + "/" + date[6:8]
-	} else {
-		return GetCurrentDate()
-	}
-}
+func (logb *LogBackup) GetDate() string {
 
+	var (
+		date   = logb.Loaddate
+		mydate string
+		defaut = "1900/01/01"
+		err error
+	)
+
+	//  return load date if good
+	if len(date) == 8 {
+		mydate = date[0:4] + "-" + date[4:6] + "-" + date[6:8]
+		if _, err = time.Parse(cmd.ISOLayout, mydate); err == nil {
+			return date[0:4] + "/" + date[4:6] + "/" + date[6:8]
+		}
+	}
+
+	// else return publication date if good
+	date = logb.Pubdate
+	if len(date) == 8 {
+		mydate = date[0:4] + "-" + date[4:6] + "-" + date[6:8]
+		if _, err = time.Parse(cmd.ISOLayout, mydate); err == nil {
+			return date[0:4] + "/" + date[4:6] + "/" + date[6:8]
+		}
+	}
+	// otherwise return a default date
+	gLog.Warning.Printf("Error %v  parsing load date %s and publication date %s", err, logb.Loaddate, logb.Pubdate)
+	return defaut
+
+}

@@ -62,6 +62,7 @@ func initResFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&srcBucket, "source-bucket", "", "", "name of the S3 backup bucket")
 	cmd.Flags().StringVarP(&tgtBucket, "target-bucket", "", "", "name of the target bucket")
 	cmd.Flags().StringVarP(&indBucket, "index-bucket", "", "", "name of the index metadata bucket")
+	cmd.Flags().StringVarP(&iBucket, "input-bucket", "", "", "input bucket containing the backup history")
 	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "key prefix")
 	cmd.Flags().Int64VarP(&maxKey, "max-key", "m", 20, "maximum number of keys to be restored concurrently")
 	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key")
@@ -127,10 +128,17 @@ func RestorePns(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	if len(prefix) > 0 {
+	if len(prefix) > 0 ||  len(iBucket) > 0 {
+
+		if len(inFile) > 0 && len(iBucket) > 0 {
+			gLog.Error.Printf("--input-file  and --input-bucket are mutually exclusive", inFile, iBucket)
+			return
+		}
+
 		if len(inFile) > 0 {
 			gLog.Warning.Println("--prefix  and --input-file are incompatible ; --input-file is ignored")
 		}
+
 		if len(srcBucket) > 0 {
 			if err, suf := mosesbc.GetBucketSuffix(srcBucket, prefix); err != nil {
 				gLog.Error.Printf("%v", err)

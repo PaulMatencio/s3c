@@ -158,10 +158,12 @@ func BackupPns(cmd *cobra.Command, args []string) {
 			gLog.Error.Printf("--input-file  and --input-bucket are mutually exclusive", inFile, iBucket)
 			return
 		}
+		/*
 		if len(prefix) > 0 {
 			gLog.Warning.Printf("Prefix is ignored with --input-file or --input-bucket ")
 			prefix = ""
 		}
+		*/
 		/*
 			Prepare to Scan the input file
 		*/
@@ -177,7 +179,7 @@ func BackupPns(cmd *cobra.Command, args []string) {
 
 		}
 		incr = true
-		// bucket must not  have a suffix
+		// check buckets name - bucket name  must not  have a suffix
 		if mosesbc.HasSuffix(srcBucket) {
 			gLog.Error.Printf("Source bucket %s must not have a suffix", srcBucket)
 			return
@@ -196,6 +198,7 @@ func BackupPns(cmd *cobra.Command, args []string) {
 	*/
 
 	if len(prefix) > 0 {
+
 		/*
 			get the suffix of the bucket and append it to the source bucket
 		*/
@@ -234,7 +237,7 @@ func BackupPns(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	// Check  the suffix of both and target buckets
+	// Check  the suffix of both source and target buckets
 	if err := mosesbc.CheckBucketName(srcBucket, tgtBucket); err != nil {
 		gLog.Warning.Printf("%v", err)
 		return
@@ -260,19 +263,26 @@ func BackupPns(cmd *cobra.Command, args []string) {
 	maxPartSize = maxPartSize * 1024 * 1024
 	// srcS3 = mosesbc.CreateS3Session("backup", "source")
 	if srcS3 = mosesbc.CreateS3Session("backup", "source"); srcS3 == nil {
-		gLog.Error.Printf("Failed to create a S3 source session")
+		gLog.Error.Printf("Failed to create a session with the source S3")
 		return
 	}
 	// tgtS3 = mosesbc.CreateS3Session("backup", "target")
 	if tgtS3 = mosesbc.CreateS3Session("backup", "target"); tgtS3 == nil {
-		gLog.Error.Printf("Failed to create a S3 target session")
+		gLog.Error.Printf("Failed to create a session with the target S3")
 		return
 	}
+
 	if logit {
-		if logS3 = mosesbc.CreateS3Session("backup", "log"); logS3 == nil {
-			gLog.Error.Printf("Failed to create a S3  backup loggingsession")
+		if logS3 = mosesbc.CreateS3Session("backup", "logger"); logS3 == nil {
+			gLog.Error.Printf("Failed to create a S3 session with the logger s3")
 			return
-			/* log log bucket */
+		} else {
+			/*  get the log bucket name  */
+			k:= "backup.s3.logger.bucket"
+			if logBucket = viper.GetString(k); len(logBucket) == 0 {
+				gLog.Error.Printf("logger bucket is missing - add %s to the config.yaml file")
+				return
+			}
 		}
 	}
 
