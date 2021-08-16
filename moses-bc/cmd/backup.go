@@ -122,8 +122,8 @@ func initBkFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&srcUrl, "source-sproxyd-url", "s", "", "source sproxyd endpoints  http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
 	cmd.Flags().StringVarP(&driver, "source-sproxyd-driver", "", "", "source sproxyd driver [bpchord|bparc]")
 	cmd.Flags().StringVarP(&env, "source-sproxyd-env", "", "", "source sproxyd environment [prod|osa]")
-	cmd.Flags().DurationVarP(&ctimeout, "--ctimeout", "", 10, "set context background cancel timeout in seconds")
-	cmd.Flags().BoolVarP(&logit, "--logit", "", false, "log it")
+	cmd.Flags().DurationVarP(&ctimeout, "ctimeout", "", 10, "set context background cancel timeout in seconds")
+	cmd.Flags().BoolVarP(&logit, "logit", "", false, "log it")
 }
 
 func init() {

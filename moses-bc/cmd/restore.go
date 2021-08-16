@@ -81,7 +81,7 @@ func initResFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&targetEnv, "target-sproxyd-env", "", "", "target sproxyd environment [prod|osa]")
 	cmd.Flags().BoolVarP(&toS3, "toS3", "", false, "restore to S3 ")
 	cmd.Flags().BoolVarP(&reIndex, "re-index", "", true, "re-index the target moses documents in the index bucket")
-	cmd.Flags().DurationVarP(&ctimeout, "--ctimeout", "", 10, "set context background cancel timeout in seconds")
+	cmd.Flags().DurationVarP(&ctimeout, "ctimeout", "", 10, "set context background cancel timeout in seconds")
 
 }
 
