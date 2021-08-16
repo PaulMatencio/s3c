@@ -49,7 +49,7 @@ func Logit(logReq LogRequest) {
 			if err, msg := logb.Logit(req, logReq.Ctimeout); err != nil {
 				gLog.Error.Printf("%v", err)
 			} else {
-				gLog.Trace.Printf("%s", msg)
+				gLog.Info.Printf("%s", msg)
 			}
 		}(logb, req)
 	}
@@ -71,9 +71,9 @@ func (logb *LogBackup) Logit(request datatype.PutObjRequest3, timeout time.Durat
 		meta["Usermd"] = &jsonb
 		request.Metadata = meta
 		if _, err := api.PutObjectWithContext(timeout, request); err != nil {
-			err1 = errors.New(fmt.Sprintf("Failed to log backup of %s to %s", request.Key, request.Bucket))
+			err1 = errors.New(fmt.Sprintf("Failed to log backup of %s to bucket %s", request.Key, request.Bucket))
 		} else {
-			msg = fmt.Sprintf("The backup of %s is logged in bucket %s", request.Key, request.Bucket)
+			msg = fmt.Sprintf("The backup of %s is logged in the bucket %s", request.Key, request.Bucket)
 		}
 	} else {
 		err1 = errors.New(fmt.Sprintf("Error converting structure to Json %v", err))
