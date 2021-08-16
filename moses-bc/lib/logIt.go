@@ -44,6 +44,7 @@ func Logit(logReq LogRequest) {
 	wg := sync.WaitGroup{}
 	for _, logb := range logReq.LogBackup {
 		wg.Add(1)
+		gLog.Info.Printf("logging key %s",logb.Key)
 		go func(*LogBackup, datatype.PutObjRequest3) {
 			defer wg.Done()
 			if err, msg := logb.Logit(req, logReq.Ctimeout); err != nil {

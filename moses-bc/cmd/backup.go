@@ -472,7 +472,7 @@ func backupPns(reqm datatype.Reqm) (string, error) {
 								/*
 									Prepare to log
 								 */
-								gLog.Info.Printf("logging backup of %s to bucket %s",request.Key,request.Bucket)
+								// gLog.Info.Printf("logging backup of %s ",request.Key)
 								backupLog = append(backupLog, &mosesbc.LogBackup{Method: method,Incremental:reqm.Incremental, Key: request.Key, Bucket: request.Bucket, Pages: npage, Size: docsize, Pubdate: pubDate, Loaddate: loadDate,Errors: nerrors})
 							} // end PUT method
 
