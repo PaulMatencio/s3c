@@ -390,7 +390,7 @@ func backupPns(reqm datatype.Reqm) (string, error) {
 							buck = mosesbc.SetBucketName(myKey, req.Bucket)
 						} else {
 							if len(inFile) > 0 {
-								if err, method, key = mosesbc.ParseLog(myKey); err != nil {
+								if err, method, myKey = mosesbc.ParseLog(myKey); err != nil {
 									gLog.Error.Printf("%v", err)
 									continue
 								}
