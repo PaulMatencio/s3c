@@ -60,35 +60,33 @@ var (
 
 func initResFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&srcBucket, "source-bucket", "", "", "name of the S3 backup bucket")
-	cmd.Flags().StringVarP(&tgtBucket, "target-bucket", "", "", "name of the target bucket")
-	cmd.Flags().StringVarP(&indBucket, "index-bucket", "", "", "name of the index metadata bucket")
-	cmd.Flags().StringVarP(&iBucket, "input-bucket", "", "", "input bucket containing the backup history")
-	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "key prefix")
-	cmd.Flags().Int64VarP(&maxKey, "max-key", "m", 20, "maximum number of keys to be restored concurrently")
+	cmd.Flags().StringVarP(&tgtBucket, "target-bucket", "", "", "name of the s3 target bucket for migration to s3.It is required if --toS3=true ")
+	cmd.Flags().StringVarP(&indBucket, "index-bucket", "", "", "name of the s3 Moses directory bucket. It is requited if --re-index=true")
+	cmd.Flags().StringVarP(&iBucket, "input-bucket", "", "", "input bucket containing the history of the backup ( listed by loaded date). It is used to restore by date")
+	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "key prefix. It is used to restore by date ( -p 2021/01/01)  or by country -p US/")
+	cmd.Flags().Int64VarP(&maxKey, "max-key", "m", 21, "maximum number of documents to be restored concurrently")
 	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key")
-	cmd.Flags().StringVarP(&delimiter, "delimiter", "d", "", "key delimiter")
-	cmd.Flags().StringVarP(&pn, "key", "k", "", "publication number to be restored")
+	// cmd.Flags().StringVarP(&delimiter, "delimiter", "d", "", "key delimiter (not used) ")
+	cmd.Flags().StringVarP(&pn, "key", "k", "", "a specific publication number to be restored")
 	cmd.Flags().StringVarP(&versionId, "versionId", "", "", "Version id of the publication number to be restored - default the last version will be restored ")
 	cmd.Flags().StringVarP(&inFile, "input-file", "i", "", "input file containing the list of documents to restore")
 	cmd.Flags().IntVarP(&maxPage, "max-page", "", 50, "maximum number of concurrent pages ")
 	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, "maximum number of loop, 0 means no upper limit")
 	cmd.Flags().BoolVarP(&replace, "replace", "r", false, "replace existing pages if exist")
-	cmd.Flags().Int64VarP(&maxPartSize, "max-part-size", "", 40, "Maximum partsize (MB) for multipart download")
+	cmd.Flags().Int64VarP(&maxPartSize, "max-part-size", "", 64, "Maximum partsize (MB) for multipart download")
 	cmd.Flags().Int64VarP(&partNumber, "part-number", "", 0, "Part number")
 	cmd.Flags().IntVarP(&maxCon, "max-con", "", 5, "Maximum concurrent parts download , 0 => all parts")
 	cmd.Flags().StringVarP(&targetDriver, "target-sproxyd-driver", "", "", "target sproxyd driver [bpchord|bparc]")
 	cmd.Flags().StringVarP(&targetUrl, "target-sproxyd-url", "t", "", "target sproxyd endpoint URL http://xx.xx.xx.xx:81/proxy,http:// ...")
 	cmd.Flags().StringVarP(&targetEnv, "target-sproxyd-env", "", "", "target sproxyd environment [prod|osa]")
-	cmd.Flags().BoolVarP(&toS3, "toS3", "", false, "restore to S3 ")
-	cmd.Flags().BoolVarP(&reIndex, "re-index", "", true, "re-index the target moses documents in the index bucket")
-	cmd.Flags().DurationVarP(&ctimeout, "ctimeout", "", 10, "set context background cancel timeout in seconds")
-
+	cmd.Flags().BoolVarP(&toS3, "toS3", "", false, "restore or rather migrate Moses to S3 directly from the backup")
+	cmd.Flags().BoolVarP(&reIndex, "re-index", "", true, "re-index the moses documents in the index bucket after the restore")
+	cmd.Flags().DurationVarP(&ctimeout, "ctimeout", "", 10, "background cancel timeout in seconds for context")
 }
 
 func init() {
 	rootCmd.AddCommand(restoreCmd)
 	initResFlags(restoreCmd)
-
 }
 
 func RestorePns(cmd *cobra.Command, args []string) {
@@ -246,18 +244,30 @@ func restorePns() (string, error) {
 		tdocs, tpages, tsizes int64
 		terrors               int
 		re, si                sync.Mutex
+		req, reql                       datatype.ListObjV2Request
 	)
 	// mosesbc.SetSourceSproxyd("restore",srcUrl,driver)
 
-	req := datatype.ListObjV2Request{
+	req = datatype.ListObjV2Request{
 		Service:           srcS3,
 		Bucket:            srcBucket,
 		Prefix:            prefix,
 		MaxKey:            int64(maxKey),
 		Marker:            marker,
-		Delimiter:         delimiter,
+		// Delimiter:         delimiter,
 		Continuationtoken: token,
 	}
+	if len(iBucket) > 0 {
+		reql = datatype.ListObjV2Request{
+			Service:           srcS3,
+			Bucket:            iBucket,
+			Prefix:            prefix,
+			MaxKey:            int64(maxKey),
+			Marker:            marker,
+			Continuationtoken: token,
+		}
+	}
+
 	start0 := time.Now()
 	for {
 		var (
@@ -270,11 +280,14 @@ func restorePns() (string, error) {
 			tgtSproxyd string
 		)
 		N++ // number of loop
-
 		if len(inFile) > 0 {
 			result, err = ListPn(listpn, int(maxKey)) //  listpn returns the list of documents to be restored
 		} else {
-			result, err = api.ListObjectV2(req) // listobject returns the list of documents to be restored
+			if len(iBucket) > 0 {
+				result, err = api.ListObjectV2(reql)
+			} else {
+				result, err = api.ListObjectV2(req) // listobject returns the list of documents to be restored
+			}
 		}
 		if err == nil {
 			if !toS3 {
@@ -324,8 +337,12 @@ func restorePns() (string, error) {
 					}
 				}
 				wg1.Wait()
+
 				if *result.IsTruncated {
 					nextmarker = *result.Contents[l-1].Key
+					if len(inFile) == 0 {
+						token = *result.NextContinuationToken
+					}
 					gLog.Warning.Printf("Truncated %v - Next marker: %s ", *result.IsTruncated, nextmarker)
 				}
 				ndocs = ndocs - nerrors

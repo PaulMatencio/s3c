@@ -105,6 +105,22 @@ func ParseLog(line string) (error, string, string) {
 	return errors.New(fmt.Sprintf("Invalid input parameter  <method> <key> in %s", line)), "", ""
 }
 
+func ParseInputKey(key string) (error, string) {
+	var (
+		err error
+	)
+
+	if len(key) <= 8 {
+		err = errors.New(fmt.Sprintf("Invalid input key %s", key))
+		return err,key
+	}
+	if _, err = time.Parse("2006-01-02", key[0:4] + "-" + key[4:6] + "-" + key[6:8]); err != nil {
+		err = errors.New(fmt.Sprintf("Invalid input key %s - key does not start with yyyymmdd/", key))
+		return err,key
+	}
+	return nil,  key[9:]
+}
+
 func Profiling(profiling int) {
 	if profiling > 0 {
 		go func() {

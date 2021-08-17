@@ -42,7 +42,7 @@ var (
 		Use:   "_backup_",
 		Short: "Command to backup a MOSES  objects to S3 or files",
 		Long: `        
-        Command to backup Moses data and Moses directories to S3 or files
+        Command to backup Moses data and Moses directories to S3 or  to files
       
         Moses data are stored in Scality Ring native object storage accessed via sproxyd driver 
         Moses directories are stored in S3 buckets. Each bucket name has a suffix ( <bucket-name>-xx ; xx=00..05)
@@ -54,30 +54,27 @@ var (
         Config file: 
       	The Default config file is located $HOME/.clone/config.file 
 
-        Example of full backup: 
+        Example of full backup per bucket:
+          Backup all the objects listed in the S3 --source-bucket meta-moses-prod-pn-01  to the S3 bucket meta-moses-prod-bkup-pn-01
+          moses-bc  _backup_ --source-bucket meta-moses-prod-pn-01 --target-bucket meta-moses-prod-bkup-pn-01 --max-loop 0
+        **  Both source and target bucket must have the same suffix, for instance -01 ** 
 
-        Backup all the objects listed in the S3 --source-bucket meta-moses-prod-pn-01  to the S3 bucket meta-moses-prod-bkup-pn-01 
-     	
-        moses-bc -c $HOME/.clone/config.yaml _backup_ --source-bucket meta-moses-prod-pn-01 \ 
-        --target-bucket meta-moses-prod-bkup-pn-01 --max-loop 0
-        **  suffix is requird and both source and target bucket must have the same suffix, for instance -01 ** 
-
-        Example of backup of all document name started with a specific --prefix 
-
-        moses-bc -c $HOME/.clone/config.yaml _backup_ --source-bucket meta-moses-prod-pn --prefix  FR/ 
-        --target-bucket meta-moses-prod-bkup-pn   --max-loop 0   ** bucket suffix is not required **
+        Example of backup of all document name started with a specific --prefix
+          moses-bc - _backup_ --source-bucket meta-moses-prod-pn --prefix  FR/  --target-bucket meta-moses-prod-bkup-pn --max-loop 0   
+        ** bucket suffix is not required **
 		
-        Example of an incremental backup of all documents created between  YYY-MM-DDT10:00:00Z and  YYY-MM-DDT012:00:00Z
-        
-        moses-bc -c $HOME/.clone/config.yaml _backup_ --input-bucket last-loaded-prod --prefix dd/mm/yy \
-        --from-date YYY-MM-DDT00:00:00Z --to-date YYY-MM-DDT00:00:00Z \
-        --target-bucket meta-moses-prod-bkup-pn  --max-loop 0  ** bucket suffix is not required  **
+        Example of an incremental backup of documents created between  2021-11-01T07:00:00Z and  2021-11-01T08:00:00Z
+          moses-bc  _backup_ --input-bucket last-loaded-prod --prefix 2021/11/01 --from-date 2021-11-01T07:00:00Z --to-date 2021-11-01T08:00:00Z \
+          --target-bucket meta-moses-prod-bkup-pn  --max-loop 0  
+        ** bucket suffix is not required  **
 
         Example of an incremental backup of all publication numbers listed in the --input-file
-
         moses-bc -c $HOME/.clone/config.yaml _backup_ --input-file <file containing a list of publication numbers>  \
-        --target-bucket meta-moses-prod-bkup-pn  --max-loop 0   ** bucket suffix is not required **
-         
+          --target-bucket meta-moses-prod-bkup-pn  --max-loop 0   
+        ** bucket suffix is not required **
+
+		Example of backup  not using default config file
+        moses-bc -c $HOME/.clone/config-osa.yaml _backup_  ...
 		`,
 		Hidden: true,
 		Run:    BackupPns,
@@ -88,9 +85,9 @@ var (
 	marker                                        string
 	maxLoop, maxPage                              int
 	incr, logit                                   bool
-	fromDate                                      string
+	fromDate, toDate                              string
 	maxVersions                                   int
-	frDate                                        time.Time
+	frDate, tDate                                 time.Time
 	ctimeout                                      time.Duration
 )
 
@@ -102,14 +99,12 @@ type UserMd struct {
 	TotalPages string `json:"totalPages"`
 }
 
-
-
 func initBkFlags(cmd *cobra.Command) {
 
 	cmd.Flags().StringVarP(&srcBucket, "source-bucket", "", "", "name of source s3 bucket. Ex: meta-moses-prod-pn-xx, suffix xx is only required for bucket backup")
 	cmd.Flags().StringVarP(&tgtBucket, "target-bucket", "", "", "name of the target s3 bucket. Ex: meta-moses-prod-bkp-pn-xx, xx must be the same as source-bucket")
 	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "prefix of a Moses document in the form of cc/pn/kc. Ex: FR/1234")
-	cmd.Flags().Int64VarP(&maxKey, "max-key", "m", 20, "maximum number of moses documents  to be cloned concurrently")
+	cmd.Flags().Int64VarP(&maxKey, "max-key", "m", 21, "maximum number of moses documents  to be cloned concurrently")
 	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key; key= moses-document in the form of cc/pn/kc")
 	cmd.Flags().IntVarP(&maxPage, "max-page", "", 50, "maximum number of concurrent moses pages to be concurrently processed")
 	cmd.Flags().IntVarP(&maxVersions, "max-versions", "", 3, "maximum number of backup versions")
@@ -117,8 +112,9 @@ func initBkFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&inFile, "input-file", "i", "", "input file containing the list of moses documents for incremental backup")
 	cmd.Flags().StringVarP(&iBucket, "input-bucket", "", "", "input bucket containing the last uploaded documents for incremental backup - Ex: meta-moses-prod-last-loaded")
 	// cmd.Flags().StringVarP(&outDir, "output-directory", "o", "", "output directory for --backupMedia = File")
-	cmd.Flags().StringVarP(&fromDate, "from-date", "", "1970-01-01T00:00:00Z", "backup objects with last modified from <yyyy-mm-ddThh:mm:ss>")
-	cmd.Flags().Int64VarP(&maxPartSize, "max-part-size", "", 40, "maximum partition size (MB) for multipart upload")
+	cmd.Flags().StringVarP(&fromDate, "from-date", "", "1970-01-01T00:00:00Z", "backup objects modified after <yyyy-mm-ddThh:mm:ss>")
+	cmd.Flags().StringVarP(&toDate, "to-date", "", "", "backup objects modified before <yyyy-mm-ddThh:mm:ss>")
+	cmd.Flags().Int64VarP(&maxPartSize, "max-part-size", "", 64, "maximum partition size (MB) for multipart upload")
 	cmd.Flags().StringVarP(&srcUrl, "source-sproxyd-url", "s", "", "source sproxyd endpoints  http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
 	cmd.Flags().StringVarP(&driver, "source-sproxyd-driver", "", "", "source sproxyd driver [bpchord|bparc]")
 	cmd.Flags().StringVarP(&env, "source-sproxyd-env", "", "", "source sproxyd environment [prod|osa]")
@@ -159,10 +155,10 @@ func BackupPns(cmd *cobra.Command, args []string) {
 			return
 		}
 		/*
-		if len(prefix) > 0 {
-			gLog.Warning.Printf("Prefix is ignored with --input-file or --input-bucket ")
-			prefix = ""
-		}
+			if len(prefix) > 0 {
+				gLog.Warning.Printf("Prefix is ignored with --input-file or --input-bucket ")
+				prefix = ""
+			}
 		*/
 		/*
 			Prepare to Scan the input file
@@ -250,6 +246,12 @@ func BackupPns(cmd *cobra.Command, args []string) {
 			return
 		}
 	}
+	if len(toDate) > 0 {
+		if tDate, err = time.Parse(time.RFC3339, toDate); err != nil {
+			gLog.Error.Printf("Wrong date format %s", toDate)
+			return
+		}
+	}
 
 	/*
 			Setup the source sproxyd url, driver and environment ( moses data)
@@ -278,7 +280,7 @@ func BackupPns(cmd *cobra.Command, args []string) {
 			return
 		} else {
 			/*  get the log bucket name  */
-			k:= "backup.s3.logger.bucket"
+			k := "backup.s3.logger.bucket"
 			if logBucket = viper.GetString(k); len(logBucket) == 0 {
 				gLog.Error.Printf("logger bucket is missing - add %s to the config.yaml file")
 				return
@@ -318,7 +320,7 @@ func backupPns(reqm datatype.Reqm) (string, error) {
 		terrors                         int
 		mu, mt, mu1                     sync.Mutex
 		incr                            = reqm.Incremental
-		req, reql                       datatype.ListObjV2Request
+		req                             datatype.ListObjV2Request
 	)
 
 	req = datatype.ListObjV2Request{
@@ -329,8 +331,9 @@ func backupPns(reqm datatype.Reqm) (string, error) {
 		Marker:            marker,
 		Continuationtoken: token,
 	}
+	//   list from input-bucket
 	if len(iBucket) > 0 {
-		reql = datatype.ListObjV2Request{
+		req = datatype.ListObjV2Request{
 			Service:           reqm.SrcS3,
 			Bucket:            iBucket,
 			Prefix:            prefix,
@@ -353,18 +356,14 @@ func backupPns(reqm datatype.Reqm) (string, error) {
 			start            = time.Now()
 		)
 		N++ // number of loop
-		if !incr {
+		if len(inFile) == 0 {
 			gLog.Info.Printf("List documents from bucket %s", reqm.SrcBucket)
 			result, err = api.ListObjectWithContextV2(ctimeout, req)
 		} else {
-			if len(inFile) > 0 {
-				gLog.Info.Printf("List documents from file %s", inFile)
-				result, err = ListPn(listpn, int(maxKey))
-			} else {
-				gLog.Info.Printf("List documents from bucket  %s", iBucket)
-				result, err = api.ListObjectWithContextV2(ctimeout, reql)
-			}
+			gLog.Info.Printf("List documents from file %s", inFile)
+			result, err = ListPn(listpn, int(maxKey))
 		}
+
 		if err == nil {
 			if l := len(result.Contents); l > 0 {
 				var (
@@ -373,24 +372,43 @@ func backupPns(reqm datatype.Reqm) (string, error) {
 				)
 				for _, v := range result.Contents {
 					if *v.Key != nextmarker {
-						gLog.Info.Printf("Key: %s - Size: %d - LastModified: %v", *v.Key, *v.Size, v.LastModified)
+						myKey := *v.Key
+						if len(iBucket) > 0 {
+
+							/*  
+								check the content of the input bucket
+							    key  should be in the form
+								yyyymmdd/cc/pn/kc
+							*/
+							if err,myKey  = mosesbc.ParseInputKey(myKey); err != nil {
+								gLog.Error.Printf("Error %v in bucket %s",err,iBucket)
+								continue
+							}
+						}
+						gLog.Info.Printf("Key: %s - Size: %d - LastModified: %v", myKey, *v.Size, v.LastModified)
 						svc := req.Service
 						var buck string
 						if incr {
-							buck = mosesbc.SetBucketName(*v.Key, req.Bucket)
+							/*
+								keys are extracted  from input-file or input-bucket
+								add suffix to the bucket name based on the 2 first character of the mykey
+							 */
+							buck = mosesbc.SetBucketName(myKey, req.Bucket)
 						} else {
 							buck = req.Bucket
 						}
 						if len(inFile) > 0 {
-							if err, method, key = mosesbc.ParseLog(*v.Key); err != nil {
+							if err, method, key = mosesbc.ParseLog(myKey); err != nil {
 								gLog.Error.Printf("%v", err)
 								continue
 							}
 						} else {
 							//  full backup : method = PUT
-							key = *v.Key
+							//key = *v.Key
+							key = myKey
 							method = "PUT"
 						}
+						/*  get the s3 metadata */
 						request := datatype.StatObjRequest{
 							Service: svc,
 							Bucket:  buck,
@@ -399,24 +417,20 @@ func backupPns(reqm datatype.Reqm) (string, error) {
 						if method == "PUT" {
 							ndocs += 1
 						}
-
 						wg1.Add(1)
 						go func(request datatype.StatObjRequest, method string) {
-
 							defer wg1.Done()
 							var (
 								rh = datatype.Rh{
 									Key: request.Key,
 								}
-								np,  npage int
-								err               error
-								docsize           int64
-								s3md            string
-								pubDate           string
-								loadDate          string
-
+								np, npage int
+								err       error
+								docsize   int64
+								s3md      string
+								pubDate   string
+								loadDate  string
 							)
-
 							gLog.Trace.Printf("Method %s - Key %s ", method, request.Key)
 							if method == "PUT" {
 								rh.Result, rh.Err = api.StatObject(request)
@@ -437,11 +451,11 @@ func backupPns(reqm datatype.Reqm) (string, error) {
 											docsize = document.Size
 											npage = (int)(document.NumberOfPages)
 										}
-										loadDate,_ = getLoadDate(document)
+										loadDate, _ = getLoadDate(document)
 									} else {
 										gLog.Error.Printf("Document %s - S3 metadata has an invalid number of pages in %s - Try to get it from the document metadata ", pn, s3md)
 
-										if  docmd, err, status := mosesbc.GetDocumentMeta(pn); err == nil {
+										if docmd, err, status := mosesbc.GetDocumentMeta(pn); err == nil {
 											np = docmd.TotalPage
 											pubDate = docmd.PubDate
 											nerr, document := backupPn(pn, np, s3md, versionId, maxPage)
@@ -454,8 +468,8 @@ func backupPns(reqm datatype.Reqm) (string, error) {
 												docsize = document.Size
 												npage = (int)(document.NumberOfPages)
 											}
-											loadDate,_ = getLoadDate(document)
-
+											//  loadDate  is used to for logging
+											loadDate, _ = getLoadDate(document)
 										} else {
 											gLog.Error.Printf(" Error %v - Status Code: %v  - Getting number of pages for %s ", err, status, pn)
 											mt.Lock()
@@ -463,17 +477,15 @@ func backupPns(reqm datatype.Reqm) (string, error) {
 											mt.Unlock()
 										}
 									}
-
 								}
 								mu.Lock()
 								npages += npage
 								docsizes += docsize
 								mu.Unlock()
 								/*
-									Prepare to log
-								 */
-								// gLog.Info.Printf("logging backup of %s ",request.Key)
-								backupLog = append(backupLog, &mosesbc.LogBackup{Method: method,Incremental:reqm.Incremental, Key: request.Key, Bucket: request.Bucket, Pages: npage, Size: docsize, Pubdate: pubDate, Loaddate: loadDate,Errors: nerrors})
+									Prepare to log backup
+								*/
+								backupLog = append(backupLog, &mosesbc.LogBackup{Method: method, Incremental: reqm.Incremental, Key: request.Key, Bucket: request.Bucket, Pages: npage, Size: docsize, Pubdate: pubDate, Loaddate: loadDate, Errors: nerrors})
 							} // end PUT method
 
 							if method == "DELETE" {
@@ -489,12 +501,11 @@ func backupPns(reqm datatype.Reqm) (string, error) {
 									mt.Unlock()
 								}
 							}
-							//gLog.Info.Printf("Time from start %v",time.Since(start))
 						}(request, method)
 					}
 				}
 				wg1.Wait()
-				//gLog.Info.Printf("Time from start %v",time.Since(start))
+
 				if *result.IsTruncated {
 					nextmarker = *result.Contents[l-1].Key
 					if !incr {
@@ -512,14 +523,15 @@ func backupPns(reqm datatype.Reqm) (string, error) {
 					log backup before returning
 				*/
 				if logit {
+					start1 := time.Now()
 					logReq := mosesbc.LogRequest{
-						Service: logS3,
-						Bucket: logBucket,
+						Service:   logS3,
+						Bucket:    logBucket,
 						LogBackup: backupLog,
-						Ctimeout: ctimeout,
+						Ctimeout:  ctimeout,
 					}
-					// mosesbc.Logit(logS3, logBucket, backupLog, ctimeout)
 					mosesbc.Logit(logReq)
+					gLog.Info.Printf("Time to log %d entries %v", len(backupLog), time.Since(start1))
 				}
 
 			}
@@ -605,7 +617,7 @@ func backupPn(pn string, np int, usermd string, versionId string, maxPage int) (
 		}
 		start := time.Now()
 		if _, err := writeS3(tgtS3, buck1, maxPartSize, document); err != nil {
-			gLog.Error.Printf("Error:%v writing document: %s to bucket %s", err, document.DocId, bucket)
+			gLog.Error.Printf("Error %v writing document %s to bucket %s", err, document.DocId, bucket)
 			nerrs += 1
 		} else {
 			gLog.Info.Printf("Time to upload the backup document %s to bucket %s : %v ", document.DocId, bucket, time.Since(start))
@@ -685,14 +697,13 @@ func deleteVersions(request datatype.StatObjRequest) (int, int) {
 	return ndeletes, nerrors
 }
 
-
-func getLoadDate( document *documentpb.Document) (string,error) {
+func getLoadDate(document *documentpb.Document) (string, error) {
 	var (
 		docmd = meta.DocumentMetadata{}
 	)
-	if err:= json.Unmarshal([]byte(document.GetMetadata()),docmd); err == nil {
+	if err := json.Unmarshal([]byte(document.GetMetadata()), docmd); err == nil {
 		return docmd.LoadDate, err
 	} else {
-		return "",err
+		return "", err
 	}
 }

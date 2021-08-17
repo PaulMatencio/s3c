@@ -33,6 +33,7 @@ type LogRequest struct {
 	Ctimeout  time.Duration
 }
 
+
 func Logit(logReq LogRequest) {
 
 	req := datatype.PutObjRequest3{
@@ -44,14 +45,12 @@ func Logit(logReq LogRequest) {
 	wg := sync.WaitGroup{}
 	for _, logb := range logReq.LogBackup {
 		wg.Add(1)
-		// gLog.Info.Printf("logging key %s",logb.Key)
 		go func(logb *LogBackup, req datatype.PutObjRequest3) {
 			defer wg.Done()
-			gLog.Info.Printf("Logging key %s",logb.Key)
 			if err, msg := logb.Logit(req, logReq.Ctimeout); err != nil {
 				gLog.Error.Printf("%v", err)
 			} else {
-				gLog.Info.Printf("%s", msg)
+				gLog.Trace.Printf("%s", msg)
 			}
 		}(logb, req)
 	}
@@ -122,5 +121,10 @@ func (logb *LogBackup) GetDate() string {
 	// otherwise return a default date
 	gLog.Warning.Printf("Error %v  parsing load date %s and publication date %s", err, logb.Loaddate, logb.Pubdate)
 	return defaut
+
+}
+
+func (logb *LogBackup) Start() {
+
 
 }
