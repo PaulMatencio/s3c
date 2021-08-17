@@ -331,7 +331,9 @@ func backupPns(reqm datatype.Reqm) (string, error) {
 		Marker:            marker,
 		Continuationtoken: token,
 	}
+
 	//   list from input-bucket
+
 	if len(iBucket) > 0 {
 		req = datatype.ListObjV2Request{
 			Service:           reqm.SrcS3,
@@ -352,7 +354,7 @@ func backupPns(reqm datatype.Reqm) (string, error) {
 			npages, ndeletes int   = 0, 0
 			docsizes         int64 = 0
 			nerrors          int   = 0
-			key, method      string
+			// key, method      string
 			start            = time.Now()
 		)
 		N++ // number of loop
@@ -372,10 +374,9 @@ func backupPns(reqm datatype.Reqm) (string, error) {
 				)
 				for _, v := range result.Contents {
 					if *v.Key != nextmarker {
-						key = *v.Key
-						svc := req.Service
-						method = "PUT" /* full backup or --input-bucket */
-						/* set the final  bucket name */
+						key := *v.Key
+						service := req.Service
+						method := "PUT" /* full backup or --input-bucket */
 						buck := req.Bucket
 						if len(iBucket) > 0 {
 							/*
@@ -394,14 +395,14 @@ func backupPns(reqm datatype.Reqm) (string, error) {
 									gLog.Error.Printf("%v", err)
 									continue
 								}
+								buck = mosesbc.SetBucketName(key, req.Bucket)
 							}
-							buck = mosesbc.SetBucketName(key, req.Bucket)
 						}
-						gLog.Info.Printf("Key: %s - Size: %d - LastModified: %v", key, *v.Size, v.LastModified)
+						gLog.Info.Printf("Bucket: %s - Key: %s - Size: %d - LastModified: %v", buck,key, *v.Size, v.LastModified)
 
 						/*  get the s3 metadata */
 						request := datatype.StatObjRequest{
-							Service: svc,
+							Service: service,
 							Bucket:  buck,
 							Key:     key,
 						}

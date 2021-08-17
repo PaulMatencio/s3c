@@ -303,9 +303,9 @@ func restorePns() (string, error) {
 				for _, v := range result.Contents {
 					if *v.Key != nextmarker {
 						ndocs += 1
-						svc := req.Service
+						service := req.Service
 						request := datatype.GetObjRequest{
-							Service: svc,
+							Service: service,
 							Bucket:  req.Bucket,
 							Key:     *v.Key,
 						}
