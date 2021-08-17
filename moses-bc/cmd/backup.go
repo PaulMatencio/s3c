@@ -372,7 +372,7 @@ func backupPns(reqm datatype.Reqm) (string, error) {
 				)
 				for _, v := range result.Contents {
 					if *v.Key != nextmarker {
-						myKey := *v.Key
+						key = *v.Key
 						svc := req.Service
 						method = "PUT" /* full backup or --input-bucket */
 						/* set the final  bucket name */
@@ -383,21 +383,21 @@ func backupPns(reqm datatype.Reqm) (string, error) {
 								    key  should be in the form
 									yyyymmdd/cc/pn/kc
 							*/
-							if err, myKey = mosesbc.ParseInputKey(myKey); err != nil {
+							if err, key = mosesbc.ParseInputKey(*v.Key); err != nil {
 								gLog.Error.Printf("Error %v in bucket %s", err, iBucket)
 								continue
 							}
-							buck = mosesbc.SetBucketName(myKey, req.Bucket)
+							buck = mosesbc.SetBucketName(key, req.Bucket)
 						} else {
 							if len(inFile) > 0 {
-								if err, method, myKey = mosesbc.ParseLog(myKey); err != nil {
+								if err, method, key = mosesbc.ParseLog(*v.Key); err != nil {
 									gLog.Error.Printf("%v", err)
 									continue
 								}
 							}
-							buck = mosesbc.SetBucketName(myKey, req.Bucket)
+							buck = mosesbc.SetBucketName(key, req.Bucket)
 						}
-						gLog.Info.Printf("Key: %s - Size: %d - LastModified: %v", myKey, *v.Size, v.LastModified)
+						gLog.Info.Printf("Key: %s - Size: %d - LastModified: %v", key, *v.Size, v.LastModified)
 
 						/*  get the s3 metadata */
 						request := datatype.StatObjRequest{
