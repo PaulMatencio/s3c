@@ -620,7 +620,7 @@ func backupPn(pn string, np int, usermd string, versionId string, maxPage int) (
 			gLog.Error.Printf("Error %v writing document %s to bucket %s", err, document.DocId, buck1)
 			nerrs += 1
 		} else {
-			gLog.Info.Printf("Time to upload the backup document %s to bucket %s : %v ", document.DocId, bucket, time.Since(start))
+			gLog.Info.Printf("Time to upload the backup document %s to bucket %s : %v ", document.DocId, buck1, time.Since(start))
 		}
 		/*
 			version management can be implement here
