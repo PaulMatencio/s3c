@@ -375,13 +375,13 @@ func backupPns(reqm datatype.Reqm) (string, error) {
 						myKey := *v.Key
 						if len(iBucket) > 0 {
 
-							/*  
-								check the content of the input bucket
-							    key  should be in the form
-								yyyymmdd/cc/pn/kc
+							/*
+									check the content of the input bucket
+								    key  should be in the form
+									yyyymmdd/cc/pn/kc
 							*/
-							if err,myKey  = mosesbc.ParseInputKey(myKey); err != nil {
-								gLog.Error.Printf("Error %v in bucket %s",err,iBucket)
+							if err, myKey = mosesbc.ParseInputKey(myKey); err != nil {
+								gLog.Error.Printf("Error %v in bucket %s", err, iBucket)
 								continue
 							}
 						}
@@ -392,7 +392,7 @@ func backupPns(reqm datatype.Reqm) (string, error) {
 							/*
 								keys are extracted  from input-file or input-bucket
 								add suffix to the bucket name based on the 2 first character of the mykey
-							 */
+							*/
 							buck = mosesbc.SetBucketName(myKey, req.Bucket)
 						} else {
 							buck = req.Bucket
@@ -434,32 +434,16 @@ func backupPns(reqm datatype.Reqm) (string, error) {
 							gLog.Trace.Printf("Method %s - Key %s ", method, request.Key)
 							if method == "PUT" {
 								rh.Result, rh.Err = api.StatObject(request)
-								versionId = *rh.Result.VersionId
-								if s3md, err = utils.GetUserMeta(rh.Result.Metadata); err == nil {
-									userm := UserMd{}
-									if err := json.Unmarshal([]byte(s3md), &userm); err == nil {
-										pubDate = userm.PubDate
-									}
-									pn := rh.Key
-									if np, err = strconv.Atoi(userm.TotalPages); err == nil {
-										nerr, document := backupPn(pn, np, s3md, versionId, maxPage)
-										if nerr > 0 {
-											mt.Lock()
-											nerrors += nerr
-											mt.Unlock()
-										} else {
-											docsize = document.Size
-											npage = (int)(document.NumberOfPages)
+								if rh.Err == nil {
+									versionId = *rh.Result.VersionId
+									if s3md, err = utils.GetUserMeta(rh.Result.Metadata); err == nil {
+										userm := UserMd{}
+										if err := json.Unmarshal([]byte(s3md), &userm); err == nil {
+											pubDate = userm.PubDate
 										}
-										loadDate, _ = getLoadDate(document)
-									} else {
-										gLog.Error.Printf("Document %s - S3 metadata has an invalid number of pages in %s - Try to get it from the document metadata ", pn, s3md)
-
-										if docmd, err, status := mosesbc.GetDocumentMeta(pn); err == nil {
-											np = docmd.TotalPage
-											pubDate = docmd.PubDate
+										pn := rh.Key
+										if np, err = strconv.Atoi(userm.TotalPages); err == nil {
 											nerr, document := backupPn(pn, np, s3md, versionId, maxPage)
-											gLog.Trace.Printf("Time from start %v", time.Since(start))
 											if nerr > 0 {
 												mt.Lock()
 												nerrors += nerr
@@ -468,15 +452,38 @@ func backupPns(reqm datatype.Reqm) (string, error) {
 												docsize = document.Size
 												npage = (int)(document.NumberOfPages)
 											}
-											//  loadDate  is used to for logging
 											loadDate, _ = getLoadDate(document)
 										} else {
-											gLog.Error.Printf(" Error %v - Status Code: %v  - Getting number of pages for %s ", err, status, pn)
-											mt.Lock()
-											nerrors += 1
-											mt.Unlock()
+											gLog.Error.Printf("Document %s - S3 metadata has an invalid number of pages in %s - Try to get it from the document metadata ", pn, s3md)
+
+											if docmd, err, status := mosesbc.GetDocumentMeta(pn); err == nil {
+												np = docmd.TotalPage
+												pubDate = docmd.PubDate
+												nerr, document := backupPn(pn, np, s3md, versionId, maxPage)
+												gLog.Trace.Printf("Time from start %v", time.Since(start))
+												if nerr > 0 {
+													mt.Lock()
+													nerrors += nerr
+													mt.Unlock()
+												} else {
+													docsize = document.Size
+													npage = (int)(document.NumberOfPages)
+												}
+												//  loadDate  is used to for logging
+												loadDate, _ = getLoadDate(document)
+											} else {
+												gLog.Error.Printf(" Error %v - Status Code: %v  - Getting number of pages for %s ", err, status, pn)
+												mt.Lock()
+												nerrors += 1
+												mt.Unlock()
+											}
 										}
 									}
+								} else {
+									gLog.Error.Printf("Error %v  stat object %s", rh.Err, rh.Key)
+									mt.Lock()
+									nerrors += 1
+									mt.Unlock()
 								}
 								mu.Lock()
 								npages += npage

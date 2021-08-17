@@ -23,16 +23,19 @@ import (
 )
 
 func SetBucketName(prefix string, bucket string) string {
-	var s string
+	var (
+		s string
+		pref string
+	)
 	if len(prefix) > 0 {
-		pref := strings.Split(prefix, "/")[0]
+		pref = strings.Split(prefix, "/")[0]
 		if pref != "XP" {
 			s = fmt.Sprintf("%02d", HashKey(pref, 5))
 		} else {
 			s = "05"
 		}
 	}
-	gLog.Trace.Printf("Set bucket name %s ", bucket+"-"+s)
+	gLog.Trace.Printf("Hashed pref %s - Set bucket name %s ",pref, bucket+"-"+s)
 	return bucket + "-" + s
 }
 
