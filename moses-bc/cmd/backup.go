@@ -617,7 +617,7 @@ func backupPn(pn string, np int, usermd string, versionId string, maxPage int) (
 		}
 		start := time.Now()
 		if _, err := writeS3(tgtS3, buck1, maxPartSize, document); err != nil {
-			gLog.Error.Printf("Error %v writing document %s to bucket %s", err, document.DocId, bucket)
+			gLog.Error.Printf("Error %v writing document %s to bucket %s", err, document.DocId, buck1)
 			nerrs += 1
 		} else {
 			gLog.Info.Printf("Time to upload the backup document %s to bucket %s : %v ", document.DocId, bucket, time.Since(start))
