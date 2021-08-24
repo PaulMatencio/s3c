@@ -56,7 +56,7 @@ func inspectBlob(document *documentpb.Document, verbose bool) {
 			pagmeta := meta.Pagemeta{}
 			json.Unmarshal([]byte(pagemeta), &pagmeta)
 			if pagmeta.MultiMedia.Tiff {
-				if bytes.Compare(pg.Object[0:3],[]byte(LEHeader)) == 0 {
+				if bytes.Compare(pg.Object[0:4],[]byte(LEHeader)) == 0 {
 					tiff = "image/tiff"
 				} else {
 					tiff = http.DetectContentType(pg.Object[pagmeta.TiffOffset.Start:pagmeta.TiffOffset.End])
