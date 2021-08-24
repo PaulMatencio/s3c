@@ -14,6 +14,7 @@
 package lib
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -23,58 +24,68 @@ import (
 	"strconv"
 )
 
-func InspectBlobs(document *documentpb.Document,  maxPage int, verbose bool) {
+const (
+	LEHeader = "II\x2A\x00" // Header for little-endian files.
+	BEHeader = "MM\x00\x2A" // Header for big-endian files.  4D 4D 00  2A
+	ifdLen = 10 // Length of an IFD entry in bytes.
+)
+func InspectBlobs(document *documentpb.Document, maxPage int, verbose bool) {
 	if document.NumberOfPages <= int32(maxPage) {
-		inspectBlob(document,verbose)
+		inspectBlob(document, verbose)
 	} else {
-		inspectLargeBlob(document,maxPage,verbose)
+		inspectLargeBlob(document, maxPage, verbose)
 	}
 }
 
-func inspectBlob(document *documentpb.Document,verbose bool) {
+func inspectBlob(document *documentpb.Document, verbose bool) {
 
 	var (
-		pages = document.GetPage()
-		tiff ,png string
-		tiffl,pngl int
+		pages       = document.GetPage()
+		tiff, png   string
+		tiffl, pngl int
 	)
 
 	for _, pg := range pages {
 		pgn := int(pg.PageNumber)
 		pageid := pg.PageId + "/p" + strconv.Itoa(pgn)
-		fmt.Printf("\tPage id %s - Page Size %d - Object Size %d\n",pageid,pg.Size,len(pg.Object))
-		pagemeta,_ :=  base64.StdEncoding.DecodeString(pg.Metadata)
+		fmt.Printf("\tPage id %s - Page Size %d - Object Size %d\n", pageid, pg.Size, len(pg.Object))
+		pagemeta, _ := base64.StdEncoding.DecodeString(pg.Metadata)
 		if verbose {
 			fmt.Printf("\t\tPage metadata %s\n", pagemeta)
 		} else {
 			pagmeta := meta.Pagemeta{}
 			json.Unmarshal([]byte(pagemeta), &pagmeta)
-			if  pagmeta.MultiMedia.Tiff {
-				tiff = http.DetectContentType(pg.Object[pagmeta.TiffOffset.Start:pagmeta.TiffOffset.End])
-				tiffl = pagmeta.TiffOffset.End - pagmeta.TiffOffset.Start +1
+			if pagmeta.MultiMedia.Tiff {
+				if bytes.Compare(pg.Object[0:4],[]byte(BEHeader)) == 0 {
+					tiff = "Tiff image"
+				} else {
+					tiff = http.DetectContentType(pg.Object[pagmeta.TiffOffset.Start:pagmeta.TiffOffset.End])
+				}
+				tiffl = pagmeta.TiffOffset.End - pagmeta.TiffOffset.Start + 1
+				/* 4D 4D 00 4A   */
+
 			}
-			if  pagmeta.MultiMedia.Png {
+			if pagmeta.MultiMedia.Png {
 				png = http.DetectContentType(pg.Object[pagmeta.PngOffset.Start:pagmeta.PngOffset.End])
-				pngl = pagmeta.PngOffset.End - pagmeta.PngOffset.Start +1
+				pngl = pagmeta.PngOffset.End - pagmeta.PngOffset.Start + 1
 			}
-			fmt.Printf("\t\tPage Number %d - Length %d - Png %v:%s:%d - Tiff %v:%s:%d - Pdf %v\n",pagmeta.PageNumber,pagmeta.PageLength,pagmeta.MultiMedia.Png,png,pngl,pagmeta.MultiMedia.Tiff,tiff,tiffl,pagmeta.MultiMedia.Pdf)
+			fmt.Printf("\t\tPage Number: %d - Page Length: %d - Png %v:%s:%d - Tiff %v:%s:%d", pagmeta.PageNumber, pagmeta.PageLength, pagmeta.MultiMedia.Png, png, pngl, pagmeta.MultiMedia.Tiff, tiff, tiffl)
 		}
 	}
 }
 
-
-func inspectLargeBlob(document *documentpb.Document,maxPage int,verbose bool) {
+func inspectLargeBlob(document *documentpb.Document, maxPage int, verbose bool) {
 
 	var (
-		np = int (document.NumberOfPages)
-		q     int = np  / maxPage
-		r     int = np  % maxPage
+		np        = int(document.NumberOfPages)
+		q     int = np / maxPage
+		r     int = np % maxPage
 		start int = 1
-		end   int = start + maxPage-1
+		end   int = start + maxPage - 1
 	)
 
 	for s := 1; s <= q; s++ {
-		inspectLargeBlobPart(document,start, end,verbose)
+		inspectLargeBlobPart(document, start, end, verbose)
 		start = end + 1
 		end += maxPage
 		if end > np {
@@ -82,41 +93,40 @@ func inspectLargeBlob(document *documentpb.Document,maxPage int,verbose bool) {
 		}
 	}
 	if r > 0 {
-		inspectLargeBlobPart(document,q*maxPage+1 , np,verbose)
+		inspectLargeBlobPart(document, q*maxPage+1, np, verbose)
 	}
 
 }
 
-
-func inspectLargeBlobPart(document *documentpb.Document,start int,end int,verbose bool)  {
+func inspectLargeBlobPart(document *documentpb.Document, start int, end int, verbose bool) {
 
 	var (
-		pages = document.GetPage()
-		tiff ,png string
-		tiffl,pngl int
+		pages       = document.GetPage()
+		tiff, png   string
+		tiffl, pngl int
 	)
 	for k := start; k <= end; k++ {
 		pg := *pages[k-1]
 		pgn := int(pg.PageNumber)
 		pageid := pg.PageId + "/p" + strconv.Itoa(pgn)
-		fmt.Printf("\tPage id %s - Page Size %d - Object Size %d\n",pageid,pg.Size,len(pg.Object))
-		pagemeta,_ :=  base64.StdEncoding.DecodeString(pg.Metadata)
+		fmt.Printf("\tPage id %s - Page Size %d - Object Size %d\n", pageid, pg.Size, len(pg.Object))
+		pagemeta, _ := base64.StdEncoding.DecodeString(pg.Metadata)
 		pagmeta := meta.Pagemeta{}
 		json.Unmarshal([]byte(pagemeta), &pagmeta)
 		if verbose {
 			fmt.Printf("\t\tPage metadata %s\n", pagemeta)
-		}  else {
+		} else {
 			pagmeta := meta.Pagemeta{}
 			json.Unmarshal([]byte(pagemeta), &pagmeta)
-			if  pagmeta.MultiMedia.Tiff {
+			if pagmeta.MultiMedia.Tiff {
 				tiff = http.DetectContentType(pg.Object[pagmeta.TiffOffset.Start:pagmeta.TiffOffset.End])
-				tiffl = pagmeta.TiffOffset.End - pagmeta.TiffOffset.Start +1
+				tiffl = pagmeta.TiffOffset.End - pagmeta.TiffOffset.Start + 1
 			}
-			if  pagmeta.MultiMedia.Png {
+			if pagmeta.MultiMedia.Png {
 				png = http.DetectContentType(pg.Object[pagmeta.PngOffset.Start:pagmeta.PngOffset.End])
-				pngl = pagmeta.PngOffset.End - pagmeta.PngOffset.Start +1
+				pngl = pagmeta.PngOffset.End - pagmeta.PngOffset.Start + 1
 			}
-			fmt.Printf("\t\tPage Number %d - Length %d - Png %v:%s:%d - Tiff %v:%s:%d - Pdf %v\n",pagmeta.PageNumber,pagmeta.PageLength,pagmeta.MultiMedia.Png,png,pngl,pagmeta.MultiMedia.Tiff,tiff,tiffl,pagmeta.MultiMedia.Pdf)
+			fmt.Printf("\t\tPage Number %d - Length %d - Png %v:%s:%d - Tiff %v:%s:%d - Pdf %v\n", pagmeta.PageNumber, pagmeta.PageLength, pagmeta.MultiMedia.Png, png, pngl, pagmeta.MultiMedia.Tiff, tiff, tiffl, pagmeta.MultiMedia.Pdf)
 		}
 	}
 }

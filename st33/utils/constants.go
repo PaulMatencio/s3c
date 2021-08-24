@@ -4,9 +4,7 @@ package st33
 const (
 	leHeader = "II\x2A\x00" // Header for little-endian files.
 	beHeader = "MM\x00\x2A" // Header for big-endian files.
-
 	ifdLen = 10 // Length of an IFD entry in bytes.
-
 )
 
 const (
