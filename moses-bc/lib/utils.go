@@ -39,6 +39,17 @@ func SetBucketName(prefix string, bucket string) string {
 	return bucket + "-" + s
 }
 
+
+func SetBucketName1(condition bool, pn string, bucket string ) (string) {
+	var buck1 string
+		if  condition {
+			buck1 = SetBucketName(pn, bucket)
+		} else {
+			buck1 = bucket
+		}
+	return buck1
+}
+
 func HasSuffix(bucket string) bool {
 	if bucket[len(bucket)-2:len(bucket)] >= "00" && bucket[len(bucket)-2:len(bucket)] <= "05" {
 		return true
@@ -123,6 +134,26 @@ func ParseInputKey(key string) (error, string) {
 	}
 	return nil,  key[9:]
 }
+
+func ParseLoggerKey(key string) (error, string) {
+	var (
+		err error
+	)
+
+	if len(key) <= 11 {
+		err = errors.New(fmt.Sprintf("Invalid logger key %s", key))
+		return err,key
+	}
+	// replace "/" by "-"
+	key1 := strings.Replace(key,"/","-",0)
+	if _, err = time.Parse("2006-01-02", key1); err != nil {
+		err = errors.New(fmt.Sprintf("Invalid input key %s - key does not start with yyyy/mm/dd/", key))
+		return err,key
+	}
+	return nil,  key1[11:]
+}
+
+
 
 func Profiling(profiling int) {
 	if profiling > 0 {

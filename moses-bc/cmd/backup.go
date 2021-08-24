@@ -42,39 +42,57 @@ var (
 		Use:   "_backup_",
 		Short: "Command to backup a MOSES  objects to S3 or files",
 		Long: `        
-        Command to backup Moses data and Moses directories to S3 or  to files
+        Command to backup Moses data and Moses directories to S3 or to files
       
         Moses data are stored in Scality Ring native object storage accessed via sproxyd driver 
         Moses directories are stored in S3 buckets. Each bucket name has a suffix ( <bucket-name>-xx ; xx=00..05)
         
-        Usage: 
-        moses-bc --help or -h  to list all the commands
-        moses-bc  <command> -h or --help to list all the arguments related to a specific <command>
+        Usage:
+
+          moses-bc --help or -h  to list all the commands
+          moses-bc  <command> -h or --help to list all the arguments related to a specific <command>
   
-        Config file: 
-      	The Default config file is located $HOME/.clone/config.file 
+        Config file:
 
-        Example of full backup per bucket:
-          Backup all the objects listed in the S3 --source-bucket meta-moses-prod-pn-01  to the S3 bucket meta-moses-prod-bkup-pn-01
+      	The Default config file is located $HOME/.clone/config.yaml. Use the --config or -c to change the default 
+           moses-bc -c  <full path of another config.file>  _backup_  .....
+
+        Example of a Bucket name:
+
+           - Full name :  meta-moses-prod-pn-xx   ( xx = 00..05)
+                Full name is  used for full backup 
+           
+           - Partial name:  meta-moses-prod-pn    ( without suffix)
+                Partial name is used when a --prefix , --input-file  or --input-bucket  is specified 
+                Partial is used for incremental backup 
+           
+        Example of full backup of document ids which are indexed by the S3 --source-bucket meta-moses-prod-pn-01
+
           moses-bc  _backup_ --source-bucket meta-moses-prod-pn-01 --target-bucket meta-moses-prod-bkup-pn-01 --max-loop 0
-        **  Both source and target bucket must have the same suffix, for instance -01 ** 
+        **  Pay attention, both source and target bucket must have the same suffix, for instance -01 in this case ** 
 
-        Example of backup of all document name started with a specific --prefix
+        Example of backup of documents whose name started with a given --prefix.
+        The backup tool will append a suffix to the given bucket names
+  
           moses-bc - _backup_ --source-bucket meta-moses-prod-pn --prefix  FR/  --target-bucket meta-moses-prod-bkup-pn --max-loop 0   
         ** bucket suffix is not required **
 		
-        Example of an incremental backup of documents created between  2021-11-01T07:00:00Z and  2021-11-01T08:00:00Z
-          moses-bc  _backup_ --input-bucket last-loaded-prod --prefix 2021/11/01 --from-date 2021-11-01T07:00:00Z --to-date 2021-11-01T08:00:00Z \
+        Example of an incremental backup of documents loaded  between  2021-11-01T07:00:00Z and  2021-11-01T08:00:00Z.
+          The object key of the last-loaded bucket layout is :  YYYYMMDD/CC/PN/KC  
+          
+          moses-bc  _backup_ --input-bucket last-loaded-prod --prefix 20211101 --from-date 2021-11-01T07:00:00Z --to-date 2021-11-01T08:00:00Z \
           --target-bucket meta-moses-prod-bkup-pn  --max-loop 0  
         ** bucket suffix is not required  **
 
-        Example of an incremental backup of all publication numbers listed in the --input-file
-        moses-bc -c $HOME/.clone/config.yaml _backup_ --input-file <file containing a list of publication numbers>  \
+        Example of an incremental backup of the publication ids listed in the --input-file
+
+          moses-bc -c $HOME/.clone/config.yaml _backup_ --input-file <file containing a list of publication numbers>  \
           --target-bucket meta-moses-prod-bkup-pn  --max-loop 0   
         ** bucket suffix is not required **
+        ** input-file record layout:  <Method> CC/PN/KC . Method = [PUT|DELETE]  
 
-		Example of backup  not using default config file
-        moses-bc -c $HOME/.clone/config-osa.yaml _backup_  ...
+        Example of backup which is not using default config file
+          moses-bc -c $HOME/.clone/config-osa.yaml _backup_  ...
 		`,
 		Hidden: true,
 		Run:    BackupPns,
@@ -101,31 +119,31 @@ type UserMd struct {
 
 func initBkFlags(cmd *cobra.Command) {
 
-	cmd.Flags().StringVarP(&srcBucket, "source-bucket", "", "", "name of source s3 bucket. Ex: meta-moses-prod-pn-xx, suffix xx is only required for bucket backup")
-	cmd.Flags().StringVarP(&tgtBucket, "target-bucket", "", "", "name of the target s3 bucket. Ex: meta-moses-prod-bkp-pn-xx, xx must be the same as source-bucket")
-	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "prefix of a Moses document in the form of cc/pn/kc. Ex: FR/1234")
-	cmd.Flags().Int64VarP(&maxKey, "max-key", "m", 21, "maximum number of moses documents  to be cloned concurrently")
-	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key; key= moses-document in the form of cc/pn/kc")
-	cmd.Flags().IntVarP(&maxPage, "max-page", "", 50, "maximum number of concurrent moses pages to be concurrently processed")
-	cmd.Flags().IntVarP(&maxVersions, "max-versions", "", 3, "maximum number of backup versions")
-	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, "maximum number of loop, 0 means no upper limit")
-	cmd.Flags().StringVarP(&inFile, "input-file", "i", "", "input file containing the list of moses documents for incremental backup")
-	cmd.Flags().StringVarP(&iBucket, "input-bucket", "", "", "input bucket containing the last uploaded documents for incremental backup - Ex: meta-moses-prod-last-loaded")
+	cmd.Flags().StringVarP(&srcBucket, "source-bucket", "", "", uSrcBucket)
+	cmd.Flags().StringVarP(&tgtBucket, "target-bucket", "", "", uTgtBucket)
+	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", uPrefix)
+	cmd.Flags().Int64VarP(&maxKey, "max-key", "m", 21, uMaxkey)
+	cmd.Flags().IntVarP(&maxPage, "max-page", "", 50, uMaxPage)
+	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, uMaxLopp)
+	cmd.Flags().StringVarP(&marker, "marker", "M", "", uMaker)
+	cmd.Flags().IntVarP(&maxVersions, "max-versions", "", 3, uMaxVerion)
+	cmd.Flags().StringVarP(&inFile, "input-file", "i", "", uInputFile)
+	cmd.Flags().StringVarP(&iBucket, "input-bucket", "", "", "input bucket containing the last uploaded documents for the incremental backup - Ex: meta-moses-prod-last-loaded")
 	// cmd.Flags().StringVarP(&outDir, "output-directory", "o", "", "output directory for --backupMedia = File")
-	cmd.Flags().StringVarP(&fromDate, "from-date", "", "1970-01-01T00:00:00Z", "backup objects modified after <yyyy-mm-ddThh:mm:ss>")
-	cmd.Flags().StringVarP(&toDate, "to-date", "", "", "backup objects modified before <yyyy-mm-ddThh:mm:ss>")
-	cmd.Flags().Int64VarP(&maxPartSize, "max-part-size", "", 64, "maximum partition size (MB) for multipart upload")
-	cmd.Flags().StringVarP(&srcUrl, "source-sproxyd-url", "s", "", "source sproxyd endpoints  http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
+	cmd.Flags().StringVarP(&fromDate, "from-date", "", "1970-01-01T00:00:00Z", uFromDate)
+	cmd.Flags().StringVarP(&toDate, "to-date", "", "", uToDate)
+	cmd.Flags().Int64VarP(&maxPartSize, "max-part-size", "", 64, uMaxPartSize)
+	cmd.Flags().StringVarP(&srcUrl, "source-sproxyd-url", "s", "", "the list of source sproxyd endpoints  http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
 	cmd.Flags().StringVarP(&driver, "source-sproxyd-driver", "", "", "source sproxyd driver [bpchord|bparc]")
 	cmd.Flags().StringVarP(&env, "source-sproxyd-env", "", "", "source sproxyd environment [prod|osa]")
-	cmd.Flags().DurationVarP(&ctimeout, "ctimeout", "", 10, "set context background cancel timeout in seconds")
-	cmd.Flags().BoolVarP(&logit, "logit", "", false, "log it")
+	cmd.Flags().DurationVarP(&ctimeout, "ctimeout", "", 10, uCtimeout)
+	cmd.Flags().BoolVarP(&logit, "logit", "", true, "enable backup history log")
+	cmd.Flags().BoolVarP(&check, "check", "", true, uDryRun)
 }
 
 func init() {
 	rootCmd.AddCommand(backupCmd)
 	initBkFlags(backupCmd)
-
 	// viper.BindPFlag("maxPartSize",rootCmd.PersistentFlags().Lookup("maxParSize"))
 }
 
@@ -154,12 +172,6 @@ func BackupPns(cmd *cobra.Command, args []string) {
 			gLog.Error.Printf("--input-file  and --input-bucket are mutually exclusive", inFile, iBucket)
 			return
 		}
-		/*
-			if len(prefix) > 0 {
-				gLog.Warning.Printf("Prefix is ignored with --input-file or --input-bucket ")
-				prefix = ""
-			}
-		*/
 		/*
 			Prepare to Scan the input file
 		*/
@@ -355,7 +367,7 @@ func backupPns(reqm datatype.Reqm) (string, error) {
 			docsizes         int64 = 0
 			nerrors          int   = 0
 			// key, method      string
-			start            = time.Now()
+			start = time.Now()
 		)
 		N++ // number of loop
 		if len(inFile) == 0 {
@@ -398,7 +410,7 @@ func backupPns(reqm datatype.Reqm) (string, error) {
 								buck = mosesbc.SetBucketName(key, req.Bucket)
 							}
 						}
-						gLog.Info.Printf("Bucket: %s - Key: %s - Size: %d - LastModified: %v", buck,key, *v.Size, v.LastModified)
+						gLog.Info.Printf("Bucket: %s - Key: %s - Size: %d - LastModified: %v", buck, key, *v.Size, v.LastModified)
 
 						/*  get the s3 metadata */
 						request := datatype.StatObjRequest{
@@ -530,7 +542,11 @@ func backupPns(reqm datatype.Reqm) (string, error) {
 						LogBackup: backupLog,
 						Ctimeout:  ctimeout,
 					}
-					mosesbc.Logit(logReq)
+					if !check {
+						mosesbc.Logit(logReq)
+					} else {
+						gLog.Info.Printf("Dry run: log to bucket %s - S3 endpoint %s",logBucket,logS3.Endpoint)
+					}
 					gLog.Info.Printf("Time to log %d entries %v", len(backupLog), time.Since(start1))
 				}
 
@@ -609,19 +625,28 @@ func backupPn(pn string, np int, usermd string, versionId string, maxPage int) (
 		document.S3Meta = base64.StdEncoding.EncodeToString([]byte(usermd))
 		document.VersionId = versionId
 		document.LastUpdated = timestamppb.Now()
+		/*
 		var buck1 string
 		if incr {
 			buck1 = mosesbc.SetBucketName(pn, tgtBucket)
 		} else {
 			buck1 = tgtBucket
 		}
+		 */
+
+		buck1:= mosesbc.SetBucketName1(incr,pn,tgtBucket)
 		start := time.Now()
-		if _, err := writeS3(tgtS3, buck1, maxPartSize, document); err != nil {
-			gLog.Error.Printf("Error %v writing document %s to bucket %s", err, document.DocId, buck1)
-			nerrs += 1
-		} else {
-			gLog.Info.Printf("Time to upload the backup document %s to bucket %s : %v ", document.DocId, buck1, time.Since(start))
+		if !check {
+			if _, err := writeS3(tgtS3, buck1, maxPartSize, document); err != nil {
+				gLog.Error.Printf("Error %v writing document %s to bucket %s", err, document.DocId, buck1)
+				nerrs += 1
+			} else {
+				gLog.Info.Printf("Time to upload the backup document %s to bucket %s : %v ", document.DocId, buck1, time.Since(start))
+			}
+		}  else {
+			gLog.Info.Printf("Dry Run: Writing document %s to bucket %s - S3 endpoint %s",document.DocId,buck1,tgtS3.Endpoint)
 		}
+
 		/*
 			version management can be implement here
 			list all the versions and delete the oldest one
@@ -636,12 +661,13 @@ func backupPn(pn string, np int, usermd string, versionId string, maxPage int) (
 
 func writeS3(service *s3.S3, bucket string, maxPartSize int64, document *documentpb.Document) (interface{}, error) {
 
-	if maxPartSize > 0 && document.Size > maxPartSize {
-		gLog.Info.Printf("Multipart uploading of %s - size %d - max part size %d", document.DocId, document.Size, maxPartSize)
-		return mosesbc.WriteS3Multipart(service, bucket, maxPartSize, document, ctimeout)
-	} else {
-		return mosesbc.WriteS3(service, bucket, document, ctimeout)
-	}
+		if maxPartSize > 0 && document.Size > maxPartSize {
+			gLog.Info.Printf("Multipart uploading of %s - size %d - max part size %d", document.DocId, document.Size, maxPartSize)
+			return mosesbc.WriteS3Multipart(service, bucket, maxPartSize, document, ctimeout)
+		} else {
+			return mosesbc.WriteS3(service, bucket, document, ctimeout)
+		}
+
 }
 
 func deleteVersions(request datatype.StatObjRequest) (int, int) {

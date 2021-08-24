@@ -39,49 +39,96 @@ var (
 	maxCon              int
 	restoreCmd          = &cobra.Command{
 		Use:   "_restore_",
-		Short: "Command to restore Moses objects to another Scality Ring or S3 objects",
-		Long: `Command to restore Moses documents which are previously backed up with the backup command
-	Examples
-	restore --prefix ES/123 --source-bucket meta-moses-bkp-pn-02 --target-bucket meta-moses-prod-pn-02 
-	will restore documents whose document id prefixed with  ES/123. 
+		Short: "Command to restore Moses's assets to sproxyd or S3 storage",
+		Long: `Command to restore Moses's assets to sproxyd or S3 storage
 	
-	Use the suffix command to obtain the suffix of a  bucket for a given prefix. Ex suffix ES/123 will return 02
+     Usage:
 
-	restore --source-bucket meta-moses-bkp-pn-02 --target-bucket meta-moses-prod-pn-02 will restore  
-	all the documents which are backed up and stored in the meta-moses-bkp-pn-02 bucket
+          moses-bc --help or -h  to list all the commands
+          moses-bc  <command> -h or --help to list all the arguments related to a specific <command>
+  
+        Config file:
+
+      	The Default config file is located $HOME/.clone/config.yaml. Use the --config or -c to change the default 
+           moses-bc -c  <full path of another config.file>  _backup_  .....
+
+        Example of a Bucket name:
+
+           - Full name :  meta-moses-prod-pn-xx   ( xx = 00..05)
+                Full name is  used for full restore or migrate ( --toS3=true) 
+           
+           - Partial name:  meta-moses-prod-pn    ( without suffix)
+                Partial name is used when a --prefix , --input-file  or --input-bucket  is specified 
+                Partial is used for incremental restore
+
+        The argument --index-bucket is required only when you want to re-index the restored documents. 
+        
+        By default the restored document will be re-indexed, you must specify  --re-index=false to skip re-indexation
+	    
+        By default exiting  moses documents in sproxyd storage will not be replaced unless you specify  --replace=true 
+    
+    Examples
+    
+    Restore documents whose document ids are prefixed with  ES/123 and which were backed up to the bucket name identified by the --source-bucket argument.
+    The bucket name's suffix is not required. The argument --max-loop  0 is to restore all documents prefixed by --prefix argument.
+
+	  moses-bc _restore_ --prefix ES/123 --source-bucket meta-moses-bkp-pn [ --index-bucket meta-moses-prod-pn ] --max-loop 0 [ --re-index=false ]
+
+    Restore all the documents which were backed up to  meta-moses-bkp-pn-02. Replace the restored documents if they already existed
+
+	  moses-bc _restore_ --source-bucket meta-moses-bkp-pn-02 --index-bucket meta-moses-prod-pn-02 --max-loop 0  --replace=true
+	
+	Restore all the documents which were backed up to  meta-moses-bkp-pn-xx in 2021. Replace the restored documents if they already existed
+
+	  moses-bc _restore_ --source-bucket meta-moses-bkp-pn --input-bucket <history backup bucket> --prefix 2021\
+      --index-bucket meta-moses-prod-pn --max-loop 0  --replace=true
+	
+    Restore all the documents which were backed up to  meta-moses-bkp-pn-xx in January 2021. Replace the restored documents if they already existed
+    
+	  moses-bc _restore_ --source-bucket meta-moses-bkp-pn --input-bucket <history backup bucket> --prefix 2021/01 \ 
+      --index-bucket meta-moses-prod-pn --max-loop 0  --replace=true
+	
+    Migrate to S3  all moses documents and directories  which were backed up to  meta-moses-bkp-pn-02. 
+    If you want to preserve and reuse the current Moses directory buckets ( as for instance meta-moses-prod-pn-02), you must specify --re-index=false
+    if you want to re-index the S3 moses with other buckets, you must specify  --index-bucket <full bucket name>  and re-index=true  
+
+	  moses-bc _restore_ --toS3=true --source-bucket meta-moses-bkp-pn-02 --target-bucket meta-moses-prod-s3-pn-02 [--index-bucket meta-moses-prod-pn-02] --max-loop 0  [--re-index=false]
+
                  `,
 		Run:    RestorePns,
 		Hidden: true,
 	}
-	replace   bool
-	toS3      bool
-	indBucket string
+	replace        bool
+	toS3, byBucket bool
+	indBucket      string
+	tgtSproxyd string
 )
 
 func initResFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVarP(&srcBucket, "source-bucket", "", "", "name of the S3 backup bucket")
-	cmd.Flags().StringVarP(&tgtBucket, "target-bucket", "", "", "name of the s3 target bucket for migration to s3.It is required if --toS3=true ")
-	cmd.Flags().StringVarP(&indBucket, "index-bucket", "", "", "name of the s3 Moses directory bucket. It is requited if --re-index=true")
-	cmd.Flags().StringVarP(&iBucket, "input-bucket", "", "", "input bucket containing the history of the backup ( listed by loaded date). It is used to restore by date")
-	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "key prefix. It is used to restore by date ( -p 2021/01/01)  or by country -p US/")
-	cmd.Flags().Int64VarP(&maxKey, "max-key", "m", 21, "maximum number of documents to be restored concurrently")
-	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key")
+	cmd.Flags().StringVarP(&srcBucket, "source-bucket", "", "", uSrcBucket)
+	cmd.Flags().StringVarP(&tgtBucket, "target-bucket", "", "", uTgtBucket + ". It is required when --toS3 is specified ")
+	cmd.Flags().StringVarP(&indBucket, "index-bucket", "", "", "the full or partial  name of a s3 Moses directory bucket. It is requited if --re-index=true")
+	cmd.Flags().StringVarP(&iBucket, "input-bucket", "", "", "the full name of the input bucket containing the history of the backup ( listed by loaded date). It is used to restore by date")
+	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", uPrefix)
+	cmd.Flags().Int64VarP(&maxKey, "max-key", "m", 21, uMaxkey)
+	cmd.Flags().IntVarP(&maxPage, "max-page", "", 50, uMaxPage)
+	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, uMaxLopp)
+	cmd.Flags().StringVarP(&marker, "marker", "M", "", uMaker)
 	// cmd.Flags().StringVarP(&delimiter, "delimiter", "d", "", "key delimiter (not used) ")
-	cmd.Flags().StringVarP(&pn, "key", "k", "", "a specific publication number to be restored")
-	cmd.Flags().StringVarP(&versionId, "versionId", "", "", "Version id of the publication number to be restored - default the last version will be restored ")
-	cmd.Flags().StringVarP(&inFile, "input-file", "i", "", "input file containing the list of documents to restore")
-	cmd.Flags().IntVarP(&maxPage, "max-page", "", 50, "maximum number of concurrent pages ")
-	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, "maximum number of loop, 0 means no upper limit")
-	cmd.Flags().BoolVarP(&replace, "replace", "r", false, "replace existing pages if exist")
-	cmd.Flags().Int64VarP(&maxPartSize, "max-part-size", "", 64, "Maximum partsize (MB) for multipart download")
+	cmd.Flags().StringVarP(&pn, "key", "k", "", "process only this given key")
+	cmd.Flags().StringVarP(&versionId, "versionId", "", "", "the version id of the S3 object to be processed - default the last version will be processed ")
+	cmd.Flags().StringVarP(&inFile, "input-file", "i", "", uInputFile)
+	cmd.Flags().BoolVarP(&replace, "replace", "r", false, uReplace)
+	cmd.Flags().Int64VarP(&maxPartSize, "max-part-size", "", 64, uMaxPartSize)
 	cmd.Flags().Int64VarP(&partNumber, "part-number", "", 0, "Part number")
-	cmd.Flags().IntVarP(&maxCon, "max-con", "", 5, "Maximum concurrent parts download , 0 => all parts")
-	cmd.Flags().StringVarP(&targetDriver, "target-sproxyd-driver", "", "", "target sproxyd driver [bpchord|bparc]")
-	cmd.Flags().StringVarP(&targetUrl, "target-sproxyd-url", "t", "", "target sproxyd endpoint URL http://xx.xx.xx.xx:81/proxy,http:// ...")
-	cmd.Flags().StringVarP(&targetEnv, "target-sproxyd-env", "", "", "target sproxyd environment [prod|osa]")
-	cmd.Flags().BoolVarP(&toS3, "toS3", "", false, "restore or rather migrate Moses to S3 directly from the backup")
-	cmd.Flags().BoolVarP(&reIndex, "re-index", "", true, "re-index the moses documents in the index bucket after the restore")
-	cmd.Flags().DurationVarP(&ctimeout, "ctimeout", "", 10, "background cancel timeout in seconds for context")
+	cmd.Flags().IntVarP(&maxCon, "max-con", "", 5, "maximum concurrent parts download , 0 => all parts for a given document will be concurrently processed ")
+	cmd.Flags().StringVarP(&targetDriver, "target-sproxyd-driver", "", "", "target Sproxyd driver [bpchord|bparc]")
+	cmd.Flags().StringVarP(&targetUrl, "target-sproxyd-url", "t", "", "target Sproxyd endpoint URL http://xx.xx.xx.xx:81/proxy,http:// ...")
+	cmd.Flags().StringVarP(&targetEnv, "target-sproxyd-env", "", "", "target Sproxyd environment [prod|osa]")
+	cmd.Flags().BoolVarP(&toS3, "toS3", "", false, "migrate moses to S3 straight from the backup copy")
+	cmd.Flags().BoolVarP(&reIndex, "re-index", "", true, "re-index moses documents after the restore")
+	cmd.Flags().DurationVarP(&ctimeout, "ctimeout", "", 10, uCtimeout)
+	cmd.Flags().BoolVarP(&check, "check", "", true, uDryRun)
 }
 
 func init() {
@@ -101,9 +148,18 @@ func RestorePns(cmd *cobra.Command, args []string) {
 	mosesbc.MaxCon = maxCon
 	mosesbc.PartNumber = partNumber
 	mosesbc.Replace = replace
-
 	gLog.Info.Printf("Restore bucket - MaxPage %d - Replace %v", mosesbc.MaxPage, mosesbc.Replace)
 
+	// The source bucket  is compulsory
+	if len(srcBucket) == 0 {
+		gLog.Warning.Printf("%s", missingSrcBucket)
+		return
+	}
+
+	if len(iBucket) == 0 && len(inFile) == 0 {
+		byBucket = true
+	}
+	// always set target sproxyd  if not  a migration to S3
 	if !toS3 {
 		if err = mosesbc.SetTargetSproxyd("restore", targetUrl, targetDriver, targetEnv); err != nil {
 			gLog.Error.Printf("%v", err)
@@ -111,33 +167,11 @@ func RestorePns(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	if len(srcBucket) == 0 {
-		gLog.Warning.Printf("%s", missingSrcBucket)
-		return
-	}
-
-	if reIndex && len(indBucket) == 0 {
-		gLog.Warning.Printf("%s", missingIndBucket)
-		return
-	}
-
-	if toS3 && len(tgtBucket) == 0 {
-		gLog.Warning.Printf("%s", missingTgtBucket)
-		return
-	}
-
-	if len(prefix) > 0 ||  len(iBucket) > 0 {
-
-		if len(inFile) > 0 && len(iBucket) > 0 {
-			gLog.Error.Printf("--input-file  and --input-bucket are mutually exclusive", inFile, iBucket)
-			return
-		}
-
-		if len(inFile) > 0 {
-			gLog.Warning.Println("--prefix  and --input-file are incompatible ; --input-file is ignored")
-		}
-
-		if len(srcBucket) > 0 {
+	/*
+		if by bucket, set bucket name according to the prefix
+	*/
+	if byBucket {
+		if len(prefix) > 0 {
 			if err, suf := mosesbc.GetBucketSuffix(srcBucket, prefix); err != nil {
 				gLog.Error.Printf("%v", err)
 				return
@@ -147,31 +181,81 @@ func RestorePns(cmd *cobra.Command, args []string) {
 					gLog.Warning.Printf("A suffix %s is appended to the source Bucket %s", suf, srcBucket)
 				}
 			}
+		} else {
+			/*
+				source bucket must contain a suffix
+			*/
+			if !mosesbc.HasSuffix(srcBucket) {
+				gLog.Error.Printf("%s does not have a suffix 00..05", srcBucket)
+			}
 		}
+
 		if reIndex {
-			if err, suf := mosesbc.GetBucketSuffix(indBucket, prefix); err != nil {
-				gLog.Error.Printf("%v", err)
+			if len(indBucket) == 0 {
+				gLog.Warning.Printf("%s", missingIndBucket)
 				return
+			} else
+			if len(prefix) > 0 {
+				if err, suf := mosesbc.GetBucketSuffix(indBucket, prefix); err != nil {
+					gLog.Error.Printf("%v", err)
+					return
+				} else {
+					if len(suf) > 0 {
+						indBucket += "-" + suf
+						gLog.Warning.Printf("A suffix %s is appended to the source Bucket %s", suf, indBucket)
+					}
+				}
 			} else {
-				if len(suf) > 0 {
-					indBucket += "-" + suf
-					gLog.Warning.Printf("A suffix %s is appended to the index Bucket %s", suf, indBucket)
+				if !mosesbc.HasSuffix(indBucket) {
+					gLog.Error.Printf("%s does not have a suffix 00..05 ", indBucket)
 				}
 			}
 		}
 
 		if toS3 {
-			if err, suf := mosesbc.GetBucketSuffix(tgtBucket, prefix); err != nil {
-				gLog.Error.Printf("%v", err)
+			if len(tgtBucket) == 0 {
+				gLog.Warning.Printf("%s", missingTgtBucket)
 				return
 			} else {
-				if len(suf) > 0 {
-					tgtBucket += "-" + suf
-					gLog.Warning.Printf("A suffix %s is appended to the target Bucket %s", suf, tgtBucket)
+				if len(prefix) > 0 {
+					if err, suf := mosesbc.GetBucketSuffix(tgtBucket, prefix); err != nil {
+						gLog.Error.Printf("%v", err)
+						return
+					} else {
+						if len(suf) > 0 {
+							tgtBucket += "-" + suf
+							gLog.Warning.Printf("A suffix %s is appended to the source Bucket %s", suf, tgtBucket)
+						}
+					}
 				}
 			}
 		}
+
+	} else {
+		/*
+			--input-file or --input-bucket
+		*/
+		if len(iBucket) > 0 && len(inFile) > 0 {
+			gLog.Error.Printf("arguments --input-file and --input-bucket are mutually exclusive")
+			return
+		}
+		if len(iBucket) > 0 {
+			if logS3 = mosesbc.CreateS3Session("restore", "logger"); tgtS3 == nil {
+				gLog.Error.Printf("Missing s3.restore.logger ... in the config.yaml file")
+				return
+			}
+		}
+		// if --input-file then --prefix is ignored
+		if len(inFile) > 0 {
+			gLog.Warning.Printf("--prefix  is ignored")
+			prefix = ""
+			if listpn, err = utils.Scanner(inFile); err != nil {
+				gLog.Error.Printf("Error %v  scanning %s ", err, inFile)
+				return
+			}
+		}
 	}
+
 	// source and target buckets must have the same suffix
 	if reIndex {
 		if err := mosesbc.CheckBucketName(srcBucket, indBucket); err != nil {
@@ -180,23 +264,10 @@ func RestorePns(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	if toS3 {
-		if err := mosesbc.CheckBucketName(srcBucket, tgtBucket); err != nil {
-			gLog.Warning.Printf("%v", err)
-			return
-		}
-	}
-	//  index-Bucket and tgtBicket must be different
-	if tgtBucket == indBucket{
-		gLog.Error.Printf("target bucket %s  and index bucket %s are the same",tgtBucket,indBucket)
+	//  --index-bucket and --target-bucket must be different
+	if tgtBucket == indBucket {
+		gLog.Error.Printf("target bucket %s  and index bucket %s are the same", tgtBucket, indBucket)
 		return
-	}
-	//
-	if len(inFile) > 0 {
-		if listpn, err = utils.Scanner(inFile); err != nil {
-			gLog.Error.Printf("Error %v  scanning %s ", err, inFile)
-			return
-		}
 	}
 
 	maxPartSize = maxPartSize * 1024 * 1024 // convert into bytes
@@ -213,7 +284,7 @@ func RestorePns(cmd *cobra.Command, args []string) {
 	}
 
 	//  create the output directory if it does not exist
-	utils.MakeDir(outDir)
+	// utils.MakeDir(outDir)
 
 	if tgtS3 = mosesbc.CreateS3Session("restore", "target"); tgtS3 == nil {
 		gLog.Error.Printf("Missing s3.restore.target... in the config fle")
@@ -244,22 +315,22 @@ func restorePns() (string, error) {
 		tdocs, tpages, tsizes int64
 		terrors               int
 		re, si                sync.Mutex
-		req, reql                       datatype.ListObjV2Request
+		req                   datatype.ListObjV2Request
 	)
 	// mosesbc.SetSourceSproxyd("restore",srcUrl,driver)
 
 	req = datatype.ListObjV2Request{
-		Service:           srcS3,
-		Bucket:            srcBucket,
-		Prefix:            prefix,
-		MaxKey:            int64(maxKey),
-		Marker:            marker,
+		Service: srcS3,
+		Bucket:  srcBucket,
+		Prefix:  prefix,
+		MaxKey:  int64(maxKey),
+		Marker:  marker,
 		// Delimiter:         delimiter,
 		Continuationtoken: token,
 	}
 	if len(iBucket) > 0 {
-		reql = datatype.ListObjV2Request{
-			Service:           srcS3,
+		req = datatype.ListObjV2Request{
+			Service:           logS3,
 			Bucket:            iBucket,
 			Prefix:            prefix,
 			MaxKey:            int64(maxKey),
@@ -277,17 +348,13 @@ func restorePns() (string, error) {
 			npages     int = 0
 			docsizes   int = 0
 			nerrors    int = 0
-			tgtSproxyd string
+			// tgtSproxyd string
 		)
 		N++ // number of loop
 		if len(inFile) > 0 {
 			result, err = ListPn(listpn, int(maxKey)) //  listpn returns the list of documents to be restored
 		} else {
-			if len(iBucket) > 0 {
-				result, err = api.ListObjectV2(reql)
-			} else {
-				result, err = api.ListObjectV2(req) // listobject returns the list of documents to be restored
-			}
+			result, err = api.ListObjectWithContextV2(ctimeout, req)
 		}
 		if err == nil {
 			if !toS3 {
@@ -302,12 +369,33 @@ func restorePns() (string, error) {
 				start := time.Now()
 				for _, v := range result.Contents {
 					if *v.Key != nextmarker {
+						key := *v.Key
 						ndocs += 1
-						service := req.Service
+						service := srcS3 // alwyas S3  backup
+						buck := req.Bucket
+						if len(iBucket) > 0 {
+
+							/*
+									check the content of the input bucket
+								    key  should be in the form
+									yyyymmdd/cc/pn/kc
+							*/
+
+							if err, key = mosesbc.ParseLoggerKey(*v.Key); err != nil {
+								gLog.Error.Printf("Error %v in bucket %s", err, iBucket)
+								continue
+							}
+							buck = mosesbc.SetBucketName(key, req.Bucket)
+						} else {
+							if len(inFile) > 0 {
+								key = *v.Key
+								buck = mosesbc.SetBucketName(key, req.Bucket)
+							}
+						}
 						request := datatype.GetObjRequest{
 							Service: service,
-							Bucket:  req.Bucket,
-							Key:     *v.Key,
+							Bucket:  buck,
+							Key:     key,
 						}
 						wg1.Add(1)
 						go func(request datatype.GetObjRequest, size int64, replace bool) {
@@ -372,7 +460,6 @@ func restorePns() (string, error) {
 }
 
 /*
-
 		Get  the backup object
 		verify that  user metadata stored in the backup object is valid .Exit if not
         if metadata valid
@@ -394,7 +481,7 @@ func restorePn(request datatype.GetObjRequest, replace bool) (int, int, int) {
 		nerr, status              int
 		start2                    = time.Now()
 	)
-
+	//  get the backup document
 	if result, err = api.GetObject(request); err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
@@ -410,6 +497,7 @@ func restorePn(request datatype.GetObjRequest, replace bool) (int, int, int) {
 		}
 	} else {
 		defer result.Body.Close()
+		//  extract  the backup user meta data
 		if usermd, err = utils.GetUserMeta(result.Metadata); err == nil {
 			userm := UserMd{}
 			json.Unmarshal([]byte(usermd), &userm)
@@ -420,33 +508,44 @@ func restorePn(request datatype.GetObjRequest, replace bool) (int, int, int) {
 		gLog.Info.Printf("Get Object key %s - Elapsed time %v ", request.Key, time.Since(start2))
 
 		/*
-			retrieve the backup document
+			download the backup object
 		*/
 
 		start3 := time.Now()
 		if body, err := utils.ReadObjectv(result.Body, CHUNKSIZE); err == nil {
 			defer result.Body.Close()
+			// extract the document
 			document, err = mosesbc.GetDocument(body.Bytes())
 			pd := document.Pdf
+			//  check if the document has a pdf
 			if len(pd.Pdf) > 0 {
 				if !toS3 {
-					/*   restore the pdf document first   - Check the number of errors returned by WriteDocPdf  */
-					nerr, status = mosesbc.WriteDocPdf(pd, replace)
-					if nerr == 0 {
-						if status == 200 {
-							gLog.Info.Printf("Document pdf %s has been restored - Size %d", pd.PdfId, pd.Size)
+					/*   restore the pdf document to sproxyd first  */
+					if !check {
+						nerr, status = mosesbc.WriteDocPdf(pd, replace)
+						if nerr == 0 {
+							if status == 200 {
+								gLog.Info.Printf("Document pdf %s has been restored - Size %d", pd.PdfId, pd.Size)
+							} else {
+								gLog.Info.Printf("Document pdf %s is not restored - Status %d", pd.PdfId, status)
+							}
 						} else {
-							gLog.Info.Printf("Document pdf %s is not restored - Status %d", pd.PdfId, status)
+							gLog.Info.Printf("Document pdf %s is not restored - Check the error returned by  WriteDocPdf ", pd.PdfId)
 						}
 					} else {
-						gLog.Info.Printf("Document pdf %s is not restored - Check the error returned by  WriteDocPdf ", pd.PdfId)
+						gLog.Info.Printf("Dry Run: Writing pdf document %s to sproxyd %s ", pd.PdfId, tgtSproxyd)
 					}
 				} else {
-					if _, err = mosesbc.WriteS3Pdf(tgtS3, tgtBucket, pd,ctimeout); err != nil {
-						gLog.Info.Printf("Document pdf %s is not restored - error %v ", pd.PdfId, err)
-						nerr += 1
+					buck1:= mosesbc.SetBucketName1(!byBucket,pd.PdfId,tgtBucket)
+					if !check {
+						if _, err = mosesbc.WriteS3Pdf(tgtS3, buck1, pd, ctimeout); err != nil {
+							gLog.Info.Printf("Document pdf %s is not restored - error %v ", pd.PdfId, err)
+							nerr += 1
+						} else {
+							gLog.Info.Printf("Document pdf %s has been restored - Size %d", pd.PdfId, pd.Size)
+						}
 					} else {
-						gLog.Info.Printf("Document pdf %s has been restored - Size %d", pd.PdfId, pd.Size)
+						gLog.Info.Printf("Dry Run: Writing pdf document %s to bucket %s - S3 endpoint %s", pd.PdfId, buck1, tgtS3.Endpoint)
 					}
 				}
 			}
@@ -458,9 +557,28 @@ func restorePn(request datatype.GetObjRequest, replace bool) (int, int, int) {
 			*/
 			start4 := time.Now()
 			if !toS3 {
-				nerr += mosesbc.RestoreBlobs(document,ctimeout)
+				//  restore back to sproxyd storage
+				if !check {
+					nerr += mosesbc.RestoreBlobs(document, ctimeout)
+				}  else {
+					gLog.Info.Printf("Dry Run: Restore document %s to sproxyd %s",document.DocId,tgtSproxyd)
+				}
 			} else {
-				nerr += mosesbc.Restores3Objects(tgtS3, tgtBucket, document,ctimeout)
+				// restore to migrate to S3 storage
+				/*
+				var buck1 string
+				if !byBucket {
+					buck1 = mosesbc.SetBucketName(document.DocId, tgtBucket)
+				} else {
+					buck1 = tgtBucket
+				}
+				 */
+				buck1:= mosesbc.SetBucketName1(!byBucket,document.DocId,tgtBucket)
+				if !check {
+					nerr += mosesbc.Restores3Objects(tgtS3, buck1, document, ctimeout)
+				}  else {
+					gLog.Info.Printf("Dry Run: Restore document %s to bucket %s - S3 endpoint %s",document.DocId,buck1,tgtS3.Endpoint)
+				}
 			}
 			npages = (int)(document.NumberOfPages)
 			docsizes = int(document.Size)
@@ -478,11 +596,25 @@ func restorePn(request datatype.GetObjRequest, replace bool) (int, int, int) {
 				/* start  indexing */
 				start5 := time.Now()
 				if reIndex {
-					if _, err = mosesbc.IndexDocument(document, indBucket, tgtS3,ctimeout); err != nil {
-						gLog.Error.Printf("Error %v while indexing the document id %s iwith the bucket %s", err, document.DocId, indBucket)
-						nerrors += 1
+					/*
+					var buck1 string
+					if !byBucket {
+						buck1 = mosesbc.SetBucketName(document.DocId, tgtBucket)
 					} else {
-						gLog.Info.Printf("Document id %s is now indexed in the bucket %s - Elapsed time %v", document.DocId, indBucket, time.Since(start5))
+						buck1 = tgtBucket
+					}
+
+					 */
+					buck1:= mosesbc.SetBucketName1(!byBucket,document.DocId,tgtBucket)
+					if !check {
+						if _, err = mosesbc.IndexDocument(document, buck1, tgtS3, ctimeout); err != nil {
+							gLog.Error.Printf("Error %v while indexing the document id %s iwith the bucket %s", err, document.DocId, indBucket)
+							nerrors += 1
+						} else {
+							gLog.Info.Printf("Document id %s is now indexed in the bucket %s - Elapsed time %v", document.DocId, indBucket, time.Since(start5))
+						}
+					} else {
+						gLog.Info.Printf("Dry Run: Indexing document %s in the bucket %s - S3 endpoint %s", document.DocId, buck1, tgtS3.Endpoint)
 					}
 				}
 			}
@@ -526,22 +658,40 @@ func restoreMultipartPn(request datatype.GetObjRequest, replace bool) (int, int,
 		if !toS3 {
 			if len(pd.Pdf) > 0 {
 				/*   restore the pdf document first    */
-				if nerr, status = mosesbc.WriteDocPdf(pd, replace); nerr == 0 {
-					if status == 200 {
-						gLog.Info.Printf("Document pdf %s has been restored - Size %d", pd.PdfId, pd.Size)
+				if !check {
+					if nerr, status = mosesbc.WriteDocPdf(pd, replace); nerr == 0 {
+						if status == 200 {
+							gLog.Info.Printf("Document pdf %s has been restored - Size %d", pd.PdfId, pd.Size)
+						} else {
+							gLog.Info.Printf("Document pdf %s is not restored - Status %d", pd.PdfId, status)
+						}
 					} else {
-						gLog.Info.Printf("Document pdf %s is not restored - Status %d", pd.PdfId, status)
+						gLog.Info.Printf("Document pdf %s is not restored - Check the error returned by  WriteDocPdf ", pd.PdfId)
 					}
 				} else {
-					gLog.Info.Printf("Document pdf %s is not restored - Check the error returned by  WriteDocPdf ", pd.PdfId)
+					gLog.Info.Printf("Dry Run: Writing pdf document %s to sproxyd %s", pd.PdfId, tgtSproxyd)
 				}
 			}
 		} else {
-			if _, err = mosesbc.WriteS3Pdf(tgtS3, tgtBucket, pd,ctimeout); err != nil {
-				gLog.Info.Printf("Document pdf %s is not restored - error %v ", pd.PdfId, err)
-				nerr += 1
+			/*
+			var buck1 string
+			if !byBucket {
+				buck1 = mosesbc.SetBucketName(pd.PdfId, tgtBucket)
 			} else {
-				gLog.Info.Printf("Document pdf %s has been restored - Size %d", pd.PdfId, pd.Size)
+				buck1 = tgtBucket
+			}
+			 */
+
+			buck1:= mosesbc.SetBucketName1(!byBucket,pd.PdfId,tgtBucket)
+			if !check {
+				if _, err = mosesbc.WriteS3Pdf(tgtS3, buck1, pd, ctimeout); err != nil {
+					gLog.Info.Printf("Document pdf %s is not restored - error %v ", pd.PdfId, err)
+					nerr += 1
+				} else {
+					gLog.Info.Printf("Document pdf %s has been restored - Size %d", pd.PdfId, pd.Size)
+				}
+			} else {
+				gLog.Info.Printf("Dry Run: Writing pdf document %s to bucket %s - S3 endpoint %s", pd.PdfId, buck1, tgtS3.Endpoint)
 			}
 		}
 		gLog.Info.Printf("Document id %s is retrieved - Number of pages %d - Document size %d - Elapsed time %v ", document.DocId, document.NumberOfPages, document.Size, time.Since(start3))
@@ -554,9 +704,26 @@ func restoreMultipartPn(request datatype.GetObjRequest, replace bool) (int, int,
 
 		start4 := time.Now()
 		if !toS3 {
-			nerr += mosesbc.RestoreBlobs(document,ctimeout)
+			if !check {
+				nerr += mosesbc.RestoreBlobs(document, ctimeout)
+			}  else {
+				gLog.Info.Printf("Dry Run: Restore document %s to sproxyd %s",document.DocId,tgtSproxyd)
+			}
 		} else {
-			nerr += mosesbc.Restores3Objects(tgtS3, tgtBucket, document,ctimeout)
+			/*
+			var buck1 string
+			if !byBucket {
+				buck1 = mosesbc.SetBucketName(document.DocId, tgtBucket)
+			} else {
+				buck1 = tgtBucket
+			}
+			 */
+			buck1:= mosesbc.SetBucketName1(!byBucket,document.DocId,tgtBucket)
+			if !check {
+				nerr += mosesbc.Restores3Objects(tgtS3, buck1, document, ctimeout)
+			} else {
+				gLog.Info.Printf("Dry Run: Restore document %s to bucket %s - S3 endpoint %s",document.DocId,buck1,tgtS3.Endpoint)
+			}
 		}
 		npages = (int)(document.NumberOfPages)
 		docsizes = int(document.Size)
@@ -573,11 +740,25 @@ func restoreMultipartPn(request datatype.GetObjRequest, replace bool) (int, int,
 			gLog.Info.Printf("Document id %s is fully restored - Number of pages %d - Document size %d - Elapsed time %v ", document.DocId, document.NumberOfPages, document.Size, time.Since(start4))
 			/* start  indexing */
 			start5 := time.Now()
-			if _, err = mosesbc.IndexDocument(document, tgtBucket, tgtS3,ctimeout); err != nil {
-				gLog.Error.Printf("Error %v while indexing the document id %s with the bucket %s", err, document.DocId, tgtBucket)
-				nerrors = 1
+			/*
+			var buck1 string
+			if !byBucket {
+				buck1 = mosesbc.SetBucketName(document.DocId, tgtBucket)
 			} else {
-				gLog.Info.Printf("Document id %s is now indexed in the bucket %s - Elapsed time %v", document.DocId, tgtBucket, time.Since(start5))
+				buck1 = tgtBucket
+			}
+			 */
+
+			buck1:= mosesbc.SetBucketName1(!byBucket,document.DocId,tgtBucket)
+			if !check {
+				if _, err = mosesbc.IndexDocument(document, buck1, tgtS3, ctimeout); err != nil {
+					gLog.Error.Printf("Error %v while indexing the document id %s with the bucket %s", err, document.DocId, tgtBucket)
+					nerrors = 1
+				} else {
+					gLog.Info.Printf("Document id %s is now indexed in the bucket %s - Elapsed time %v", document.DocId, tgtBucket, time.Since(start5))
+				}
+			} else {
+				gLog.Info.Printf("Dry Run: Indexing  document %s in the bucket %s - S3 endpoint %s", document.DocId, buck1, tgtS3.Endpoint)
 			}
 		}
 	} else {

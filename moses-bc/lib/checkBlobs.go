@@ -381,10 +381,10 @@ func comparePdf(pn string) (error, bool) {
 				return err, false
 			}
 		} else {
-			gLog.Error.Printf("Error %v Getting restored document  %s", err, request.Path)
+			gLog.Error.Printf("Error %v Getting the target document %s", err, request.Path)
 		}
 	} else {
-		gLog.Error.Printf("Error %v Getting  source document %s", err, request.Path)
+		gLog.Error.Printf("Error %v Getting the source document %s", err, request.Path)
 	}
 	return err, false
 }

@@ -76,6 +76,24 @@ var (
 	missingTgtBucket = "Missing target S3 bucket --target-bucket argument. Use  --help or -h for help"
 	missingIndBucket = "Missing index S3 bucket --index-bucket argument. Use  --help or -h for help"
 	missingBucket = "Missing S3 bucket --bucket argument. Use  --help or -h for help"
+	/* */
+	uSrcBucket = "full (with suffix) or partial name (without suffix) of the source s3 bucket. Ex:<bucket>-xx, xx is the suffix - See documentation for details"
+	uTgtBucket = "full (with suffix) or partial name (without suffix) of the target s3 bucket. Ex:<bucket>-xx, xx is the suffix - See documentation for details"
+	uIndBucket = "full (with suffix) or partial name (without suffix) of the index (directory) s3 bucket. Ex:<bucket>-xx, xx is the suffix - See documentation for details"
+	uPrefix = "prefix limits the list of results to only those keys that begin with the specified prefix. See documentation for details"
+	uMaxkey = "maximum number of documents to be concurrently processed -  maximum concurrent operations = (--max-key X --max-page)"
+	uMaxPage = "maximum number of pages per document to be concurrently processed - maximum concurrent operations = (--max-key X --max-page)"
+	uMaxLopp ="maximum number of loop, 0 means no upper limit which means the full list will be processed"
+	uMaker ="Marker is the key of the source or input bucket where you want S3 to start listing from"
+	uMaxPartSize="Maximum multipart' partition size (MB) for multipart processing"
+	uFromDate ="process only objects which are modified after <yyyy-mm-ddThh:mm:ss>"
+	uToDate ="process only objects which are modified before <yyyy-mm-ddThh:mm:ss>"
+	uMaxVerion ="maximum number of versions if bucket versioning is enabled"
+	uInputFile ="input file containing the list of keys for incremental process"
+	uReplace ="replace existing Sproxyd objects if they exist"
+	uVersionId="the version id of the S3 object to be processed - default the last version will be processed"
+	uCtimeout = "set the cancel timeout (sec)  for the background context"
+	uDryRun ="Dry run for testing"
 )
 
 // rootCmd represents the base command when called without any subcommands
