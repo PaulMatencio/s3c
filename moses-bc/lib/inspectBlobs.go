@@ -57,10 +57,10 @@ func inspectBlob(document *documentpb.Document, verbose bool) {
 			json.Unmarshal([]byte(pagemeta), &pagmeta)
 			if pagmeta.MultiMedia.Tiff {
 				if bytes.Compare(pg.Object[0:3],[]byte(LEHeader)) == 0 {
-					tiff = "Tiff image"
+					tiff = "image/tiff"
 				} else {
 					tiff = http.DetectContentType(pg.Object[pagmeta.TiffOffset.Start:pagmeta.TiffOffset.End])
-					fmt.Printf("%s\n",pg.Object[pagmeta.TiffOffset.Start:pagmeta.TiffOffset.Start+3])
+					fmt.Printf("%s %s\n",pg.Object[pagmeta.TiffOffset.Start:pagmeta.TiffOffset.Start+3],LEHeader)
 				}
 				tiffl = pagmeta.TiffOffset.End - pagmeta.TiffOffset.Start + 1
 				/* 4D 4D 00 4A   */
@@ -123,7 +123,7 @@ func inspectLargeBlobPart(document *documentpb.Document, start int, end int, ver
 				if bytes.Compare(pg.Object[pagmeta.TiffOffset.Start:pagmeta.TiffOffset.Start+3],[]byte(LEHeader)) == 0 {
 					tiff = "image/tiff"
 				} else {
-					fmt.Printf("%s\n",pg.Object[pagmeta.TiffOffset.Start:pagmeta.TiffOffset.Start+3])
+					fmt.Printf("%s %S\n",pg.Object[pagmeta.TiffOffset.Start:pagmeta.TiffOffset.Start+3],LEHeader)
 					tiff = http.DetectContentType(pg.Object[pagmeta.TiffOffset.Start:pagmeta.TiffOffset.End])
 				}
 				tiffl = pagmeta.TiffOffset.End - pagmeta.TiffOffset.Start + 1
