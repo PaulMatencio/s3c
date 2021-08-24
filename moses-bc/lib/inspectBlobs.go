@@ -120,8 +120,9 @@ func inspectLargeBlobPart(document *documentpb.Document, start int, end int, ver
 			json.Unmarshal([]byte(pagemeta), &pagmeta)
 			if pagmeta.MultiMedia.Tiff {
 				if bytes.Compare(pg.Object[pagmeta.TiffOffset.Start:pagmeta.TiffOffset.Start+3],[]byte(BEHeader)) == 0 {
-					tiff = "Tiff image"
+					tiff = "image/tiff"
 				} else {
+					fmt.Printf("%s\n",pg.Object[pagmeta.TiffOffset.Start:pagmeta.TiffOffset.Start+3])
 					tiff = http.DetectContentType(pg.Object[pagmeta.TiffOffset.Start:pagmeta.TiffOffset.End])
 				}
 				tiffl = pagmeta.TiffOffset.End - pagmeta.TiffOffset.Start + 1
