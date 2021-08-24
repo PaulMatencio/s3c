@@ -60,6 +60,7 @@ func inspectBlob(document *documentpb.Document, verbose bool) {
 					tiff = "Tiff image"
 				} else {
 					tiff = http.DetectContentType(pg.Object[pagmeta.TiffOffset.Start:pagmeta.TiffOffset.End])
+					fmt.Printf("%s\n",pg.Object[pagmeta.TiffOffset.Start:pagmeta.TiffOffset.Start+3])
 				}
 				tiffl = pagmeta.TiffOffset.End - pagmeta.TiffOffset.Start + 1
 				/* 4D 4D 00 4A   */
