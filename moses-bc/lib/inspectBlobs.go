@@ -69,7 +69,7 @@ func inspectBlob(document *documentpb.Document, verbose bool) {
 				png = http.DetectContentType(pg.Object[pagmeta.PngOffset.Start:pagmeta.PngOffset.End])
 				pngl = pagmeta.PngOffset.End - pagmeta.PngOffset.Start + 1
 			}
-			fmt.Printf("\t\tPage Number: %d - Page Length: %d - Png %v:%s:%d - Tiff %v:%s:%d", pagmeta.PageNumber, pagmeta.PageLength, pagmeta.MultiMedia.Png, png, pngl, pagmeta.MultiMedia.Tiff, tiff, tiffl)
+			fmt.Printf("\t\tPage Number: %d - Page Length: %d - Png %v:%s:%d - Tiff %v:%s:%d\n", pagmeta.PageNumber, pagmeta.PageLength, pagmeta.MultiMedia.Png, png, pngl, pagmeta.MultiMedia.Tiff, tiff, tiffl)
 		}
 	}
 }
@@ -119,14 +119,18 @@ func inspectLargeBlobPart(document *documentpb.Document, start int, end int, ver
 			pagmeta := meta.Pagemeta{}
 			json.Unmarshal([]byte(pagemeta), &pagmeta)
 			if pagmeta.MultiMedia.Tiff {
-				tiff = http.DetectContentType(pg.Object[pagmeta.TiffOffset.Start:pagmeta.TiffOffset.End])
+				if bytes.Compare(pg.Object[pagmeta.TiffOffset.Start:pagmeta.TiffOffset.Start+3],[]byte(BEHeader)) == 0 {
+					tiff = "Tiff image"
+				} else {
+					tiff = http.DetectContentType(pg.Object[pagmeta.TiffOffset.Start:pagmeta.TiffOffset.End])
+				}
 				tiffl = pagmeta.TiffOffset.End - pagmeta.TiffOffset.Start + 1
 			}
 			if pagmeta.MultiMedia.Png {
 				png = http.DetectContentType(pg.Object[pagmeta.PngOffset.Start:pagmeta.PngOffset.End])
 				pngl = pagmeta.PngOffset.End - pagmeta.PngOffset.Start + 1
 			}
-			fmt.Printf("\t\tPage Number %d - Length %d - Png %v:%s:%d - Tiff %v:%s:%d - Pdf %v\n", pagmeta.PageNumber, pagmeta.PageLength, pagmeta.MultiMedia.Png, png, pngl, pagmeta.MultiMedia.Tiff, tiff, tiffl, pagmeta.MultiMedia.Pdf)
+			fmt.Printf("\t\tPage Number %d - Length %d - Png %v:%s:%d - Tiff %v:%s:%d\n", pagmeta.PageNumber, pagmeta.PageLength, pagmeta.MultiMedia.Png, png, pngl, pagmeta.MultiMedia.Tiff, tiff, tiffl)
 		}
 	}
 }
