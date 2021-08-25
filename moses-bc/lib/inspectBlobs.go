@@ -70,7 +70,7 @@ func inspectBlob(document *documentpb.Document, verbose bool) {
 				png = http.DetectContentType(pg.Object[pagmeta.PngOffset.Start:pagmeta.PngOffset.End])
 				pngl = pagmeta.PngOffset.End - pagmeta.PngOffset.Start + 1
 			}
-			fmt.Printf("\t\tPage Number: %d -> Page Length: %d - Content type: %s -> Content length: %d - Content type:% -> Content length: %d\n", pagmeta.PageNumber, pagmeta.PageLength, tiff, tiffl,png, pngl)
+			fmt.Printf("\t\tPage Number: %d -> Page Length: %d - Content type: %s -> Content length: %d - Content type:%s -> Content length: %d\n", pagmeta.PageNumber, pagmeta.PageLength, tiff, tiffl,png, pngl)
 		}
 	}
 }
@@ -131,7 +131,7 @@ func inspectLargeBlobPart(document *documentpb.Document, start int, end int, ver
 				png = http.DetectContentType(pg.Object[pagmeta.PngOffset.Start:pagmeta.PngOffset.End])
 				pngl = pagmeta.PngOffset.End - pagmeta.PngOffset.Start + 1
 			}
-			fmt.Printf("\t\tPage Number: %d -> Page Length: %d - Content type: %s -> Content length: %d - Content type:% -> Content length: %d\n", pagmeta.PageNumber, pagmeta.PageLength, tiff, tiffl,png, pngl)
+			fmt.Printf("\t\tPage Number: %d -> Page Length: %d - Content type: %s -> Content length: %d - Content type:%s -> Content length: %d\n", pagmeta.PageNumber, pagmeta.PageLength, tiff, tiffl,png, pngl)
 		}
 	}
 }
