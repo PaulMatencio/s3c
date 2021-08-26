@@ -130,9 +130,10 @@ func GetUserMetaWithPathId(cmd *cobra.Command, args []string) {
 		gLog.Error.Println("missing --path-id")
 		return
 	}
+
 	mosesbc.SetSourceSproxyd("check",srcUrl,driver,env)
 	if err,usermd,status := mosesbc.GetUserMetaWithPathId(pathId); err == nil {
-		gLog.Info.Printf("Get user meta for path Id %s  -> path name %s ",pathId,usermd)
+		gLog.Info.Printf("Get user meta for path Id %s  -> path name %s - Usermeta length : %d ",pathId,usermd,len(usermd))
 	} else {
 		gLog.Error.Printf("Get user meta for path id %s ->  Err %v - Status Code %d",pathId, err,status)
 	}
