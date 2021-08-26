@@ -7,6 +7,7 @@ import (
 	goLog "github.com/paulmatencio/s3c/gLog"
 	"io/ioutil"
 	"os"
+	"reflect"
 	"strconv"
 )
 
@@ -80,8 +81,13 @@ func (pagemeta *Pagemeta) Decode(filename string) error {
 
 // return document id  in the form CC/PN/KC/pn
 func (pagemeta *Pagemeta) GetPathName() string {
-	//return "/" + pagemeta.BnsId.CountryCode + "/" + pagemeta.BnsId.PubNumber + "/" + pagemeta.BnsId.KindCode + "/p" + strconv.Itoa(pagemeta.PageNumber)
-	return (fmt.Sprintf("%s/%s/%s/p%s", pagemeta.BnsId.CountryCode, pagemeta.BnsId.PubNumber, pagemeta.BnsId.KindCode, strconv.Itoa(pagemeta.PageNumber)))
+	// check if it is  page metadata 
+	if ReflectStructField(pagemeta,"PageNumber") {
+		return (fmt.Sprintf("%s/%s/%s/p%s", pagemeta.BnsId.CountryCode, pagemeta.BnsId.PubNumber, pagemeta.BnsId.KindCode, strconv.Itoa(pagemeta.PageNumber)))
+	} else {
+		//  it should be  a document meta
+		return (fmt.Sprintf("%s/%s/%s/p%s", pagemeta.BnsId.CountryCode, pagemeta.BnsId.PubNumber, pagemeta.BnsId.KindCode))
+	}
 }
 
 func (pagemeta *Pagemeta) UsermdToStruct(meta string) error {
@@ -132,4 +138,21 @@ func (page *PAGE) Encode(filename string) error {
 	} else {
 		return err
 	}
+}
+
+//  check if a field exists in a structure
+
+func ReflectStructField(Iface interface{}, FieldName string)  bool {
+
+	ValueIface := reflect.ValueOf(Iface)
+	// Check if the passed interface is a pointer
+	if ValueIface.Type().Kind() != reflect.Ptr {
+		// Create a new type of Iface's Type, so we have a pointer to work with
+		ValueIface = reflect.New(reflect.TypeOf(Iface))
+	}
+
+	// 'dereference' with Elem() and get the field by name
+	Field := ValueIface.Elem().FieldByName(FieldName)
+	return Field.IsValid()
+
 }
