@@ -205,6 +205,18 @@ func ListObjectV2(cmd *cobra.Command, args []string) {
 		return
 	}
 
+	if len(prefix) > 0 {
+		if err, suf := mosesbc.GetBucketSuffix(bucket, prefix); err != nil {
+			gLog.Error.Printf("%v", err)
+			return
+		} else {
+			if len(suf) > 0 {
+				bucket += "-" + suf
+				gLog.Warning.Printf("A suffix %s is appended to the source Bucket %s", suf, bucket)
+			}
+		}
+	}
+
 	if err, service = createS3Session(location); err == nil {
 		req = datatype.ListObjV2Request{
 			Service:           service,

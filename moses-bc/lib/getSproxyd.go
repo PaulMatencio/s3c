@@ -54,22 +54,21 @@ func GetPageNumber(key string) (int, error, int) {
 			encoded_usermd := resp.Header["X-Scal-Usermd"]
 			if err = metadata.UsermdToStruct(string(encoded_usermd[0])); err == nil {
 				if pgn, err = metadata.GetPageNumber(); err == nil {
-					gLog.Info.Printf("Key %s  - Number of pages %d", key, pgn)
+					gLog.Info.Printf("Key %s - Number of pages %d", key, pgn)
 					return pgn, err, resp.StatusCode
 				} else {
-					gLog.Error.Printf("Error getting page number %d", pgn)
+					gLog.Error.Printf("key %s - Error getting the number of pages %d", key, pgn)
 				}
 			} else {
 				gLog.Error.Println(err)
 			}
 		default:
-			err = errors.New("Check the status Code for the root cause")
+			err = errors.New(fmt.Sprintf("Key %s - Status code %d", key, resp.StatusCode))
 		}
 		return pgn, err, resp.StatusCode
 	}
 	return pgn, err, -1
 }
-
 
 func GetDocumentMeta(key string) (*moses.DocumentMetadata, error, int) {
 	var (
@@ -92,7 +91,7 @@ func GetDocumentMeta(key string) (*moses.DocumentMetadata, error, int) {
 		case 200:
 			encoded_usermd := resp.Header["X-Scal-Usermd"]
 			if err = metadata.UsermdToStruct(string(encoded_usermd[0])); err == nil {
-					return &metadata, err, resp.StatusCode
+				return &metadata, err, resp.StatusCode
 			} else {
 				gLog.Error.Println(err)
 			}
@@ -104,10 +103,9 @@ func GetDocumentMeta(key string) (*moses.DocumentMetadata, error, int) {
 	return &metadata, err, -1
 }
 
-func GetPathName(pathId string) (error, string, int) {
+func GetPathName(pathId string) (err error, pathName string, status int) {
+
 	var (
-		pathName       string
-		err            error
 		sproxydRequest = sproxyd.HttpRequest{
 			Hspool: sproxyd.HP,
 			Client: &http.Client{
@@ -120,36 +118,88 @@ func GetPathName(pathId string) (error, string, int) {
 			},
 		}
 		resp *http.Response
+		usermd string
 	)
 
 	metadata := moses.Pagemeta{}
+	status = -1
 	if resp, err = sproxyd.GetMetadata(&sproxydRequest); err == nil {
 		defer resp.Body.Close()
-		switch resp.StatusCode {
+		status = resp.StatusCode
+		switch status {
 		case 200:
-			encoded_usermd := resp.Header["X-Scal-Usermd"]
-			if err = metadata.UsermdToStruct(string(encoded_usermd[0])); err == nil {
-				if pathName = metadata.GetPathName(); err == nil {
-					// gLog.Info.Printf("PathId %s - Pathname %s",pathId,pathName)
-					return err, pathName, resp.StatusCode
-				} else {
-					err = errors.New(fmt.Sprintf("Error getting path name for path id %s", pathId))
+			if _, ok := resp.Header["X-Scal-Usermd"]; ok {
+				usermd = resp.Header["X-Scal-Usermd"][0]
+				if err = metadata.UsermdToStruct(string(usermd)); err == nil {
+					if pathName = metadata.GetPathName(); err == nil {
+						return
+					} else {
+						err = errors.New(fmt.Sprintf("Error getting path name for path id %s", pathId))
+						return
+					}
 				}
+			} else {
+				err = errors.New(fmt.Sprintf("Path Id %s does not have user metadata ", pathId))
+				return
+			}
+		default:
+			err = errors.New(fmt.Sprintf("Error getting path name for path id %s - Status code: %s", pathId,status))
+		}
+		return
+	}
+	return
+}
+
+func GetUserMetaWithPathId(pathId string) (err error, usermd string, status int) {
+
+	var (
+		sproxydRequest = sproxyd.HttpRequest{
+			Hspool: sproxyd.HP,
+			Client: &http.Client{
+				Timeout:   sproxyd.ReadTimeout,
+				Transport: sproxyd.Transport,
+			},
+			Path: pathId,
+			ReqHeader: map[string]string{
+				"X-Scal-Replica-Policy": "immutable",
+			},
+		}
+		resp *http.Response
+		md []byte
+	)
+	status = -1
+	if resp, err = sproxyd.GetMetadata(&sproxydRequest); err == nil {
+		defer resp.Body.Close()
+		status = resp.StatusCode
+		switch status {
+		case 200:
+			if _, ok := resp.Header["X-Scal-Usermd"]; ok {
+				if md, err = base64.Decode64(resp.Header["X-Scal-Usermd"][0]); err != nil {
+						gLog.Warning.Printf("Invalid user metadata %s", usermd)
+					} else {
+						usermd = string(md)
+						gLog.Trace.Printf("User metadata %s", string(md))
+						return
+					}
+			} else {
+				err = errors.New(fmt.Sprintf("Path Id %s does not have user metadata ", pathId))
+				return
 			}
 		default:
 			err = errors.New(fmt.Sprintf("Error getting path name for path id %s - Status code: %s", pathId, resp.StatusCode))
 		}
-		return err, pathName, resp.StatusCode
+		return
 	}
-	return err, pathName, -1
+	return
 }
 
-func GetUserMeta(request sproxyd.HttpRequest, pn string) (error, string) {
+
+func GetUserMeta(request sproxyd.HttpRequest, pn string) (err error, usermd string) {
 
 	var (
-		usermd string
+		//usermd string
 		resp *http.Response
-		err  error
+		// err  error
 	)
 	request.Path = sproxyd.Env + "/" + pn
 	if resp, err = sproxyd.GetMetadata(&request); err != nil {
@@ -158,23 +208,20 @@ func GetUserMeta(request sproxyd.HttpRequest, pn string) (error, string) {
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		err = errors.New(fmt.Sprintf("Request document %s  status code %d", request.Path, resp.StatusCode))
-		return err, usermd
+		return
 	}
 	if _, ok := resp.Header["X-Scal-Usermd"]; ok {
 		usermd = resp.Header["X-Scal-Usermd"][0]
 	} else {
 		err = errors.New(fmt.Sprintf("Docid %d does not have user metadata ", pn))
 	}
-	return err, usermd
+	return
 }
 
-func GetHeader(request sproxyd.HttpRequest) (error, string, int64) {
+func GetHeader(request sproxyd.HttpRequest) (err error, usermd string, contentLength int64) {
 
 	var (
-		usermd string
-		// md     []byte
 		resp *http.Response
-		err  error
 	)
 	// request.Path = sproxyd.Env + "/" + pn
 	if resp, err = sproxyd.GetMetadata(&request); err != nil {
@@ -190,10 +237,12 @@ func GetHeader(request sproxyd.HttpRequest) (error, string, int64) {
 	} else {
 		err = errors.New(fmt.Sprintf("Page %s does not have user metadata ", request.Path))
 	}
-	return err, usermd, resp.ContentLength
+	contentLength = resp.ContentLength
+	return
 }
 
 func GetObject(request sproxyd.HttpRequest, pn string) (error, string, *[]byte) {
+
 	var (
 		body   []byte
 		usermd string
@@ -268,13 +317,11 @@ func GetObjAndId(request sproxyd.HttpRequest, pn string) RingId {
 	}
 }
 
-func CheckPdfAndP0(pn string, usermd string) (bool, bool) {
+func CheckPdfAndP0(pn string, usermd string) (pdf bool, p0 bool) {
 
-	var (
-		docmeta      = moses.DocumentMetadata{}
-		pdf     bool = false
-		p0      bool = false
-	)
+	var docmeta = moses.DocumentMetadata{}
+	pdf = false
+	p0 = false
 	if err := docmeta.UsermdToStruct(usermd); err != nil {
 		gLog.Warning.Printf("Error %v - Document %s has invalid user metadata", pn, err)
 	} else {
@@ -285,7 +332,5 @@ func CheckPdfAndP0(pn string, usermd string) (bool, bool) {
 			p0 = true
 		}
 	}
-	return pdf, p0
+	return
 }
-
-

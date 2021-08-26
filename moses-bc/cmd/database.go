@@ -16,50 +16,99 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/paulmatencio/s3c/gLog"
 	db "github.com/paulmatencio/s3c/moses-bc/db"
 	"github.com/spf13/cobra"
+	"os"
+	"path/filepath"
 )
 
 // databaseCmd represents the database command
 var databaseCmd = &cobra.Command{
 	Use:   "database",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Test badger local key value storage",
+	Long: `Test badger local key value storage.`,
 	Run: DataBase,
 }
 
 func init() {
 	rootCmd.AddCommand(databaseCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// databaseCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// databaseCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
+func DataBase(cmd *cobra.Command, args []string) {
 
-func DataBase (cmd *cobra.Command, args []string) {
-
+	var (
+		dir, op, h string
+		err        error
+		key, value string
+		mydb       db.DB
+		nameSpace  = []byte("backup")
+		marker =  "/next-marker"
+	)
 	// open a data base
-
-	if datab,err := db.OpenBadgerDB("./",2); err == nil{
-		defer datab.Close()
-		lsm,vlog := datab.Size()
-		fmt.Println("lsm %d  vlog %d",lsm,vlog)
+	if len(args) < 1 {
+		fmt.Println("Missing op argument [get|put|list] ")
+		return
 	} else {
-		fmt.Println(err)
+		op = args[0]
+		switch op {
+		case "put":
+			if len(args) < 3 {
+				fmt.Printf("Missing key/value argument for op %s", op)
+				return
+			} else {
+				key = args[1]+marker
+				value = args[2]
+			}
+		case "get":
+			if len(args) < 2 {
+				fmt.Printf("Missing key  argument for op %s", op)
+				return
+			} else {
+				key = args[1]+marker
+			}
+		case "list":
+			if len(args) >= 2 {
+				prefix = args[1]
+			} else {
+				prefix = ""
+			}
+		}
 	}
 
+	if h, err = os.UserHomeDir(); err == nil {
+		dir = filepath.Join(h, "mydb")
+	}
 
+	if mydb, err = db.NewBadgerDB(dir, nil); err != nil {
+		gLog.Error.Printf("Error %v", err)
+	}
+	defer mydb.Close()
 
+	switch op {
+	case "put":
+		if err = mydb.Set(nameSpace, []byte(key), []byte(value)); err != nil {
+			fmt.Println(err)
+		} else {
+			gLog.Trace.Printf("Key:%s Value:%s", string(key), string(value))
+		}
+	case "get":
+		if value, err := mydb.Get(nameSpace, []byte(key)); err == nil {
+			fmt.Println(string(value))
+		} else {
+			fmt.Println(err)
+		}
+	case "list":
+		if len(prefix) == 0 {
+			prefix = ""
+		}
+		if err = mydb.List(nameSpace, []byte(prefix)); err != nil {
+			fmt.Printf("%v", err)
+		}
+	default:
+		prefix = ""
+		if err = mydb.List(nameSpace, []byte(prefix)); err != nil {
+			fmt.Printf("%v", err)
+		}
+	}
 }

@@ -30,8 +30,9 @@ import (
 var (
 	checkCmd = &cobra.Command{
 		Use:   "check",
-		Short: "Command check objects between two Moses instances",
-		Long:  `Check  objects between two Moses instances`,
+		Short: "Command to compare moses data and directory between two Moses instances",
+		Long:  `Command to compare moses data and directory between two Moses instances
+        It will compare directory,data and metadata of the given key or those keys that begin with the specified prefix`,
 		Run:   Check,
 	}
 

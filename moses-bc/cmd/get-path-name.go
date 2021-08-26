@@ -32,8 +32,13 @@ var (
 		Long:  `Command to get path name for a given path id`,
 		Run:   GetPathByName,
 	}
+	getUserMetaCmd = &cobra.Command{
+		Use:   "get-user-meta",
+		Short: "Command to get user meta for a given path id",
+		Long:  `Command to get user meta for a given path id`,
+		Run:   GetUserMetaWithPathId,
+	}
     pathId string
-
 )
 
 
@@ -48,12 +53,14 @@ func initGpnFlags(cmd *cobra.Command) {
 }
 func init() {
 	rootCmd.AddCommand(getPathNameCmd)
+	rootCmd.AddCommand(getUserMetaCmd)
 	initGpnFlags(getPathNameCmd)
+	initGpnFlags(getUserMetaCmd)
 }
 
 
-
 func GetPathByName(cmd *cobra.Command, args []string) {
+
 	if len(srcUrl)  == 0 {
 		gLog.Error.Println("missing --spoxyd-url [http://xx.xx.xx.xx:81/proxy]")
 		return
@@ -90,3 +97,44 @@ func GetPathByName(cmd *cobra.Command, args []string) {
 		gLog.Error.Printf("Get Path Name for path id %s ->  Err %v - Status Code %d",pathId, err,status)
 	}
 }
+
+
+func GetUserMetaWithPathId(cmd *cobra.Command, args []string) {
+
+	if len(srcUrl)  == 0 {
+		gLog.Error.Println("missing --spoxyd-url [http://xx.xx.xx.xx:81/proxy]")
+		return
+	}
+	if _, err := url.ParseRequestURI(srcUrl); err != nil {
+		gLog.Error.Printf("Error %v parsing url %s",err,srcUrl)
+		return
+	}
+	if len(driver) == 0 {
+		gLog.Error.Println("missing --spoxyd-driver [chord|arc]")
+		driver ="chord"
+		gLog.Info.Printf("using --sproxyd-driver %s",driver)
+
+	} else {
+		if driver[0:2] == "bp" {
+			gLog.Error.Printf("Driver %s  should be [chord|arc]",driver)
+			return
+		}
+	}
+	if len(env) == 0 {
+		gLog.Error.Println("missing --sproxyd-env [prod|osa]")
+		env = "prod"
+		gLog.Info.Printf("using --sproxyd-env %s ",env)
+	}
+
+	if len(pathId)== 0 {
+		gLog.Error.Println("missing --path-id")
+		return
+	}
+	mosesbc.SetSourceSproxyd("check",srcUrl,driver,env)
+	if err,usermd,status := mosesbc.GetUserMetaWithPathId(pathId); err == nil {
+		gLog.Info.Printf("Get user meta for path Id %s  -> path name %s ",pathId,usermd)
+	} else {
+		gLog.Error.Printf("Get user meta for path id %s ->  Err %v - Status Code %d",pathId, err,status)
+	}
+}
+

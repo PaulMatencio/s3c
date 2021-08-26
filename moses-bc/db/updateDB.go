@@ -1,9 +1,9 @@
 package db
 import "github.com/dgraph-io/badger/v3"
 
-func UpdateBadgerDB(db *badger.DB, updates map[string]string ) (error){
+func UpdateBadgerDB(db *badger.DB, updates map[string]string ) (err error){
 
-	err := db.Update(
+	err = db.Update(
 
 		func(txn *badger.Txn) error {
 			txn = db.NewTransaction(true)
@@ -22,4 +22,12 @@ func UpdateBadgerDB(db *badger.DB, updates map[string]string ) (error){
 
 	return err
 
+}
+
+func Set(db *badger.DB, key string, value string) (err error) {
+	return db.Update(func(txn *badger.Txn) error {
+		e := badger.NewEntry([]byte(key), []byte(value))
+		err = txn.SetEntry(e)
+		return err
+	})
 }

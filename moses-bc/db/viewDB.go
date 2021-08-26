@@ -28,3 +28,18 @@ func viewBadgerDB(db *badger.DB,keys []string) (error) {
 	return err
 
 }
+
+func GetValue(db *badger.DB, key string) (error, []byte) {
+	var (
+		err   error
+		value []byte
+		item  *badger.Item
+	)
+	err = db.View(func(txn *badger.Txn) error {
+		if item, err = txn.Get([]byte(key)); err == nil {
+			value, err = item.ValueCopy(nil)
+		}
+		return err
+	})
+	return err, value
+}
