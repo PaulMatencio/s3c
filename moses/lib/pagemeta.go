@@ -22,7 +22,7 @@ type Pagemeta struct {
 		CountryCode string `json:"countryCode"`
 		PubNumber   string `json:"pubNumber`
 		KindCode    string `json:"kindCode"`
-		BnsId22     string  `json:"bnsId22,omitempty"`
+		BnsId22     string `json:"bnsId22,omitempty"`
 	} `json:"bnsId"`
 	PublicationOffice string `json:"publicationOffice"`
 	PageNumber        int    `json:"pageNumber"`
@@ -81,13 +81,9 @@ func (pagemeta *Pagemeta) Decode(filename string) error {
 
 // return document id  in the form CC/PN/KC/pn
 func (pagemeta *Pagemeta) GetPathName() string {
-	// check if it is  page metadata 
-	if ReflectStructField(pagemeta,"PageNumber") {
-		return (fmt.Sprintf("%s/%s/%s/p%s", pagemeta.BnsId.CountryCode, pagemeta.BnsId.PubNumber, pagemeta.BnsId.KindCode, strconv.Itoa(pagemeta.PageNumber)))
-	} else {
-		//  it should be  a document meta
-		return (fmt.Sprintf("%s/%s/%s/p%s", pagemeta.BnsId.CountryCode, pagemeta.BnsId.PubNumber, pagemeta.BnsId.KindCode))
-	}
+	// check if it is  page metadata
+	return (fmt.Sprintf("%s/%s/%s/p%s", pagemeta.BnsId.CountryCode, pagemeta.BnsId.PubNumber, pagemeta.BnsId.KindCode, strconv.Itoa(pagemeta.PageNumber)))
+
 }
 
 func (pagemeta *Pagemeta) UsermdToStruct(meta string) error {
@@ -101,6 +97,7 @@ func (pagemeta *Pagemeta) UsermdToStruct(meta string) error {
 
 // Read from a file a page in json format ans store it in a page structure
 // same as Decode
+
 func (pagemeta *Pagemeta) SetPagemd(filename string) error {
 	//* USE Encode
 	var (
@@ -142,7 +139,7 @@ func (page *PAGE) Encode(filename string) error {
 
 //  check if a field exists in a structure
 
-func ReflectStructField(Iface interface{}, FieldName string)  bool {
+func ReflectStructField(Iface interface{}, FieldName string) bool {
 
 	ValueIface := reflect.ValueOf(Iface)
 	// Check if the passed interface is a pointer
@@ -153,6 +150,6 @@ func ReflectStructField(Iface interface{}, FieldName string)  bool {
 
 	// 'dereference' with Elem() and get the field by name
 	Field := ValueIface.Elem().FieldByName(FieldName)
-	return Field.IsValid()
+	return Field.IsZero()
 
 }

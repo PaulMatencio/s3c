@@ -119,23 +119,36 @@ func GetPathName(pathId string) (err error, pathName string, status int) {
 		}
 		resp *http.Response
 		usermd string
+		pagemeta moses.Pagemeta
+		docmeta  moses.DocumentMetadata
 	)
 
-	metadata := moses.Pagemeta{}
 	status = -1
 	if resp, err = sproxyd.GetMetadata(&sproxydRequest); err == nil {
+
 		defer resp.Body.Close()
 		status = resp.StatusCode
 		switch status {
 		case 200:
 			if _, ok := resp.Header["X-Scal-Usermd"]; ok {
 				usermd = resp.Header["X-Scal-Usermd"][0]
-				if err = metadata.UsermdToStruct(string(usermd)); err == nil {
-					if pathName = metadata.GetPathName(); err == nil {
-						return
-					} else {
-						err = errors.New(fmt.Sprintf("Error getting path name for path id %s", pathId))
-						return
+				if resp.ContentLength > 0 {
+					if err = pagemeta.UsermdToStruct(string(usermd)); err == nil {
+						if pathName = pagemeta.GetPathName(); err == nil {
+							return
+						} else {
+							err = errors.New(fmt.Sprintf("Error getting path name for path id %s", pathId))
+							return
+						}
+					}
+				}  else {
+					if err = docmeta.UsermdToStruct(string(usermd)); err == nil {
+						if pathName = docmeta.GetPathName(); err == nil {
+							return
+						} else {
+							err = errors.New(fmt.Sprintf("Error getting path name for path id %s", pathId))
+							return
+						}
 					}
 				}
 			} else {
