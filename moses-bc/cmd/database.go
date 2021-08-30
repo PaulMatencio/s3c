@@ -24,77 +24,89 @@ import (
 )
 
 // databaseCmd represents the database command
-var databaseCmd = &cobra.Command{
-	Use:   "database",
-	Short: "Test badger local key value storage",
-	Long: `Test badger local key value storage.`,
-	Run: DataBase,
+var (
+	databaseCmd = &cobra.Command{
+		Use:   "database",
+		Short: "Test badger local key value storage",
+		Long:  `Test badger local key value storage.`,
+		Run:   DataBase,
+	}
+	nameSpace string
+	dbName    string
+	key       string
+	value     string
+)
+
+func initDBFlags(cmd *cobra.Command) {
+
+	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", uPrefix)
+	cmd.Flags().StringVarP(&method, "method", "m", "get", "database operations [get|put|list] ")
+	cmd.Flags().StringVarP(&key, "key", "k", "", "key of the new item ")
+	cmd.Flags().StringVarP(&value, "value", "v", "", "value of the new item  ")
+	cmd.Flags().StringVarP(&dbName, "db-name", "d", "", "database names")
+	cmd.Flags().StringVarP(&nameSpace, "name-space", "n", "backup", "key name space ")
+
 }
 
 func init() {
 	rootCmd.AddCommand(databaseCmd)
+	initDBFlags(databaseCmd)
 }
 
 func DataBase(cmd *cobra.Command, args []string) {
 
 	var (
-		dir, op, h string
-		err        error
-		key, value string
-		mydb       db.DB
-		nameSpace  = []byte("backup")
-		marker =  "/next-marker"
+		dir, h    string
+		err       error
+		mydb      db.DB
+		namespace = []byte(nameSpace)
 	)
-	// open a data base
-	if len(args) < 1 {
-		fmt.Println("Missing op argument [get|put|list] ")
-		return
-	} else {
-		op = args[0]
-		switch op {
-		case "put":
-			if len(args) < 3 {
-				fmt.Printf("Missing key/value argument for op %s", op)
-				return
-			} else {
-				key = args[1]+marker
-				value = args[2]
-			}
-		case "get":
-			if len(args) < 2 {
-				fmt.Printf("Missing key  argument for op %s", op)
-				return
-			} else {
-				key = args[1]+marker
-			}
-		case "list":
-			if len(args) >= 2 {
-				prefix = args[1]
-			} else {
-				prefix = ""
-			}
+
+	marker = ""
+	if method == "get" || method == "put" || method == "delete" {
+		if len(key) == 0 {
+			gLog.Error.Printf("missing key")
+			return
+		} else {
+			key += marker
 		}
 	}
 
-	if h, err = os.UserHomeDir(); err == nil {
-		dir = filepath.Join(h, "mydb")
+	if method == "put" && len(value) == 0 {
+		gLog.Error.Printf("missing value for method %s", method)
+		return
 	}
 
+	// open a data base
+	if len(dbName) == 0 {
+		gLog.Error.Printf("Data  base name is missing")
+		return
+	}
+
+	if h, err = os.UserHomeDir(); err == nil {
+		dir = filepath.Join(h, dbName)
+	}
 	if mydb, err = db.NewBadgerDB(dir, nil); err != nil {
 		gLog.Error.Printf("Error %v", err)
 	}
 	defer mydb.Close()
 
-	switch op {
+	switch method {
 	case "put":
-		if err = mydb.Set(nameSpace, []byte(key), []byte(value)); err != nil {
+		if err = mydb.Set(namespace, []byte(key), []byte(value)); err != nil {
 			fmt.Println(err)
 		} else {
 			gLog.Trace.Printf("Key:%s Value:%s", string(key), string(value))
 		}
 	case "get":
-		if value, err := mydb.Get(nameSpace, []byte(key)); err == nil {
+		if value, err := mydb.Get(namespace, []byte(key)); err == nil {
 			fmt.Println(string(value))
+		} else {
+			fmt.Println(err)
+		}
+	case "delete":
+		if  err := mydb.Delete(namespace, []byte(key)); err == nil {
+			fmt.Printf("key %s is deleted\n", string(key))
 		} else {
 			fmt.Println(err)
 		}
@@ -102,12 +114,12 @@ func DataBase(cmd *cobra.Command, args []string) {
 		if len(prefix) == 0 {
 			prefix = ""
 		}
-		if err = mydb.List(nameSpace, []byte(prefix)); err != nil {
+		if err = mydb.List(namespace, []byte(prefix)); err != nil {
 			fmt.Printf("%v", err)
 		}
 	default:
 		prefix = ""
-		if err = mydb.List(nameSpace, []byte(prefix)); err != nil {
+		if err = mydb.List(namespace, []byte(prefix)); err != nil {
 			fmt.Printf("%v", err)
 		}
 	}

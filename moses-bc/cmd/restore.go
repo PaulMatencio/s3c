@@ -22,6 +22,7 @@ import (
 	"github.com/paulmatencio/s3c/api"
 	"github.com/paulmatencio/s3c/datatype"
 	"github.com/paulmatencio/s3c/gLog"
+	meta "github.com/paulmatencio/s3c/moses-bc/datatype"
 	mosesbc "github.com/paulmatencio/s3c/moses-bc/lib"
 	"github.com/paulmatencio/s3c/utils"
 	"github.com/spf13/cobra"
@@ -102,6 +103,8 @@ var (
 	toS3, byBucket bool
 	indBucket      string
 	tgtSproxyd string
+	rInstance int
+	rNSpace string
 )
 
 func initResFlags(cmd *cobra.Command) {
@@ -115,7 +118,7 @@ func initResFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, uMaxLoop)
 	cmd.Flags().StringVarP(&marker, "marker", "M", "", uMaker)
 	// cmd.Flags().StringVarP(&delimiter, "delimiter", "d", "", "key delimiter (not used) ")
-	cmd.Flags().StringVarP(&pn, "key", "k", "", "process only this given key")
+	cmd.Flags().StringVarP(&pn, "key", "k", "", "process only key")
 	cmd.Flags().StringVarP(&versionId, "versionId", "", "", "the version id of the S3 object to be processed - default the last version will be processed")
 	cmd.Flags().StringVarP(&inFile, "input-file", "i", "", uInputFile)
 	cmd.Flags().BoolVarP(&replace, "replace", "r", false, uReplace)
@@ -129,6 +132,8 @@ func initResFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVarP(&reIndex, "re-index", "", true, uReIndex)
 	cmd.Flags().DurationVarP(&ctimeout, "ctimeout", "", 10, uCtimeout)
 	cmd.Flags().BoolVarP(&check, "check", "", true, uDryRun)
+	cmd.Flags().StringVarP(&rNSpace, "name-space", "n", "restore",uNameSpace)
+	cmd.Flags().IntVarP(&rInstance, "instance", "", 1, "restore instance number")
 }
 
 func init() {
@@ -499,7 +504,7 @@ func restorePn(request datatype.GetObjRequest, replace bool) (int, int, int) {
 		defer result.Body.Close()
 		//  extract  the backup user meta data
 		if usermd, err = utils.GetUserMeta(result.Metadata); err == nil {
-			userm := UserMd{}
+			userm := meta.UserMd{}
 			json.Unmarshal([]byte(usermd), &userm)
 		} else {
 			gLog.Error.Printf("Error %v - The user metadata %s is invalid", err, result.Metadata)

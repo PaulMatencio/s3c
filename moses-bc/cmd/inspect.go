@@ -24,6 +24,7 @@ import (
 	"github.com/paulmatencio/s3c/api"
 	"github.com/paulmatencio/s3c/datatype"
 	"github.com/paulmatencio/s3c/gLog"
+	meta "github.com/paulmatencio/s3c/moses-bc/datatype"
 	mosesbc "github.com/paulmatencio/s3c/moses-bc/lib"
 	"github.com/paulmatencio/s3c/utils"
 	"github.com/spf13/cobra"
@@ -118,7 +119,7 @@ func inspectPn(request datatype.GetObjRequest)  {
 	} else {
 		defer result.Body.Close()
 		if usermd, err = utils.GetUserMeta(result.Metadata); err == nil {
-			userm := UserMd{}
+			userm := meta.UserMd{}
 			json.Unmarshal([]byte(usermd), &userm)
 		} else {
 			gLog.Error.Printf("Error %v - The user metadata %s is invalid", err, result.Metadata)

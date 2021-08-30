@@ -18,6 +18,8 @@ import (
 	// "encoding/base64"
 	"encoding/json"
 	"github.com/aws/aws-sdk-go/service/s3"
+	meta "github.com/paulmatencio/s3c/moses-bc/datatype"
+
 	// "github.com/paulmatencio/protobuf-doc/src/document/documentpb"
 	"github.com/paulmatencio/s3c/api"
 	"github.com/paulmatencio/s3c/datatype"
@@ -489,7 +491,7 @@ func migratePn(request datatype.StatObjRequest, reqm datatype.Reqm) datatype.Rm 
 	if rh.Result, rh.Err = api.StatObject(request); rh.Err == nil {
 		//  Extract the number of pages from the user metadata
 		if usermd, err = utils.GetUserMeta(rh.Result.Metadata); err == nil {
-			userm := UserMd{}
+			userm := meta.UserMd{}
 			json.Unmarshal([]byte(usermd), &userm)
 			pn = rh.Key
 			if np, err = strconv.Atoi(userm.TotalPages); err == nil {

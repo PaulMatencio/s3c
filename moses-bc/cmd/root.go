@@ -42,7 +42,7 @@ const (
 )
 
 var (
-	config string
+	Config string
 	bucket,levelDBUrl,prefix	 string
 	verbose, Debug,autoCompletion 	 bool
 	loglevel,profiling, bucketNumber, retryNumber  int
@@ -98,10 +98,13 @@ var (
 	uTgtUrl = "target Sroxyd endpoints  http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy"
 	uTgtEnv = "target Sproxyd environnement  [prod|osa|intg]"
 	uReplace ="replace existing Sproxyd objects if they exist"
+	uLogit = "enable backup history log"
 	uReIndex = "re-index and update the directory after this process"
 	uVersionId="the version id of the S3 object to be processed - default the last version will be processed"
 	uCtimeout = "set the cancel timeout (sec)  for the background context"
 	uDryRun ="Dry run for testing"
+	uNameSpace = "badger namespace"
+	uDatabase = "badger database name"
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -127,7 +130,7 @@ func Execute() {
 func init() {
 
 	rootCmd.PersistentFlags().IntVarP(&loglevel, "loglevel", "l", 0,"Output level of logs (1: error, 2: Warning, 3: Info , 4 Trace, 5 Debug)")
-	rootCmd.PersistentFlags().StringVarP(&config,"config", "c","", "sc config file; default $HOME/.clone/config.yaml")
+	rootCmd.PersistentFlags().StringVarP(&Config,"config", "c","", "config file; default $HOME/.clone/config-bc.yaml")
 	rootCmd.PersistentFlags().BoolVarP(&autoCompletion,"autoCompletion", "C",false, "generate bash auto completion")
 	rootCmd.PersistentFlags().IntVarP(&profiling,"profiling", "P",0, "display memory usage every P seconds")
 	viper.BindPFlag("loglevel",rootCmd.PersistentFlags().Lookup("loglevel"))
@@ -140,24 +143,26 @@ func init() {
 
 func initConfig() {
 	// utils.InitConfig(config,*viper.GetViper(),*RootCmd)
+
 	var configPath string
-	if config != "" {
+	if len(Config) > 0  {
 		// Use config file from the application flag.
-		viper.SetConfigFile(config)
+		log.Printf("Setting Config file to %s",Config)
+		viper.SetConfigFile(Config)
 	} else {
 		// Find home directory.
 		home, err := homedir.Dir()
 		if err != nil {
 			log.Fatalln(err)
 		}
-
 		configPath = filepath.Join("/etc/clone") // call multiple times to add many search paths
 		viper.AddConfigPath(configPath)            // another path to look for the config file
 		configPath = filepath.Join(home,".clone")
-		viper.AddConfigPath(configPath)            // path to look for the config file
+		viper.AddConfigPath(configPath)
 		viper.AddConfigPath(".")               // optionally look for config in the working directory
-		viper.SetConfigName("config")          // name of the config file without the extension
+		viper.SetConfigName("config-bc")          // name of the config file without the extension
 		viper.SetConfigType("yaml")
+		//viper.SetConfigFile( filepath.Join(configPath,"config.yaml"))
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match
@@ -205,15 +210,6 @@ func initConfig() {
 		sproxyd.WriteTimeout = time.Duration(writeTimeout*time.Millisecond)
 	}
 
-	/*
-	Set  new source and target  sproxyd
-		sproxyd.HP
-	    sproxyd.TargetHP
-
-
-	sproxyd.SetNewProxydHost()
-	sproxyd.SetNewTargetProxydHost()
-	 */
 
 	gLog.InitLog(rootCmd.Name(),loglevel,logOutput)
 	log.Printf("Logging level: %d   Output: %s",loglevel,logOutput)

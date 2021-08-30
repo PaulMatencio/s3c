@@ -26,18 +26,19 @@ import (
 )
 
 type GetBlobResponse struct {
-	Size       int
-	PageNumber int
-	Error      int
-	Err        error
-	UserMd     string
-	Body       *[]byte
+	Size       int 		// blob size
+	PageNumber int  	//  number of pages
+	Error      int  	// number of errors
+	Err        error  	// error
+	UserMd     string   // user meta data
+	Body       *[]byte  //  Body
 }
 
 
 /*
 	pn  with number of pages > --max-Page -> backupBlob
     otherwise -> backupLargeBlob
+
 */
 
 
@@ -85,6 +86,7 @@ func backupBlob(pn string, np int) ( []error,*documentpb.Document){
 		Check if the document has a pdf and/or  page 0 ( Fclip)
 	*/
 	pdf,p0 := CheckPdfAndP0(pn,usermd)
+	// if document contains a pdf
 	if pdf {
 		pdfId := pn + "/pdf"
 		request.Path = sproxyd.Env + "/" + pdfId
@@ -101,6 +103,8 @@ func backupBlob(pn string, np int) ( []error,*documentpb.Document){
 			gLog.Warning.Printf("Error %v getting object %s ",err,request.Path)
 		}
 	}
+
+	// if the document contains a page 0
 	if p0 {
 		start = 0
 		end = np +1
@@ -111,7 +115,8 @@ func backupBlob(pn string, np int) ( []error,*documentpb.Document){
 		end = np
 	}
 
-	//  add pages to document
+	//  concurrently add  document pages to the backup document
+
 	start3 := time.Now()
 	for k := start; k <= np; k++ {
 		request.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
@@ -124,8 +129,7 @@ func backupBlob(pn string, np int) ( []error,*documentpb.Document){
 				UserMd:     usermd,
 				Body:       body,
 			}
-			/*
-				add to the protoBuf */
+			/*   add to the protoBuf */
 		}(request, k)
 	}
 	r1 := 0
@@ -134,9 +138,11 @@ func backupBlob(pn string, np int) ( []error,*documentpb.Document){
 		case r := <-ch:
 			r1++
 			if r.Err == nil {
+				// Build the page content
 				pg := doc.CreatePage(pn, r.UserMd, r.PageNumber, r.Body)
 				document.Size += int64(pg.Size)
 				gLog.Trace.Printf("Docid: %s - Page Number: %d - Page Id: %s - Page size:%d" ,document.DocId,pg.PageNumber,pg.PageId,r.Size)
+				//  Add it to the backup document
 				doc.AddPageToDucument(pg, document)
 			} else {
 				errs = append(errs, r.Err)
@@ -146,7 +152,7 @@ func backupBlob(pn string, np int) ( []error,*documentpb.Document){
 				gLog.Info.Printf("Time to build the backup document %s - number of pages %d - Document size %d - Total elapsed time %v",document.DocId,document.NumberOfPages,document.Size,time.Since(start2))
 				return errs,document
 			}
-		case <-time.After(100 * time.Millisecond):
+		case <-time.After(200 * time.Millisecond):
 			fmt.Printf("r")
 		}
 	}
@@ -155,12 +161,11 @@ func backupBlob(pn string, np int) ( []error,*documentpb.Document){
 /*
 	 backup  document with  number of pages > --max-page
      split document in group with  smaller number of pages = --max-page
-
 */
 
 func backupLargeBlob(pn string, np int, maxPage int) ([]error,*documentpb.Document){
-	var (
 
+	var (
 		start,q,r,end ,npages int
 		usermd string
 		err error

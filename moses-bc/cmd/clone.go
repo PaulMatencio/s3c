@@ -20,6 +20,7 @@ import (
 	"github.com/paulmatencio/s3c/api"
 	"github.com/paulmatencio/s3c/datatype"
 	"github.com/paulmatencio/s3c/gLog"
+	meta "github.com/paulmatencio/s3c/moses-bc/datatype"
 	mosesbc "github.com/paulmatencio/s3c/moses-bc/lib"
 	sproxyd "github.com/paulmatencio/s3c/sproxyd/lib"
 	"github.com/paulmatencio/s3c/utils"
@@ -390,7 +391,7 @@ func clonePn(request datatype.StatObjRequest, replace bool) datatype.Rm {
 	if rh.Result, rh.Err = api.StatObject(request); rh.Err == nil {
 		// get S3 user metadata
 		if usermd, err = utils.GetUserMeta(rh.Result.Metadata); err == nil {
-			userm := UserMd{}
+			userm := meta.UserMd{}
 			json.Unmarshal([]byte(usermd), &userm)
 			pn = rh.Key
 			if np, err = strconv.Atoi(userm.TotalPages); err == nil {

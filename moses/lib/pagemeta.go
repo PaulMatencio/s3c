@@ -15,12 +15,12 @@ import (
 type Pagemeta struct {
 	PubId struct {
 		CountryCode string `json:"countryCode"`
-		PubNumber   string `json:"pubNumber`
+		PubNumber   string `json:"pubNumber""`
 		KindCode    string `json:"kindCode"`
 	} `json:"pubId"`
 	BnsId struct {
 		CountryCode string `json:"countryCode"`
-		PubNumber   string `json:"pubNumber`
+		PubNumber   string `json:"pubNumber"`
 		KindCode    string `json:"kindCode"`
 		BnsId22     string `json:"bnsId22,omitempty"`
 	} `json:"bnsId"`
@@ -31,8 +31,8 @@ type Pagemeta struct {
 		Png  int `json:"png"`
 		Tiff int `json:"tiff"`
 	} `json:"rotationCode"`
-	Pubdate    string `json:"pubDate`
-	Copyright  string `json:"copyright`
+	Pubdate    string `json:"pubDate"`
+	Copyright  string `json:"copyright"`
 	MultiMedia struct {
 		Pdf   bool `json:"pdf"`
 		Png   bool `json:"png"`
@@ -68,50 +68,50 @@ func (pagemeta *Pagemeta) Encode(filename string) error {
 }
 
 // Read a json format into a structure
-func (pagemeta *Pagemeta) Decode(filename string) error {
-	file, err := os.Open(filename)
+func (pagemeta *Pagemeta) Decode(filename string) (err error) {
+
+	var file *os.File
+	file, err = os.Open(filename)
 	if err == nil {
 		defer file.Close()
 		decoder := json.NewDecoder(file)
 		return decoder.Decode(&pagemeta)
 	} else {
-		return err
+		return
 	}
 }
 
 // return document id  in the form CC/PN/KC/pn
-func (pagemeta *Pagemeta) GetPathName() string {
-	// check if it is  page metadata
-	return (fmt.Sprintf("%s/%s/%s/p%s", pagemeta.BnsId.CountryCode, pagemeta.BnsId.PubNumber, pagemeta.BnsId.KindCode, strconv.Itoa(pagemeta.PageNumber)))
-
+func (pagemeta *Pagemeta) GetPathName() (pathname string) {
+	pathname = fmt.Sprintf("%s/%s/%s/p%s", pagemeta.BnsId.CountryCode, pagemeta.BnsId.PubNumber, pagemeta.BnsId.KindCode, strconv.Itoa(pagemeta.PageNumber))
+	return
 }
 
-func (pagemeta *Pagemeta) UsermdToStruct(meta string) error {
+func (pagemeta *Pagemeta) UsermdToStruct(meta string) (err error) {
 
-	if jsonByte, err := base64.Decode64(meta); err == nil {
-		return json.Unmarshal(jsonByte, &pagemeta)
+	var jsonB []byte
+	if jsonB, err = base64.Decode64(meta); err == nil {
+		err = json.Unmarshal(jsonB, &pagemeta)
+		return
 	} else {
-		return err
+		return
 	}
 }
 
 // Read from a file a page in json format ans store it in a page structure
 // same as Decode
 
-func (pagemeta *Pagemeta) SetPagemd(filename string) error {
+func (pagemeta *Pagemeta) SetPagemd(filename string) (err error) {
 	//* USE Encode
-	var (
-		buf []byte
-		err error
-	)
+	var buf []byte
 	if buf, err = ioutil.ReadFile(filename); err != nil {
 		goLog.Warning.Println(err, "Reading", filename)
-		return err
+		return
 	} else if err = json.Unmarshal(buf, &pagemeta); err != nil {
 		goLog.Warning.Println(err, "Unmarshalling", filename)
-		return err
+		return
 	}
-	return err
+	return
 }
 
 type PAGE struct {

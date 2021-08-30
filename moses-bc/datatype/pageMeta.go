@@ -7,12 +7,12 @@ package datatype
 type Pagemeta struct {
 	PubId struct {
 		CountryCode string `json:"countryCode"`
-		PubNumber   string `json:"pubNumber`
+		PubNumber   string `json:"pubNumber"`
 		KindCode    string `json:"kindCode"`
 	} `json:"pubId"`
 	BnsId struct {
 		CountryCode string `json:"countryCode"`
-		PubNumber   string `json:"pubNumber`
+		PubNumber   string `json:"pubNumber"`
 		KindCode    string `json:"kindCode"`
 		BnsId22     string  `json:"bnsId22,omitempty"`
 	} `json:"bnsId"`
@@ -23,8 +23,8 @@ type Pagemeta struct {
 		Png  int `json:"png"`
 		Tiff int `json:"tiff"`
 	} `json:"rotationCode"`
-	Pubdate    string `json:"pubDate`
-	Copyright  string `json:"copyright`
+	Pubdate    string `json:"pubDate"`
+	Copyright  string `json:"copyright"`
 	MultiMedia struct {
 		Pdf   bool `json:"pdf"`
 		Png   bool `json:"png"`
@@ -46,5 +46,6 @@ type Pagemeta struct {
 		End   int `json:"end"`
 	} `json:"pdfOffset,omitempty"`
 }
+
 
 

@@ -130,7 +130,7 @@ func CreateSession() *session.Session {
 
 		if proxy := viper.GetString("transport.proxy.http"); len(proxy) == 0 {
 			//Transport.Proxy = http.ProxyFromEnvironment
-			gLog.Info.Println("no http proxy - if needed, please add trnsport.proxy.http: http://proxyUri to the config.yaml file to congigure your proxy")
+			gLog.Info.Println("no http proxy - if needed, please add transport.proxy.http: http://<proxyUri> to the config.yaml file to congigure your proxy")
 			Transport.Proxy = nil
 		} else {
 			if proxyHttp, err := url.Parse(proxy); err == nil {

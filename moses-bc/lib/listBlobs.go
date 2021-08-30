@@ -66,7 +66,7 @@ func ListBlobs(request datatype.ListObjRequest, maxLoop int, maxPage int) {
 								gLog.Error.Printf("The number of pages is %d ", np)
 							}
 						} else {
-							gLog.Error.Printf("Error %v getting document metadata", err)
+							gLog.Error.Printf("Error: %v , when getting document metadata - Run with loglevel 4  to check the status", err)
 						}
 					}(pn)
 				}

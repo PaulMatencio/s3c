@@ -16,13 +16,12 @@ package lib
 import (
 	doc "github.com/paulmatencio/protobuf-doc/lib"
 	"github.com/paulmatencio/protobuf-doc/src/document/documentpb"
-	"sync"
-	"time"
-	// "github.com/golang/protobuf/proto"
 	"github.com/paulmatencio/s3c/gLog"
 	"github.com/paulmatencio/s3c/sproxyd/lib"
 	"net/http"
 	"strconv"
+	"sync"
+	"time"
 )
 
 
@@ -240,7 +239,7 @@ func cloneLargeBlob(pn string, np int, maxPage int,replace bool) (int,*documentp
 func cloneLargeBlobPart(document *documentpb.Document, pn string, np int, start int, end int,replace bool) (int) {
 
 	var (
-		//  sproxyd request for the source Ring
+		//  build sproxyd request for the source Ring
 		request = sproxyd.HttpRequest{
 			Hspool: sproxyd.HP,
 			Client: &http.Client{
@@ -248,7 +247,7 @@ func cloneLargeBlobPart(document *documentpb.Document, pn string, np int, start 
 				Transport: sproxyd.Transport,
 			},
 		}
-		//   sproxyd requestfor the target Ring
+		//   build sproxyd request for the target Ring
 		request1 = sproxyd.HttpRequest{
 			Hspool: sproxyd.TargetHP,
 			Client: &http.Client{
@@ -272,11 +271,11 @@ func cloneLargeBlobPart(document *documentpb.Document, pn string, np int, start 
 		go func(request sproxyd.HttpRequest, request1 sproxyd.HttpRequest, document *documentpb.Document,k int,replace bool) {
 			defer wg1.Done()
 			/*
-				get the source object and user metadata
+				get the source object and the user metadata
 			 */
 			err, usermd, body = GetObject(request, pn)
 			/*
-				create a corresponding page
+				Build the  restored object and  write it to the Ring
 			*/
 			pg:= doc.CreatePage(pn,usermd,k,body)
 			if perr,_ := WriteDocPage(request1, pg,replace); perr > 0 {

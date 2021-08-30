@@ -1,5 +1,8 @@
 package db
-import "github.com/dgraph-io/badger/v3"
+
+import (
+	"github.com/dgraph-io/badger/v3"
+)
 
 func UpdateBadgerDB(db *badger.DB, updates map[string]string ) (err error){
 

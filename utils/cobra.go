@@ -5,8 +5,8 @@ import (
 	"github.com/paulmatencio/s3c/gLog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"path/filepath"
 	"log"
+	"path/filepath"
 	"time"
 )
 

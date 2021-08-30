@@ -31,28 +31,29 @@ func CreateS3Session(op string, location string) *s3.S3 {
 		secretKey string
 		region    string
 		session   datatype.CreateSession
+		errMsg = "missing %s in the config file. Add %s to the config.yaml file"
 	)
 
 	c := op + ".s3." + location + ".url"
 	if url = viper.GetString(c); len(url) == 0 {
-		gLog.Error.Println(errors.New(fmt.Sprintf("missing %s in the config file", c)))
+		gLog.Error.Println(errors.New(fmt.Sprintf(errMsg, c,c)))
 		return nil
 	}
 	c = op + ".s3." + location + ".credential.access_key_id"
 	if accessKey = viper.GetString(c); len(accessKey) == 0 {
-		gLog.Error.Println(errors.New(fmt.Sprintf("missing %s in the config file", c)))
+		gLog.Error.Println(errors.New(fmt.Sprintf(errMsg, c,c)))
 		return nil
 	}
 	c = op + ".s3." + location + ".credential.secret_access_key"
 	if secretKey = viper.GetString(c); len(secretKey) == 0 {
-		gLog.Error.Println(errors.New(fmt.Sprintf("missing %s in the config file", c)))
+		gLog.Error.Println(errors.New(fmt.Sprintf(errMsg, c,c)))
 		return nil
 	}
 
 	// gLog.Info.Println(metaUrl,metaAccessKey,metaSecretKey)
 	c = op + ".s3." + location + ".region"
 	if region = viper.GetString(c);len(region) == 0{
-		gLog.Error.Println(errors.New(fmt.Sprintf("missing %s in the config file", c)))
+		gLog.Error.Println(errors.New(fmt.Sprintf(errMsg, c,c)))
 		return nil
 	}
 

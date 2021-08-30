@@ -6,31 +6,31 @@ package datatype
 
 type DocumentMetadata struct {
 	PubId struct {
-		CountryCode string `json: "countryCode`
-		PubNumber   string `json: "pubNumber"`
-		KindCode    string `json: "kindCode"`
+		CountryCode string `json:"countryCode"`
+		PubNumber   string `json:"pubNumber"`
+		KindCode    string `json:"kindCode"`
 	} `json: "PubId,omitempty"`
 
 	BnsId struct {
-		CountryCode string `json: "countryCode`
-		PubNumber   string `json: "pubNumber"`
-		KindCode    string `json: "kindCode"`
+		CountryCode string `json:"countryCode"`
+		PubNumber   string `json:"pubNumber"`
+		KindCode    string `json:"kindCode"`
 	} `json: "bnsId,omitempty"`
 
-	DocId             interface{} `json:"docId` // could be integer  or string
-	PublicationOffice string      `json:"publicationOffice`
+	DocId             interface{} `json:"docId"` // could be integer  or string
+	PublicationOffice string      `json:"publicationOffice"`
 	FamilyId          interface{} `json:"familyId"` // could be integer  or string
-	TotalPage         int         `json:totalPage"`
-	DocType           string      `json:docType"`
-	PubDate           string      `json:pubDate"`
-	LoadDate          string      `json:loadDate"`
+	TotalPage         int         `json:"totalPage"`
+	DocType           string      `json:"docType"`
+	PubDate           string      `json:"pubDate"`
+	LoadDate          string      `json:"loadDate"`
 	Copyright         string      `json:"copyright,omitempty"`
 
 	LinkPubId []struct {
-		CountryCode string `json: "countryCode`
-		PubNumber   string `json: "pubNumber"`
-		KindCode    string `json: "kindCode"`
-	} `json: "linkPubId,omitemty`
+		CountryCode string `json:"countryCode"`
+		PubNumber   string `json:"pubNumber"`
+		KindCode    string `json:"kindCode"`
+	} `json: "linkPubId,omitemty"`
 
 	MultiMedia struct {
 		Tiff  bool `json:"tiff"`

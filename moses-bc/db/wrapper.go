@@ -21,6 +21,9 @@ type (
 	DB interface {
 		Get(namespace, key []byte) (value []byte, err error)
 		Set(namespace, key, value []byte) error
+		SetWithTTL(namespace, key, value []byte, ttl time.Duration) error
+		SetWithMeta(namespace, key, value []byte, meta byte) error
+		Delete(namespace,key []byte) error
 		Has(namespace, key []byte) (bool, error)
 		List(namespace,prefix []byte) (error)
 		Close() error
@@ -39,7 +42,7 @@ type (
 // NewBadgerDB returns a new initialized BadgerDB database implementing the DB
 // interface. If the database cannot be initialized, an error will be returned.
 
-func NewBadgerDB(dataDir string, logger *badger.Logger) (DB, error) {
+func NewBadgerDB(dataDir string, logger *badger.Logger) (*BadgerDB, error) {
 
 	if err := os.MkdirAll(dataDir, 0774); err != nil {
 		return nil, err
@@ -56,6 +59,7 @@ func NewBadgerDB(dataDir string, logger *badger.Logger) (DB, error) {
 		logger: logger,
 	}
 	bdb.ctx, bdb.cancelFunc = context.WithCancel(context.Background())
+	//start Garbage collector with a go routine
 	go bdb.runGC()
 	return bdb, nil
 }
@@ -82,7 +86,30 @@ func (bdb *BadgerDB) Set(namespace, key, value []byte) error {
 		err := txn.SetEntry(badger.NewEntry(namespaceKey(namespace, []byte(key)), []byte(value)))
 		return err
 	})
+}
 
+func (bdb *BadgerDB) SetWithTTL(namespace, key, value []byte, ttl time.Duration) error {
+
+	return bdb.db.Update(func(txn *badger.Txn) error {
+		err := txn.SetEntry(badger.NewEntry(namespaceKey(namespace, []byte(key)), []byte(value)).WithTTL(ttl))
+		return err
+	})
+}
+
+func (bdb *BadgerDB) SetWithMeta(namespace, key, value []byte, meta byte) error {
+
+	return bdb.db.Update(func(txn *badger.Txn) error {
+		err := txn.SetEntry(badger.NewEntry(namespaceKey(namespace, []byte(key)), []byte(value)).WithMeta(meta))
+		return err
+	})
+}
+
+func (bdb *BadgerDB) Delete (namespace, key[]byte)  error {
+
+	return bdb.db.Update(func(txn *badger.Txn) error {
+		err := txn.Delete(namespaceKey(namespace, []byte(key)))
+		return err
+	})
 }
 
 
@@ -130,7 +157,9 @@ func (bdb *BadgerDB) runGC() {
 }
 
 
-
+/*
+	Prefix scans
+ */
 func (bdb *BadgerDB) List(namespace, prefix []byte)  (error) {
 
 	return  bdb.db.View(func(txn *badger.Txn) error {

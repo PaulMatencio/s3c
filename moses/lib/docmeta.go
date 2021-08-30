@@ -13,31 +13,31 @@ import (
 
 type DocumentMetadata struct {
 	PubId struct {
-		CountryCode string `json: "countryCode`
-		PubNumber   string `json: "pubNumber"`
-		KindCode    string `json: "kindCode"`
+		CountryCode string `json:"countryCode"`
+		PubNumber   string `json:"pubNumber"`
+		KindCode    string `json:"kindCode"`
 	} `json: "PubId,omitempty"`
 
 	BnsId struct {
-		CountryCode string `json: "countryCode`
-		PubNumber   string `json: "pubNumber"`
-		KindCode    string `json: "kindCode"`
-	} `json: "bnsId,omitempty"`
+		CountryCode string `json:"countryCode"`
+		PubNumber   string `json:"pubNumber"`
+		KindCode    string `json:"kindCode"`
+	} `json:"bnsId,omitempty"`
 
-	DocId             interface{} `json:"docId` // could be integer  or string
-	PublicationOffice string      `json:"publicationOffice`
+	DocId             interface{} `json:"docId"` // could be integer  or string
+	PublicationOffice string      `json:"publicationOffice""`
 	FamilyId          interface{} `json:"familyId"` // could be integer  or string
-	TotalPage         int         `json:totalPage"`
-	DocType           string      `json:docType"`
-	PubDate           string      `json:pubDate"`
-	LoadDate          string      `json:loadDate"`
+	TotalPage         int         `json:"totalPage"`
+	DocType           string      `json:"docType"`
+	PubDate           string      `json:"pubDate"`
+	LoadDate          string      `json:"loadDate"`
 	Copyright         string      `json:"copyright,omitempty"`
 
 	LinkPubId []struct {
-		CountryCode string `json: "countryCode`
-		PubNumber   string `json: "pubNumber"`
-		KindCode    string `json: "kindCode"`
-	} `json: "linkPubId,omitemty`
+		CountryCode string `json:"countryCode"`
+		PubNumber   string `json:"pubNumber"`
+		KindCode    string `json:"kindCode"`
+	} `json:"linkPubId,omitemty`
 
 	MultiMedia struct {
 		Tiff  bool `json:"tiff"`
@@ -159,15 +159,15 @@ func (docmeta *DocumentMetadata) GetPageNumber() (int, error) {
 }
 
 // Get  the publication date of a document
-func (docmeta *DocumentMetadata) GetPubDate() (Date, error) {
-	date := Date{}
-	err := error(nil)
+func (docmeta *DocumentMetadata) GetPubDate() (date Date, err error) {
+
+	date = Date{}
 	if docmeta.PubDate != "" {
 		date, err = ParseDate(docmeta.PubDate)
 	} else {
 		err = errors.New("no Publication date")
 	}
-	return date, err
+	return
 }
 
 func (docmeta *DocumentMetadata) GetNumberOfPages() (int) {
