@@ -39,7 +39,7 @@ var (
 	partNumber          int64
 	maxCon              int
 	restoreCmd          = &cobra.Command{
-		Use:   "_restore_",
+		Use:   "_Restore",
 		Short: "Command to restore Moses's assets to sproxyd or S3 storage",
 		Long: `Command to restore Moses's assets to sproxyd or S3 storage
 	

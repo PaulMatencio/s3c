@@ -41,7 +41,7 @@ import (
 
 var (
 	backupCmd = &cobra.Command{
-		Use:   "_backup_",
+		Use:   "_Backup",
 		Short: "Command to backup a MOSES  objects to S3 or files",
 		Long: `        
         Command to backup Moses data and Moses directories to S3 or to files
@@ -165,12 +165,14 @@ func BackupPns(cmd *cobra.Command, args []string) {
 	)
 	//  create an error context structure
 	ec = errorContext.New()
+
 	keySuffix = keySuffix + "_" + strconv.Itoa(bInstance)
 	errSuffix = errSuffix + "_" + strconv.Itoa(bInstance)
 
 	/*
-		initialize  the backup context struct and badger db
+		initialize the backup context
 	*/
+
 	err, myContext, myBdb = initBackup()
 	if err != nil {
 		gLog.Error.Printf("%v", err)
@@ -658,6 +660,7 @@ func SetBackupContext(nextIndex int) (c *meta.BackupContext) {
 	c.MaxPage = maxPage
 	c.MaxKey = maxKey
 	c.Marker = marker
+	c.MaxVersions = maxVersions
 	c.MaxPageSize = maxPartSize
 	c.NameSpace = bNSpace
 	c.Logit = logit
@@ -669,7 +672,6 @@ func SetBackupContext(nextIndex int) (c *meta.BackupContext) {
 }
 
 func getBackupContext(c *meta.BackupContext) (nextIndex int) {
-	// c = context.New()
 	srcUrl = c.SrcUrl
 	env = c.Env
 	driver = c.Driver
@@ -687,6 +689,7 @@ func getBackupContext(c *meta.BackupContext) (nextIndex int) {
 	maxKey = c.MaxKey
 	marker = c.Marker
 	maxPartSize = c.MaxPageSize
+	maxVersions = c.MaxVersions
 	bNSpace = c.NameSpace
 	logit = c.Logit
 	check = c.Check
@@ -705,7 +708,7 @@ func openBdb(name string) (myBdb *db.BadgerDB, err error) {
 		}
 	}
 	dbf := filepath.Join(dbDir, name)
-	gLog.Info.Printf("Creating Badger DB name is %s", dbf)
+	gLog.Info.Printf("Opening Badger db instance: %s", dbf)
 	myBdb, err = db.NewBadgerDB(dbf, nil)
 	return
 
@@ -713,12 +716,12 @@ func openBdb(name string) (myBdb *db.BadgerDB, err error) {
 
 func restart(ns []byte, key []byte, myBdb *db.BadgerDB) (err error, nextIndex int) {
 	var (
-		c = backupContext.New()
+		bc = backupContext.New()
 	)
 	gLog.Trace.Printf("Name space %s - Key %s  - BDB %v ", ns, key, myBdb)
-	if err = c.ReadBbd(ns, key, myBdb); err == nil {
-		nextIndex = getBackupContext(c)
-		err = printContext(c)
+	if err = bc.ReadBbd(ns, key, myBdb); err == nil {
+		nextIndex = getBackupContext(bc)
+		err = printContext(bc)
 	}
 	return
 }
@@ -734,15 +737,16 @@ func printContext(c *meta.BackupContext) error {
 	return err
 }
 
-func initBackup() (err error, myContext *meta.BackupContext, myBdb *db.BadgerDB) {
 
-	/*
+/*
+			initBackup()
 			Open badger db ( mBDB = database-name)
 		    badger database is used to store the backup's context struct and backup's errors
 		    The backup's context is used for restarting a failed backup or continuing  the previous backup with the last next-marker
 
 		    Backup's context and errors are stored in the  namespace "backup"
-	*/
+*/
+func initBackup() (err error, myContext *meta.BackupContext, myBdb *db.BadgerDB) {
 
 	var nextIndex int
 	if myBdb, err = openBdb(mBDB); err == nil {

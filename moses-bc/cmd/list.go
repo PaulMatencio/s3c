@@ -32,21 +32,21 @@ import (
 var (
 	loshort       = "Command to list objects  of a given bucket"
 	listObjectCmd = &cobra.Command{
-		Use:    "list-objects",
+		Use:    "List-objects",
 		Short:  loshort,
 		Long:   ``,
 		Hidden: true,
 		Run:    ListObjectV2,
 	}
 	listBlobCmd = &cobra.Command{
-		Use:    "list-blobs",
+		Use:    "List-blobs",
 		Short:  loshort,
 		Long:   ``,
 		Hidden: true,
 		Run:    ListBlobs,
 	}
 	lbCmd = &cobra.Command{
-		Use:    "list-buckets",
+		Use:    "List-buckets",
 		Short:  "list buckets of a given S3 location",
 		Hidden: true,
 		Long:   ``,
@@ -54,7 +54,7 @@ var (
 	}
 
 	lvCmd = &cobra.Command{
-		Use:    "list-object-versions",
+		Use:    "List-object-versions",
 		Short:  "Command to list objects and their versions of a given bucket",
 		Long:   ``,
 		Hidden: true,

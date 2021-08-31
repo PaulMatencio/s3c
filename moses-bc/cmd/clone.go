@@ -32,7 +32,7 @@ import (
 
 var (
 	cloneCmd = &cobra.Command{
-		Use:   "_clone_",
+		Use:   "_Clone",
 		Short: "Command to clone MOSES objects to another Scality Ring",
 		Long: ` 
         Command to clone MOSES objects to another Scality Ring

@@ -35,7 +35,7 @@ import (
 
 var (
 	inspectCmd = &cobra.Command{
-		Use:   "_inspect_",
+		Use:   "_Inspect",
 		Short: "Command to inspect backup objects",
 		Long:  ``,
 		Hidden: true,

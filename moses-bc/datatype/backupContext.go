@@ -54,35 +54,46 @@ func (*BackupContext) New() *BackupContext {
 	return &c
 }
 
-func (c *BackupContext) SetMarker(marker string) {
-	c.Marker = marker
+func (bc *BackupContext) SetMarker(marker string) {
+	bc.Marker = marker
 }
 
-func (c *BackupContext) GetMarker() string {
-	return c.Marker
+func (bc *BackupContext) GetMarker() string {
+	return bc.Marker
 }
 
-func (c *BackupContext) SetNextIndex(nextIndex int) {
-	c.NextIndex = nextIndex
+func (bc *BackupContext) SetNextIndex(nextIndex int) {
+	bc.NextIndex = nextIndex
 }
 
-func (c *BackupContext) GetNextIndex() int {
-	return c.NextIndex
+func (bc *BackupContext) GetNextIndex() int {
+	return bc.NextIndex
 }
 
-func (c *BackupContext) ReadBbd(ns []byte, key []byte, Bdb *db.BadgerDB) (err error) {
+func (bc *BackupContext) ReadBbd(ns []byte, key []byte, Bdb *db.BadgerDB) (err error) {
 	var value []byte
 	value, err = Bdb.Get(ns, key)
 	if err == nil {
-		err = json.Unmarshal(value, c)
+		err = json.Unmarshal(value, bc)
 	}
 	return
 }
 
-func (c *BackupContext) WriteBdb(ns []byte, key []byte, Bdb *db.BadgerDB) (err error) {
+func (bc *BackupContext) WriteBdb(ns []byte, key []byte, Bdb *db.BadgerDB) (err error) {
 	/*  the value comes from c */
 	var value []byte
-	value, err = json.Marshal(c)
+	value, err = json.Marshal(bc)
 	err = Bdb.Set(ns, key, value)
 	return
 }
+
+func (bc *BackupContext) Get() (*BackupContext) {
+	return bc
+}
+
+
+func (bc *BackupContext) Clear() {
+	Clear(bc)
+}
+
+
