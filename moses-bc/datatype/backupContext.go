@@ -58,16 +58,25 @@ func (bc *BackupContext) SetMarker(marker string) {
 	bc.Marker = marker
 }
 
-func (bc *BackupContext) GetMarker() string {
-	return bc.Marker
+func (bc *BackupContext) GetMarker() (marker string) {
+
+	if bc != nil {
+		marker = bc.NextMarker
+	}
+	return
 }
 
 func (bc *BackupContext) SetNextIndex(nextIndex int) {
-	bc.NextIndex = nextIndex
+	if bc != nil {
+		bc.NextIndex = nextIndex
+	}
 }
 
-func (bc *BackupContext) GetNextIndex() int {
-	return bc.NextIndex
+func (bc *BackupContext) GetNextIndex() (nextindex int) {
+	if bc != nil {
+		nextindex =  bc.NextIndex
+	}
+	return
 }
 
 func (bc *BackupContext) ReadBbd(ns []byte, key []byte, Bdb *db.BadgerDB) (err error) {
