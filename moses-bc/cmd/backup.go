@@ -113,7 +113,7 @@ var (
 	backupContext                                              *meta.BackupContext
 	ec                                                         *meta.ErrorContext
 	bInstance                                                  int
-	skipInput       int
+	skipInput                                                  int
 	bNSpace                                                    string
 	keySuffix                                                  = "next_marker"
 	errSuffix                                                  = "errors"
@@ -169,7 +169,7 @@ func BackupPns(cmd *cobra.Command, args []string) {
 	errSuffix = errSuffix + "_" + strconv.Itoa(bInstance)
 
 	/*
-	initialize  the backup context struct and badger db
+		initialize  the backup context struct and badger db
 	*/
 	err, myContext, myBdb = initBackup()
 	if err != nil {
@@ -182,7 +182,7 @@ func BackupPns(cmd *cobra.Command, args []string) {
 		defer myBdb.Close()
 		myContext.WriteBdb([]byte(bNSpace), []byte(keySuffix), myBdb)
 		skipInput = myContext.NextIndex
-		gLog.Warning.Printf("%d entries will be skipped",skipInput)
+		gLog.Warning.Printf("%d entries will be skipped", skipInput)
 	}
 
 	/* start  the monitoring in the background if requested  with -P or --profile  */
@@ -243,7 +243,7 @@ func backupPns(reqm datatype.Reqm, c *meta.BackupContext) (string, error) {
 
 	var (
 		nextmarker, token               string
-		N ,nextIndex                    int
+		N, nextIndex                    int
 		tdocs, tpages, tsizes, tdeletes int64
 		terrors                         int
 		mu, mt, mu1                     sync.Mutex
@@ -283,12 +283,21 @@ func backupPns(reqm datatype.Reqm, c *meta.BackupContext) (string, error) {
 			nerrors          int   = 0
 			start                  = time.Now()
 		)
+
 		N++ // number of loop
+
 		if len(inFile) == 0 {
 			gLog.Info.Printf("List documents from bucket %s", reqm.SrcBucket)
 			result, err = api.ListObjectWithContextV2(ctimeout, req)
 		} else {
-			gLog.Info.Printf("List documents from file %s", inFile)
+			gLog.Info.Printf("List documents from --input-file %s", inFile)
+			if skipInput > 0 {
+				gLog.Info.Printf("Skipping the first %d entries of the input file %s", skipInput, inFile)
+				for sk := 1; sk <= skipInput; sk++ {
+					listpn.Scan()
+				}
+				// nextIndex = skipInput
+			}
 			result, err = mosesbc.ListPn(listpn, int(maxKey))
 		}
 
@@ -300,16 +309,6 @@ func backupPns(reqm datatype.Reqm, c *meta.BackupContext) (string, error) {
 				)
 
 				for _, v := range result.Contents {
-					/*
-						skip the number of already processed pn if taken from the --input-file
-					 */
-					if len(inFile) > 0 {
-						gLog.Info.Printf("Skipping the first %d entries of the input file %s",skipInput,inFile)
-						for sk:=1 ; sk<= skipInput; sk++ {
-							listpn.Scan()
-							continue
-						}
-					}
 					if *v.Key != nextmarker {
 						key := *v.Key
 						service := req.Service
@@ -523,7 +522,6 @@ func printErr(errs []error) {
 	}
 }
 
-
 func backupPn(pn string, np int, usermd string, versionId string, maxPage int) (int, *documentpb.Document) {
 
 	var (
@@ -670,7 +668,7 @@ func SetBackupContext(nextIndex int) (c *meta.BackupContext) {
 	return
 }
 
-func getBackupContext(c *meta.BackupContext) (nextIndex int){
+func getBackupContext(c *meta.BackupContext) (nextIndex int) {
 	// c = context.New()
 	srcUrl = c.SrcUrl
 	env = c.Env
@@ -713,13 +711,13 @@ func openBdb(name string) (myBdb *db.BadgerDB, err error) {
 
 }
 
-func restart(ns []byte, key []byte, myBdb *db.BadgerDB) (err error, nextIndex int ) {
-    var (
-    	c = backupContext.New()
+func restart(ns []byte, key []byte, myBdb *db.BadgerDB) (err error, nextIndex int) {
+	var (
+		c = backupContext.New()
 	)
 	gLog.Trace.Printf("Name space %s - Key %s  - BDB %v ", ns, key, myBdb)
 	if err = c.ReadBbd(ns, key, myBdb); err == nil {
-		nextIndex= getBackupContext(c)
+		nextIndex = getBackupContext(c)
 		err = printContext(c)
 	}
 	return
@@ -749,7 +747,7 @@ func initBackup() (err error, myContext *meta.BackupContext, myBdb *db.BadgerDB)
 	var nextIndex int
 	if myBdb, err = openBdb(mBDB); err == nil {
 		if resume {
-			if err,nextIndex = restart([]byte(bNSpace), []byte(keySuffix), myBdb); err != nil {
+			if err, nextIndex = restart([]byte(bNSpace), []byte(keySuffix), myBdb); err != nil {
 				myContext.SetNextIndex(nextIndex)
 				return
 			}
