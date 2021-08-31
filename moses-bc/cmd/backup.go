@@ -15,7 +15,6 @@
 package cmd
 
 import (
-	"bufio"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -114,7 +113,8 @@ var (
 	backupContext                                              *meta.BackupContext
 	ec                                                         *meta.ErrorContext
 	bInstance                                                  int
-	bNSpace  string
+	skipInput       int
+	bNSpace                                                    string
 	keySuffix                                                  = "next_marker"
 	errSuffix                                                  = "errors"
 )
@@ -168,17 +168,20 @@ func BackupPns(cmd *cobra.Command, args []string) {
 	keySuffix = keySuffix + "_" + strconv.Itoa(bInstance)
 	errSuffix = errSuffix + "_" + strconv.Itoa(bInstance)
 
-	/* initialize  the backup context struct and badger db */
+	/*
+	initialize  the backup context struct and badger db
+	*/
 	err, myContext, myBdb = initBackup()
 	if err != nil {
 		gLog.Error.Printf("%v", err)
 		if myBdb != nil {
-			ec.WriteBdb([]byte(bNSpace), []byte(errSuffix +  "/init-backup"), []byte(err.Error()), myBdb)
+			ec.WriteBdb([]byte(bNSpace), []byte(errSuffix+"/init-backup"), []byte(err.Error()), myBdb)
 		}
 		return
 	} else {
 		defer myBdb.Close()
-	    myContext.WriteBdb([]byte(bNSpace), []byte(keySuffix), myBdb)
+		myContext.WriteBdb([]byte(bNSpace), []byte(keySuffix), myBdb)
+		skipInput = myContext.NextIndex
 	}
 
 	/* start  the monitoring in the background if requested  with -P or --profile  */
@@ -239,7 +242,7 @@ func backupPns(reqm datatype.Reqm, c *meta.BackupContext) (string, error) {
 
 	var (
 		nextmarker, token               string
-		N                               int
+		N ,nextIndex                    int
 		tdocs, tpages, tsizes, tdeletes int64
 		terrors                         int
 		mu, mt, mu1                     sync.Mutex
@@ -285,7 +288,7 @@ func backupPns(reqm datatype.Reqm, c *meta.BackupContext) (string, error) {
 			result, err = api.ListObjectWithContextV2(ctimeout, req)
 		} else {
 			gLog.Info.Printf("List documents from file %s", inFile)
-			result, err = ListPn(listpn, int(maxKey))
+			result, err = mosesbc.ListPn(listpn, int(maxKey))
 		}
 
 		if err == nil {
@@ -294,12 +297,23 @@ func backupPns(reqm datatype.Reqm, c *meta.BackupContext) (string, error) {
 					wg1       sync.WaitGroup
 					backupLog = []*mosesbc.LogBackup{}
 				)
+
 				for _, v := range result.Contents {
+					//skip the number of already processed pn taken from the input file
+					if len(inFile) > 0 {
+						for sk:=1 ; sk<= skipInput; sk++ {
+							listpn.Scan()
+							continue
+						}
+					}
 					if *v.Key != nextmarker {
 						key := *v.Key
 						service := req.Service
-						method := "PUT" /* method  is always PUT for full backup( --source-bucket)
-						or  incremental backup  if --input-bucket */
+						/*
+							method  is always PUT for full backup( --source-bucket)
+							or  incremental backup  if --input-bucket
+						*/
+						method := "PUT"
 						buck := req.Bucket
 						if len(iBucket) > 0 {
 							/*
@@ -324,7 +338,9 @@ func backupPns(reqm datatype.Reqm, c *meta.BackupContext) (string, error) {
 						}
 						gLog.Info.Printf("Bucket: %s - Key: %s - Size: %d - LastModified: %v", buck, key, *v.Size, v.LastModified)
 
-						/*  get the s3 metadata */
+						/*
+							get the s3 metadata
+						*/
 						request := datatype.StatObjRequest{
 							Service: service,
 							Bucket:  buck,
@@ -334,6 +350,9 @@ func backupPns(reqm datatype.Reqm, c *meta.BackupContext) (string, error) {
 						if method == "PUT" {
 							ndocs += 1
 						}
+
+						nextIndex += 1
+
 						wg1.Add(1)
 						go func(request datatype.StatObjRequest, method string) {
 							defer wg1.Done()
@@ -437,6 +456,7 @@ func backupPns(reqm datatype.Reqm, c *meta.BackupContext) (string, error) {
 				if *result.IsTruncated {
 					nextmarker = *result.Contents[l-1].Key
 					c.SetMarker(nextmarker)
+					c.SetNextIndex(nextIndex)
 					if !incr {
 						token = *result.NextContinuationToken
 					}
@@ -494,39 +514,6 @@ func printErr(errs []error) {
 	}
 }
 
-func ListPn(buf *bufio.Scanner, num int) (*s3.ListObjectsV2Output, error) {
-
-	var (
-		T            = true
-		Z      int64 = 0
-		D            = time.Now()
-		result       = &s3.ListObjectsV2Output{
-			IsTruncated: &T,
-		}
-		err     error
-		objects []*s3.Object
-	)
-	for k := 1; k <= num; k++ {
-		var object s3.Object
-		if buf.Scan() {
-			if text := buf.Text(); len(text) > 0 {
-				object.Key = &text
-				object.Size = &Z
-				object.LastModified = &D
-				objects = append(objects, &object)
-				result.StartAfter = &text
-			} else {
-				T = false
-				result.IsTruncated = &T
-			}
-		} else {
-			T = false
-			result.IsTruncated = &T
-		}
-	}
-	result.Contents = objects
-	return result, err
-}
 
 func backupPn(pn string, np int, usermd string, versionId string, maxPage int) (int, *documentpb.Document) {
 
@@ -646,7 +633,7 @@ func getLoadDate(document *documentpb.Document) (string, error) {
 	}
 }
 
-func SetBackupContext() (c *meta.BackupContext) {
+func SetBackupContext(nextIndex int) (c *meta.BackupContext) {
 	c = backupContext.New()
 	c.SrcUrl = srcUrl
 	c.Env = env
@@ -669,11 +656,12 @@ func SetBackupContext() (c *meta.BackupContext) {
 	c.Logit = logit
 	c.Check = check
 	c.CtimeOut = ctimeout
+	c.NextIndex = nextIndex
 	c.BackupIntance = bInstance
 	return
 }
 
-func getBackupContext(c *meta.BackupContext) {
+func getBackupContext(c *meta.BackupContext) (nextIndex int){
 	// c = context.New()
 	srcUrl = c.SrcUrl
 	env = c.Env
@@ -696,6 +684,7 @@ func getBackupContext(c *meta.BackupContext) {
 	logit = c.Logit
 	check = c.Check
 	ctimeout = c.CtimeOut
+	nextIndex = c.NextIndex
 	return
 }
 
@@ -715,12 +704,14 @@ func openBdb(name string) (myBdb *db.BadgerDB, err error) {
 
 }
 
-func restart(ns []byte, key []byte,myBdb *db.BadgerDB) (err error) {
+func restart(ns []byte, key []byte, myBdb *db.BadgerDB) (err error, nextIndex int ) {
+    var (
+    	c = backupContext.New()
+	)
 
-	c := backupContext.New()
-	gLog.Trace.Printf("Name space %s - Key %s  - BDB %v ",ns,key,myBdb)
+	gLog.Trace.Printf("Name space %s - Key %s  - BDB %v ", ns, key, myBdb)
 	if err = c.ReadBbd(ns, key, myBdb); err == nil {
-		getBackupContext(c)
+		nextIndex= getBackupContext(c)
 		err = printContext(c)
 	}
 	return
@@ -746,10 +737,11 @@ func initBackup() (err error, myContext *meta.BackupContext, myBdb *db.BadgerDB)
 
 		    Backup's context and errors are stored in the  namespace "backup"
 	*/
-
+	var nextIndex int
 	if myBdb, err = openBdb(mBDB); err == nil {
 		if resume {
-			if err = restart([]byte(bNSpace), []byte(keySuffix), myBdb); err != nil {
+			if err,nextIndex = restart([]byte(bNSpace), []byte(keySuffix), myBdb); err != nil {
+				myContext.SetNextIndex(nextIndex)
 				return
 			}
 		}
@@ -759,15 +751,6 @@ func initBackup() (err error, myContext *meta.BackupContext, myBdb *db.BadgerDB)
 			return
 		}
 	}
-
-	/*
-		test badger db
-
-		c := SetBackupContext()
-		c.SetMarker(nextmarker)
-		myKey := keySuffix + "_" + strconv.Itoa(bInstance)
-		c.WriteBdb([]byte(nSpace), []byte(myKey), myBdb)
-	 */
 
 	incr = false //  full backup of moses backup
 
@@ -782,7 +765,7 @@ func initBackup() (err error, myContext *meta.BackupContext, myBdb *db.BadgerDB)
 	}
 
 	//  Create the context  of the backup to store backup state
-	myContext = SetBackupContext()
+	myContext = SetBackupContext(nextIndex)
 
 	if len(inFile) > 0 || len(iBucket) > 0 {
 
@@ -821,6 +804,7 @@ func initBackup() (err error, myContext *meta.BackupContext, myBdb *db.BadgerDB)
 		}
 
 	}
+
 	/*
 		if len(prefix) > 0 && len(inFile) == 0 && len(iBucket) == 0 {
 			gLog.Warning.Printf("--prefix %s is ignored for full backup", prefix)
@@ -836,7 +820,6 @@ func initBackup() (err error, myContext *meta.BackupContext, myBdb *db.BadgerDB)
 		*/
 
 		if err1, suf := mosesbc.GetBucketSuffix(srcBucket, prefix); err1 != nil {
-			// gLog.Error.Printf("%v", err)
 			err = errors.New(fmt.Sprintf("%v", err1))
 			return
 		} else {
@@ -851,6 +834,7 @@ func initBackup() (err error, myContext *meta.BackupContext, myBdb *db.BadgerDB)
 				Compute the suffix of the  target bucket from the CC of the prefix
 			    and append the suffix to the bucket name
 		*/
+
 		if err1, suf := mosesbc.GetBucketSuffix(tgtBucket, prefix); err1 != nil {
 			err = errors.New(fmt.Sprintf("%v", err1))
 			// gLog.Error.Printf("%v", err)

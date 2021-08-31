@@ -370,7 +370,7 @@ func migratePns(marker string, reqm datatype.Reqm) (string, error) {
 		} else {
 			if len(inFile) > 0 {
 				gLog.Info.Printf("Listing documents from file %s", inFile)
-				result, err = ListPn(listpn, int(maxKey))
+				result, err = mosesbc.ListPn(listpn, int(maxKey))
 			} else {
 				gLog.Info.Printf("Listing documents from bucket  %s", iBucket)
 				result, err = api.ListObjectV2(reql)

@@ -357,7 +357,7 @@ func restorePns() (string, error) {
 		)
 		N++ // number of loop
 		if len(inFile) > 0 {
-			result, err = ListPn(listpn, int(maxKey)) //  listpn returns the list of documents to be restored
+			result, err = mosesbc.ListPn(listpn, int(maxKey)) //  listpn returns the list of documents to be restored
 		} else {
 			result, err = api.ListObjectWithContextV2(ctimeout, req)
 		}

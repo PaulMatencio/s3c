@@ -11,6 +11,9 @@ type (
 	BC interface {
 		New()
 		SetMarker(marker string)
+		GetMarker()  string
+		SetNextIndex(nextIndex int)
+		GetNextIndex() int
 		ReadBbdns (ns []byte, key []byte, Bdb *db.BadgerDB) (err error)
 		WriteBdb(ns []byte, key []byte, Bdb *db.BadgerDB) (err error)
 	}
@@ -41,6 +44,7 @@ type (
 		Check         bool          `json:"check"`
 		CtimeOut      time.Duration `json:"context-time-out"`
 		NextMarker    string        `json:"next-marker"`
+		NextIndex     int            `json:"next-index"`
 		BackupIntance int           `json:"backup-instance"`
 	}
 )
@@ -52,6 +56,18 @@ func (*BackupContext) New() *BackupContext {
 
 func (c *BackupContext) SetMarker(marker string) {
 	c.Marker = marker
+}
+
+func (c *BackupContext) GetMarker() string {
+	return c.Marker
+}
+
+func (c *BackupContext) SetNextIndex(nextIndex int) {
+	c.NextIndex = nextIndex
+}
+
+func (c *BackupContext) GetNextIndex() int {
+	return c.NextIndex
 }
 
 func (c *BackupContext) ReadBbd(ns []byte, key []byte, Bdb *db.BadgerDB) (err error) {
