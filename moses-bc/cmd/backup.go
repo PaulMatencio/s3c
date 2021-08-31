@@ -182,6 +182,7 @@ func BackupPns(cmd *cobra.Command, args []string) {
 		defer myBdb.Close()
 		myContext.WriteBdb([]byte(bNSpace), []byte(keySuffix), myBdb)
 		skipInput = myContext.NextIndex
+		gLog.Warning.Printf("%d entries will be skipped",skipInput)
 	}
 
 	/* start  the monitoring in the background if requested  with -P or --profile  */
@@ -299,8 +300,11 @@ func backupPns(reqm datatype.Reqm, c *meta.BackupContext) (string, error) {
 				)
 
 				for _, v := range result.Contents {
-					//skip the number of already processed pn taken from the input file
+					/*
+						skip the number of already processed pn if taken from the --input-file
+					 */
 					if len(inFile) > 0 {
+						gLog.Info.Printf("Skipping the first %d entries of the input file %s",skipInput,inFile)
 						for sk:=1 ; sk<= skipInput; sk++ {
 							listpn.Scan()
 							continue
@@ -309,17 +313,21 @@ func backupPns(reqm datatype.Reqm, c *meta.BackupContext) (string, error) {
 					if *v.Key != nextmarker {
 						key := *v.Key
 						service := req.Service
+
 						/*
 							method  is always PUT for full backup( --source-bucket)
 							or  incremental backup  if --input-bucket
 						*/
+
 						method := "PUT"
 						buck := req.Bucket
 						if len(iBucket) > 0 {
+
 							/*
 								    input-bucket's key  should be in the form
 									yyyymmdd/cc/pn/kc
 							*/
+
 							if err, key = mosesbc.ParseInputKey(*v.Key); err != nil {
 								gLog.Error.Printf("Error %v in bucket %s", err, iBucket)
 								ec.WriteBdb([]byte(bNSpace), []byte(errSuffix+"/"+*v.Key), []byte(err.Error()), myBdb)
@@ -341,6 +349,7 @@ func backupPns(reqm datatype.Reqm, c *meta.BackupContext) (string, error) {
 						/*
 							get the s3 metadata
 						*/
+
 						request := datatype.StatObjRequest{
 							Service: service,
 							Bucket:  buck,
@@ -708,7 +717,6 @@ func restart(ns []byte, key []byte, myBdb *db.BadgerDB) (err error, nextIndex in
     var (
     	c = backupContext.New()
 	)
-
 	gLog.Trace.Printf("Name space %s - Key %s  - BDB %v ", ns, key, myBdb)
 	if err = c.ReadBbd(ns, key, myBdb); err == nil {
 		nextIndex= getBackupContext(c)
@@ -737,6 +745,7 @@ func initBackup() (err error, myContext *meta.BackupContext, myBdb *db.BadgerDB)
 
 		    Backup's context and errors are stored in the  namespace "backup"
 	*/
+
 	var nextIndex int
 	if myBdb, err = openBdb(mBDB); err == nil {
 		if resume {

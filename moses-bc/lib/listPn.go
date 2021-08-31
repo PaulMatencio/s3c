@@ -24,8 +24,6 @@ func ListPn(buf *bufio.Scanner, num int) (*s3.ListObjectsV2Output, error) {
 		var object s3.Object
 		if buf.Scan() {
 			if text := buf.Text(); len(text) > 0 {
-				//next +=1
-				//text = text + ";" + strconv.Itoa(next)
 				object.Key = &text
 				object.Size = &Z
 				object.LastModified = &D
