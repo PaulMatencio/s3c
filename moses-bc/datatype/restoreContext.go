@@ -6,7 +6,20 @@ import (
 	"time"
 )
 
-type RestoreContext struct {
+type (
+
+	RC interface {
+		New()
+		SetMarker(marker string)
+		GetMarker()  string
+		SetNextIndex(nextIndex int)
+		GetNextIndex() int
+		ReadBbdns (ns []byte, key []byte, Bdb *db.BadgerDB) (err error)
+		WriteBdb(ns []byte, key []byte, Bdb *db.BadgerDB) (err error)
+	}
+
+
+	RestoreContext struct {
 	SrcBucket      string        `json:"src-bucket"`
 	TgtBucket      string        `json:"tgt-bucket"`
 	IndBucket      string        `json:"index-bucket"`
@@ -36,31 +49,48 @@ type RestoreContext struct {
 	Tos3           bool          `json:"to-s3"`
 	CtimeOut       time.Duration `json:"context-time-out"`
 	NextMarker     string        `json:"next-marker"`
+	NextIndex      int       `json:"next-index"`
 	RestoreIntance int           `json:"restore-instance"`
 }
+)
 
 func (*RestoreContext) New() *RestoreContext {
-	var c RestoreContext
-	return &c
+	var rc RestoreContext
+	return &rc
 }
 
-func (c *RestoreContext) SetMarker(marker string) {
-	c.Marker = marker
+func (rc *RestoreContext) SetMarker(marker string) {
+	if rc != nil {
+		rc.Marker = marker
+	}
 }
 
-func (c *RestoreContext) ReadBbd(ns []byte, key []byte, Bdb *db.BadgerDB) (err error) {
+func (rc *RestoreContext) ReadBbd(ns []byte, key []byte, Bdb *db.BadgerDB) (err error) {
 	var value []byte
 	value, err = Bdb.Get(ns, key)
 	if err == nil {
-		err = json.Unmarshal(value, c)
+		err = json.Unmarshal(value, rc)
 	}
 	return
 }
 
-func (c *RestoreContext) WriteBdb(ns []byte, key []byte, Bdb *db.BadgerDB) (err error) {
+func (rc *RestoreContext) WriteBdb(ns []byte, key []byte, Bdb *db.BadgerDB) (err error) {
 	/*  the value comes from c */
 	var value []byte
-	value, err = json.Marshal(c)
+	value, err = json.Marshal(rc)
 	err = Bdb.Set(ns, key, value)
+	return
+}
+
+func (rc *RestoreContext) SetNextIndex(nextIndex int) {
+	if rc != nil {
+		rc.NextIndex = nextIndex
+	}
+}
+
+func (rc *RestoreContext) GetNextIndex() (nextindex int) {
+	if rc != nil {
+		nextindex =  rc.NextIndex
+	}
 	return
 }

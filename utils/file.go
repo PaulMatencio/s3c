@@ -178,12 +178,8 @@ func ScanAllLines(scanner *bufio.Scanner) ([]string, error) {
 }
 
 
-func Scanner(pathname string) (*bufio.Scanner, error) {
-	var (
-		err     error
-		scanner *bufio.Scanner
-		// fp      *os.File
-	)
+func Scanner(pathname string) ( scanner *bufio.Scanner, err error) {
+
 	if len(pathname) > 0 {
 		fp, err := os.Open(pathname)
 		if err == nil {

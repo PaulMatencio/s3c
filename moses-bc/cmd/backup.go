@@ -241,7 +241,7 @@ func BackupPns(cmd *cobra.Command, args []string) {
              over the list until the value next-marker  is empty
 */
 
-func backupPns(reqm datatype.Reqm, c *meta.BackupContext) (string, error) {
+func backupPns(reqm datatype.Reqm, bc *meta.BackupContext) (string, error) {
 
 	var (
 		nextmarker, token               string
@@ -298,7 +298,6 @@ func backupPns(reqm datatype.Reqm, c *meta.BackupContext) (string, error) {
 				for sk := 1; sk <= skipInput; sk++ {
 					listpn.Scan()
 				}
-				// nextIndex = skipInput
 			}
 			result, err = mosesbc.ListPn(listpn, int(maxKey))
 		}
@@ -465,15 +464,15 @@ func backupPns(reqm datatype.Reqm, c *meta.BackupContext) (string, error) {
 
 				if *result.IsTruncated {
 					nextmarker = *result.Contents[l-1].Key
-					c.SetMarker(nextmarker)
-					c.SetNextIndex(nextIndex)
+					bc.SetMarker(nextmarker)
+					bc.SetNextIndex(nextIndex)
 					if !incr {
 						token = *result.NextContinuationToken
 					}
 					gLog.Warning.Printf("Truncated %v - Next marker: %s ", *result.IsTruncated, nextmarker)
 
 					if myBdb != nil {
-						c.WriteBdb([]byte(bNSpace), []byte(keySuffix), myBdb)
+						bc.WriteBdb([]byte(bNSpace), []byte(keySuffix), myBdb)
 					}
 				}
 				gLog.Info.Printf("Number of backup documents: %d  - Number of pages: %d  - Document size: %d - Number of deletes: %d - Number of errors: %d - Elapsed time: %v", ndocs, npages, docsizes, ndeletes, nerrors, time.Since(start))

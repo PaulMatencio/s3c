@@ -209,11 +209,7 @@ func GetUserMetaWithPathId(pathId string) (err error, usermd string, status int)
 
 func GetUserMeta(request sproxyd.HttpRequest, pn string) (err error, usermd string) {
 
-	var (
-		//usermd string
-		resp *http.Response
-		// err  error
-	)
+	var resp *http.Response
 	request.Path = sproxyd.Env + "/" + pn
 	if resp, err = sproxyd.GetMetadata(&request); err != nil {
 		return err, usermd
@@ -230,6 +226,7 @@ func GetUserMeta(request sproxyd.HttpRequest, pn string) (err error, usermd stri
 	}
 	return
 }
+
 
 func GetHeader(request sproxyd.HttpRequest) (err error, usermd string, contentLength int64) {
 

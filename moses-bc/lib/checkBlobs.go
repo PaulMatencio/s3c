@@ -28,12 +28,13 @@ import (
 	"sync"
 	"time"
 )
+
 /*
 
 	Check pn's returned by listObject of the meta bucket
 
- */
-func CheckBlobs(request datatype.ListObjRequest,maxLoop int,maxPage int) {
+*/
+func CheckBlobs(request datatype.ListObjRequest, maxLoop int, maxPage int) {
 	var (
 		N          int = 0
 		nextmarker string
@@ -85,7 +86,7 @@ func CheckBlobs(request datatype.ListObjRequest,maxLoop int,maxPage int) {
 
 /*
 
-*/
+ */
 
 func CheckBlob(pn string, np int, maxPage int) int {
 
@@ -195,9 +196,6 @@ func checkBlob(pn string, np int) int {
 	return nerrors
 }
 
-
-
-
 /*
 
 	Check document with number of pages >  --maxPage
@@ -262,9 +260,10 @@ func checkLargeBlob(pn string, np int, maxPage int) int {
 	return terrors
 	// return WriteDocument(pn, document, outdir)
 }
+
 /*
 	called by checkBig1
- */
+*/
 func checkBlobPart(pn string, np int, start int, end int) int {
 
 	var (
@@ -294,7 +293,7 @@ func checkBlobPart(pn string, np int, start int, end int) int {
 					gLog.Error.Println(err)
 				}
 			} else {
-				gLog.Error.Printf("Error %v while getting object %s",err,request1.Path)
+				gLog.Error.Printf("Error %v while getting object %s", err, request1.Path)
 			}
 		}(request, pn, np, k)
 	}
@@ -311,7 +310,7 @@ func compareObj(pn string, pagen int, body *[]byte, usermd string) (error, bool)
 				Timeout:   sproxyd.ReadTimeout,
 				Transport: sproxyd.Transport,
 			},
-			Path : sproxyd.TargetEnv + "/" + pn + "/p" + strconv.Itoa(pagen),
+			Path: sproxyd.TargetEnv + "/" + pn + "/p" + strconv.Itoa(pagen),
 		}
 		err     error
 		body1   *[]byte
@@ -356,7 +355,7 @@ func comparePdf(pn string) (error, bool) {
 				Timeout:   sproxyd.ReadTimeout,
 				Transport: sproxyd.Transport,
 			},
-			Path : sproxyd.Env + "/" + pn,
+			Path: sproxyd.Env + "/" + pn,
 		}
 		err             error
 		body, body1     *[]byte
@@ -370,7 +369,7 @@ func comparePdf(pn string) (error, bool) {
 				Timeout:   sproxyd.ReadTimeout,
 				Transport: sproxyd.Transport,
 			},
-			Path : sproxyd.TargetEnv + "/" + pn,
+			Path: sproxyd.TargetEnv + "/" + pn,
 		}
 		if err, usermd1, body1 = GetObject(request1, pn); err == nil {
 			/*  vheck */
@@ -389,6 +388,71 @@ func comparePdf(pn string) (error, bool) {
 	return err, false
 }
 
+/*
+	compare source and object metadata
+*/
+func CheckDocs(request datatype.ListObjRequest, maxLoop int) {
+	var (
+		N          int = 0
+		nextmarker string
+		req1       = sproxyd.HttpRequest{
+			Hspool: sproxyd.HP,
+			Client: &http.Client{
+				Timeout:   sproxyd.ReadTimeout,
+				Transport: sproxyd.Transport,
+			}}
+		req2 = sproxyd.HttpRequest{
+			Hspool: sproxyd.TargetHP,
+			Client: &http.Client{
+				Timeout:   sproxyd.ReadTimeout,
+				Transport: sproxyd.Transport,
+			}}
+	)
+	for {
+		var (
+			result *s3.ListObjectsOutput
+			err    error
+		)
+		N++ // number of loop
+		if result, err = api.ListObject(request); err == nil {
+			if l := len(result.Contents); l > 0 {
+				var wg1 sync.WaitGroup
+				for _, v := range result.Contents {
+					pn := *v.Key
+					wg1.Add(1)
+					go func(pn string) {
+						defer wg1.Done()
+						if err1, usermd1 := GetUserMeta(req1, pn); err1 == nil {
+							if err2, usermd2 := GetUserMeta(req2, pn); err2 == nil {
+								if len(usermd1) != len(usermd2) {
+									gLog.Error.Printf("%s  - source doc metadata != target doc metadata", pn)
+								}
+							} else {
+								gLog.Error.Printf("%s  - Target %s is missing", pn)
+							}
+						} else {
+							gLog.Error.Printf("%s  - Source %s is missing", pn)
+						}
+					}(pn)
+				}
+				wg1.Wait()
+				if *result.IsTruncated {
+					nextmarker = *result.Contents[l-1].Key
+					gLog.Warning.Printf("Truncated %v - Next marker: %s ", *result.IsTruncated, nextmarker)
+				}
+			} else {
+				gLog.Warning.Printf("No match! is %s bucket empty?",request.Bucket)
+			}
+		} else {
+			gLog.Error.Printf("%v", err)
+			break
+		}
 
+		if *result.IsTruncated && (maxLoop == 0 || N <= maxLoop) {
+			request.Marker = nextmarker
+		} else {
+			break
+		}
+	}
 
-
+}

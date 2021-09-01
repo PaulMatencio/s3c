@@ -15,8 +15,8 @@ import (
 
 var (
 	ebshort = "Command to delete multiple objects  concurrently"
-	empty bool
-	ebCmd = &cobra.Command{
+	empty   bool
+	ebCmd   = &cobra.Command{
 		Use:   "delObjs",
 		Short: ebshort,
 		Long:  ``,
@@ -30,21 +30,24 @@ var (
 		Run:   deleteObjectVersions,
 	}
 )
+
 func initLv1Flags(cmd *cobra.Command) {
 
-	cmd.Flags().StringVarP(&bucket,"bucket","b","","the name of the bucket")
-	cmd.Flags().StringVarP(&prefix,"prefix","p","","key prefix")
-	cmd.Flags().Int64VarP(&maxKey,"max-key","m",100,"maximum number of keys to be processed concurrently")
-	cmd.Flags().StringVarP(&marker,"key-marker","M","","start processing from this key")
-	cmd.Flags().StringVarP(&versionId,"version-id","","","start processing from this version id")
-	cmd.Flags().StringVarP(&delimiter,"delimiter","d","","key delimiter")
+	cmd.Flags().StringVarP(&bucket, "bucket", "b", "", "the name of the bucket")
+	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "key prefix")
+	cmd.Flags().Int64VarP(&maxKey, "max-key", "m", 100, "maximum number of keys to be processed concurrently")
+	cmd.Flags().StringVarP(&marker, "key-marker", "M", "", "start processing from this key")
+	cmd.Flags().StringVarP(&versionId, "version-id", "", "", "start processing from this version id")
+	cmd.Flags().StringVarP(&delimiter, "delimiter", "d", "", "key delimiter")
 	// cmd.Flags().BoolVarP(&loop,"loop","L",false,"loop until all keys are processed")
-	cmd.Flags().IntVarP(&maxLoop,"max-loop","",1,"maximum number of loop, 0 means no upper limit")
+	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, "maximum number of loop, 0 means no upper limit")
+	cmd.Flags().StringVarP(&fromDate, "fromDate", "", "2019-01-01T00:00:00Z", "delete objects from last modified from <yyyy-mm-ddThh:mm:ss>")
+	cmd.Flags().StringVarP(&fromDate, "toDate", "", "", "delete objects to last modified from <yyyy-mm-ddThh:mm:ss>")
 
 	// cmd.Flags().BoolVarP(&,"maxLoop","",false,"maximum number of loop")
 	// cmd.Flags().BoolVarP(&full,"full-key","F",false,"given prefix is a full documemt key")
 
-	cmd.Flags().BoolVarP(&empty,"empty","",false,"empty the bucket")
+	cmd.Flags().BoolVarP(&empty, "empty", "", false, "empty the bucket")
 
 }
 func init() {
@@ -76,6 +79,20 @@ func deleteObjects(cmd *cobra.Command, args []string) {
 		return
 	}
 
+	if len(toDate) > 0 {
+		if lastDate, err = time.Parse(ISOLayout, toDate); err != nil {
+			gLog.Error.Printf("Invalid date format %s", toDate)
+			return
+		}
+	} else {
+		lastDate = time.Now().AddDate(0, 0, dayToAdd)
+	}
+
+	if frDate, err = time.Parse(time.RFC3339, fromDate); err != nil {
+		gLog.Error.Printf("Invalid date format %s", frDate)
+		return
+	}
+
 	req := datatype.ListObjRequest{
 		Service: s3.New(api.CreateSession()),
 		Bucket:  bucket,
@@ -96,29 +113,29 @@ func deleteObjects(cmd *cobra.Command, args []string) {
 		if result, err = api.ListObject(req); err == nil {
 
 			if l = len(result.Contents); l > 0 {
-
-				N = len(result.Contents)
+				// N = len(result.Contents)
+				N = 0
 				T = 0
-
 				for _, v := range result.Contents {
-					//lumber.Info("Key: %s - Size: %d ", *v.Key, *v.Size)
-					//  delete the object
-					del := datatype.DeleteObjRequest{
-						Service: req.Service,
-						Bucket:  req.Bucket,
-						Key:     *v.Key,
-					}
-					go func(request datatype.DeleteObjRequest) {
-
-						rd := Rd{
-							Key: del.Key,
+					if v.LastModified.Before(lastDate) && v.LastModified.After(frDate) {
+						N++
+						del := datatype.DeleteObjRequest{
+							Service: req.Service,
+							Bucket:  req.Bucket,
+							Key:     *v.Key,
 						}
-						rd.Result, rd.Err = api.DeleteObjects(del)
-						del = datatype.DeleteObjRequest{} // reset the structure to free memory
-						ch <- &rd
+						go func(request datatype.DeleteObjRequest) {
 
-					}(del)
+							rd := Rd{
+								Key: del.Key,
+							}
+							rd.Result, rd.Err = api.DeleteObjects(del)
+							del = datatype.DeleteObjRequest{} // reset the structure to free memory
+							ch <- &rd
 
+						}(del)
+
+					}
 				}
 
 				done := false
@@ -191,7 +208,19 @@ func deleteObjectVersions(cmd *cobra.Command, args []string) {
 		utils.Return(start)
 		return
 	}
+	if len(toDate) > 0 {
+		if lastDate, err = time.Parse(ISOLayout, toDate); err != nil {
+			gLog.Error.Printf("Invalid date format %s", toDate)
+			return
+		}
+	} else {
+		lastDate = time.Now().AddDate(0, 0, dayToAdd)
+	}
 
+	if frDate, err = time.Parse(time.RFC3339, fromDate); err != nil {
+		gLog.Error.Printf("Invalid date format %s", frDate)
+		return
+	}
 	req := datatype.ListObjVersionsRequest{
 		Service:         s3.New(api.CreateSession()),
 		Bucket:          bucket,
@@ -222,24 +251,26 @@ func deleteObjectVersions(cmd *cobra.Command, args []string) {
 				for _, v := range result.Versions {
 					//lumber.Info("Key: %s - Size: %d ", *v.Key, *v.Size)
 					//  delete the object
-					if !*v.IsLatest || empty {
-						N++
-						del := datatype.DeleteObjRequest{
-							Service:   req.Service,
-							Bucket:    req.Bucket,
-							Key:       *v.Key,
-							VersionId: *v.VersionId,
-						}
-						go func(request datatype.DeleteObjRequest) {
-
-							rd := Rd{
-								Key: del.Key,
+					if v.LastModified.Before(lastDate) && v.LastModified.After(frDate) {
+						if !*v.IsLatest || empty {
+							N++
+							del := datatype.DeleteObjRequest{
+								Service:   req.Service,
+								Bucket:    req.Bucket,
+								Key:       *v.Key,
+								VersionId: *v.VersionId,
 							}
-							rd.Result, rd.Err = api.DeleteObjects(del)
-							del = datatype.DeleteObjRequest{} // reset the structure to free memory
-							ch <- &rd
+							go func(request datatype.DeleteObjRequest) {
 
-						}(del)
+								rd := Rd{
+									Key: del.Key,
+								}
+								rd.Result, rd.Err = api.DeleteObjects(del)
+								del = datatype.DeleteObjRequest{} // reset the structure to free memory
+								ch <- &rd
+
+							}(del)
+						}
 					}
 				}
 

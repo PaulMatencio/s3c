@@ -46,6 +46,7 @@ var  (
 func initDoFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&bucket,"bucket","b","","the name of the bucket")
 	cmd.Flags().StringVarP(&key,"key","k","","the object to be deleted")
+
 }
 
 func init() {
