@@ -43,10 +43,6 @@ func initLv1Flags(cmd *cobra.Command) {
 	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, "maximum number of loop, 0 means no upper limit")
 	cmd.Flags().StringVarP(&fromDate, "fromDate", "", "2019-01-01T00:00:00Z", "delete objects from last modified from <yyyy-mm-ddThh:mm:ss>")
 	cmd.Flags().StringVarP(&fromDate, "toDate", "", "", "delete objects to last modified from <yyyy-mm-ddThh:mm:ss>")
-
-	// cmd.Flags().BoolVarP(&,"maxLoop","",false,"maximum number of loop")
-	// cmd.Flags().BoolVarP(&full,"full-key","F",false,"given prefix is a full documemt key")
-
 	cmd.Flags().BoolVarP(&empty, "empty", "", false, "empty the bucket")
 
 }
@@ -55,7 +51,7 @@ func init() {
 	RootCmd.AddCommand(dvCmd)
 	RootCmd.AddCommand(ebCmd)
 	RootCmd.MarkFlagRequired("bucket")
-	initLoFlags(ebCmd)
+	initLv1Flags(ebCmd)
 	initLv1Flags(dvCmd)
 }
 
