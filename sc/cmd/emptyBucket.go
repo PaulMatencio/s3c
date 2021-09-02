@@ -41,8 +41,8 @@ func initLv1Flags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&delimiter, "delimiter", "d", "", "key delimiter")
 	// cmd.Flags().BoolVarP(&loop,"loop","L",false,"loop until all keys are processed")
 	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, "maximum number of loop, 0 means no upper limit")
-	cmd.Flags().StringVarP(&fromDate, "fromDate", "", "2019-01-01T00:00:00Z", "delete objects from last modified from <yyyy-mm-ddThh:mm:ss>")
-	cmd.Flags().StringVarP(&toDate, "toDate", "", "", "delete objects to last modified from <yyyy-mm-ddThh:mm:ss>")
+	cmd.Flags().StringVarP(&fromDate, "from-date", "", "2019-01-01T00:00:00Z", "delete objects from last modified from <yyyy-mm-ddThh:mm:ss>")
+	cmd.Flags().StringVarP(&toDate, "to-date", "", "", "delete objects to last modified from <yyyy-mm-ddThh:mm:ss>")
 	cmd.Flags().BoolVarP(&empty, "empty", "", false, "empty the bucket")
 	cmd.Flags().BoolVarP(&empty, "check", "", true, "run in check mode")
 
