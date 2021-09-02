@@ -41,9 +41,24 @@ func initLv1Flags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&delimiter, "delimiter", "d", "", "key delimiter")
 	// cmd.Flags().BoolVarP(&loop,"loop","L",false,"loop until all keys are processed")
 	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, "maximum number of loop, 0 means no upper limit")
-	cmd.Flags().StringVarP(&fromDate, "from-date", "", "2019-01-01T00:00:00Z", "delete objects from last modified from <yyyy-mm-ddThh:mm:ss>")
-	cmd.Flags().StringVarP(&toDate, "to-date", "", "", "delete objects to last modified from <yyyy-mm-ddThh:mm:ss>")
-	cmd.Flags().BoolVarP(&empty, "empty", "", false, "empty the bucket")
+	cmd.Flags().StringVarP(&fromDate, "from-date", "", "2019-01-01T00:00:00Z", "delete objects from last modified from <yyyy-mm-ddThh:mm:ssZ> time.RFC3339 format"  )
+	cmd.Flags().StringVarP(&toDate, "to-date", "", "", "delete objects to last modified from <yyyy-mm-ddThh:mm:ssZ>  time.RFC3339 format")
+	cmd.Flags().BoolVarP(&empty, "empty", "", false, "empty the bucket - delete all including the current version")
+	cmd.Flags().BoolVarP(&check, "check", "", true, "run in check mode")
+
+}
+
+func initDelFlags(cmd *cobra.Command) {
+
+	cmd.Flags().StringVarP(&bucket, "bucket", "b", "", "the name of the bucket")
+	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", "key prefix")
+	cmd.Flags().Int64VarP(&maxKey, "max-key", "m", 100, "maximum number of keys to be processed concurrently")
+	cmd.Flags().StringVarP(&marker, "key-marker", "M", "", "start processing from this key")
+	cmd.Flags().StringVarP(&delimiter, "delimiter", "d", "", "key delimiter")
+	// cmd.Flags().BoolVarP(&loop,"loop","L",false,"loop until all keys are processed")
+	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, "maximum number of loop, 0 means no upper limit")
+	cmd.Flags().StringVarP(&fromDate, "from-date", "", "2019-01-01T00:00:00Z", "delete objects from last modified from <yyyy-mm-ddThh:mm:ssZ> time.RFC3339 format")
+	cmd.Flags().StringVarP(&toDate, "to-date", "", "", "delete objects to last modified from <yyyy-mm-ddThh:mm:ssZ> time.RFC3339 format")
 	cmd.Flags().BoolVarP(&check, "check", "", true, "run in check mode")
 
 }
@@ -52,8 +67,8 @@ func init() {
 	RootCmd.AddCommand(dvCmd)
 	RootCmd.AddCommand(ebCmd)
 	RootCmd.MarkFlagRequired("bucket")
-	initLv1Flags(ebCmd)
-	initLv1Flags(dvCmd)
+	initDelFlags(ebCmd)  // empty the bucket
+	initLv1Flags(dvCmd)   //   empty a versioning bucket
 }
 
 func deleteObjects(cmd *cobra.Command, args []string) {
@@ -64,10 +79,10 @@ func deleteObjects(cmd *cobra.Command, args []string) {
 	)
 
 	type Rd struct {
-		Key    string
-		LastRef  time.Time
-		Result *s3.DeleteObjectOutput
-		Err    error
+		Key     string
+		LastRef time.Time
+		Result  *s3.DeleteObjectOutput
+		Err     error
 	}
 
 	if len(bucket) == 0 {
@@ -124,8 +139,8 @@ func deleteObjects(cmd *cobra.Command, args []string) {
 						}
 						go func(request datatype.DeleteObjRequest) {
 
-							rd := Rd {
-								Key: del.Key,
+							rd := Rd{
+								Key:     del.Key,
 								LastRef: *v.LastModified,
 							}
 							if !check {
@@ -156,7 +171,7 @@ func deleteObjects(cmd *cobra.Command, args []string) {
 							if !check {
 								gLog.Info.Printf(" Key %s has been deleted - Last modified date %v ", rd.Key, rd.LastRef)
 							} else {
-								gLog.Info.Printf("DryRun: Deleting %s - Last modified date %v ",rd.Key,rd.LastRef)
+								gLog.Info.Printf("DryRun: Deleting %s - Last modified date %v ", rd.Key, rd.LastRef)
 							}
 						}
 						rd = &Rd{} // reset the structure to free memory
@@ -273,7 +288,13 @@ func deleteObjectVersions(cmd *cobra.Command, args []string) {
 								rd := Rd{
 									Key: del.Key,
 								}
-								rd.Result, rd.Err = api.DeleteObjects(del)
+
+								if !check {
+									rd.Result, rd.Err = api.DeleteObjects(del)
+								} else {
+									rd.Err = nil
+								}
+
 								del = datatype.DeleteObjRequest{} // reset the structure to free memory
 								ch <- &rd
 
@@ -283,6 +304,9 @@ func deleteObjectVersions(cmd *cobra.Command, args []string) {
 				}
 
 				done := false
+				if N == N {
+					done = true
+				}
 				for ok := true; ok; ok = !done {
 					select {
 					case rd := <-ch:
