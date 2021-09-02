@@ -42,8 +42,9 @@ func initLv1Flags(cmd *cobra.Command) {
 	// cmd.Flags().BoolVarP(&loop,"loop","L",false,"loop until all keys are processed")
 	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, "maximum number of loop, 0 means no upper limit")
 	cmd.Flags().StringVarP(&fromDate, "fromDate", "", "2019-01-01T00:00:00Z", "delete objects from last modified from <yyyy-mm-ddThh:mm:ss>")
-	cmd.Flags().StringVarP(&fromDate, "toDate", "", "", "delete objects to last modified from <yyyy-mm-ddThh:mm:ss>")
+	cmd.Flags().StringVarP(&toDate, "toDate", "", "", "delete objects to last modified from <yyyy-mm-ddThh:mm:ss>")
 	cmd.Flags().BoolVarP(&empty, "empty", "", false, "empty the bucket")
+	cmd.Flags().BoolVarP(&empty, "check", "", true, "run in check mode")
 
 }
 func init() {
@@ -64,6 +65,7 @@ func deleteObjects(cmd *cobra.Command, args []string) {
 
 	type Rd struct {
 		Key    string
+		LastRef  time.Time
 		Result *s3.DeleteObjectOutput
 		Err    error
 	}
@@ -122,11 +124,17 @@ func deleteObjects(cmd *cobra.Command, args []string) {
 						}
 						go func(request datatype.DeleteObjRequest) {
 
-							rd := Rd{
+							rd := Rd {
 								Key: del.Key,
+								LastRef: *v.LastModified,
 							}
-							rd.Result, rd.Err = api.DeleteObjects(del)
-							del = datatype.DeleteObjRequest{} // reset the structure to free memory
+							if !check {
+								rd.Result, rd.Err = api.DeleteObjects(del)
+								del = datatype.DeleteObjRequest{} // reset the structure to free memory
+							} else {
+								gLog.Info.Println("DryRun: Deleting %s  - Last modified date %v ",del.Key,rd.LastRef)
+								rd.Err = nil
+							}
 							ch <- &rd
 
 						}(del)
@@ -138,15 +146,12 @@ func deleteObjects(cmd *cobra.Command, args []string) {
 				for ok := true; ok; ok = !done {
 					select {
 					case rd := <-ch:
-
 						T++
-
 						if rd.Err != nil {
 							gLog.Error.Printf("Error %v deleting %s", rd.Err, rd.Key)
 						} else {
 							// lumber.Trace("Key %s is deleted", rd.Key)
 						}
-
 						rd = &Rd{} // reset the structure to free memory
 
 						if T == N {

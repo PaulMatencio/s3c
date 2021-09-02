@@ -95,21 +95,21 @@ func Check(cmd *cobra.Command, args []string) {
 				return
 			}
 		} else {
-			if err, suf := mosesbc.GetBucketSuffix(bucket, prefix); err != nil {
+			if err, suf := mosesbc.GetBucketSuffix(srcBucket, prefix); err != nil {
 				gLog.Error.Printf("%v", err)
 				return
 			} else {
 				if len(suf) > 0 {
-					bucket += "-" + suf
-					gLog.Warning.Printf("A suffix %s is appended to the source Bucket %s", suf, bucket)
+					srcBucket += "-" + suf
+					gLog.Warning.Printf("A suffix %s is appended to the source Bucket %s", suf, srcBucket)
 				}
 			}
 		}
-		checkDoc()
+		checkDoc(srcBucket)
 
 	} else if len(prefix) > 0 {
 		/* check  documents metadata and their  pages */
-		checkBlobs()
+		checkBlobs(srcBucket)
 	} else {
 		gLog.Error.Printf("Both publication number --pn   and  --prefix arguments are missing. Please specify either --pn or --prefix or --help for help")
 		return
@@ -138,7 +138,7 @@ func chekBlob() {
 */
 
 // func checkBlobs(bucket string, marker string, prefix string, maxKey int64, maxPage int, maxLoop int) {
-func checkBlobs() {
+func checkBlobs(bucket string) {
 
 	if err, suf := mosesbc.GetBucketSuffix(bucket, prefix); err != nil {
 		gLog.Error.Printf("%v", err)
@@ -165,7 +165,7 @@ func checkBlobs() {
 	}
 }
 
-func checkDoc() {
+func checkDoc(bucket string) {
 	//  create a session to the source S3
 	//  list the source bucket
 	if srcS3 := mosesbc.CreateS3Session("check", "source"); srcS3 != nil {
