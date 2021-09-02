@@ -83,7 +83,7 @@ func Check(cmd *cobra.Command, args []string) {
 
 	gLog.Info.Printf("Source Env: %s - Source Driver: %s - Source Url: %s", sproxyd.Env, sproxyd.Driver, sproxyd.Url)
 	gLog.Info.Printf("Target Env: %s - Target Driver: %s - Target Url: %s", sproxyd.TargetEnv, sproxyd.TargetDriver, sproxyd.TargetUrl)
-	
+
 	if len(srcBucket) == 0 {
 		gLog.Error.Printf("Source bucket is missing")
 		return

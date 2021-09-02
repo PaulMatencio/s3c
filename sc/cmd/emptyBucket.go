@@ -78,7 +78,7 @@ func deleteObjects(cmd *cobra.Command, args []string) {
 	}
 
 	if len(toDate) > 0 {
-		if lastDate, err = time.Parse(ISOLayout, toDate); err != nil {
+		if lastDate, err = time.Parse(time.RFC3339, toDate); err != nil {
 			gLog.Error.Printf("Invalid date format %s", toDate)
 			return
 		}
@@ -130,11 +130,11 @@ func deleteObjects(cmd *cobra.Command, args []string) {
 							}
 							if !check {
 								rd.Result, rd.Err = api.DeleteObjects(del)
-								del = datatype.DeleteObjRequest{} // reset the structure to free memory
+
 							} else {
-								gLog.Info.Println("DryRun: Deleting %s  - Last modified date %v ",del.Key,rd.LastRef)
 								rd.Err = nil
 							}
+							del = datatype.DeleteObjRequest{} // reset the structure to free memory
 							ch <- &rd
 
 						}(del)
@@ -151,12 +151,17 @@ func deleteObjects(cmd *cobra.Command, args []string) {
 							gLog.Error.Printf("Error %v deleting %s", rd.Err, rd.Key)
 						} else {
 							// lumber.Trace("Key %s is deleted", rd.Key)
+							if !check {
+								gLog.Info.Printf(" Key %s  has been deleted - Last modified date %v ", rd.Key, rd.LastRef)
+							} else {
+								gLog.Info.Printf("DryRun: Deleting %s  - Last modified date %v ",rd.Key,rd.LastRef)
+							}
 						}
 						rd = &Rd{} // reset the structure to free memory
 
 						if T == N {
 							//utils.Return(start)
-							gLog.Info.Printf("Deleting .... %d objects ", N)
+							gLog.Info.Printf("Si far %d objects have been deleted ", N)
 							done = true
 						}
 
@@ -284,14 +289,14 @@ func deleteObjectVersions(cmd *cobra.Command, args []string) {
 							gLog.Error.Printf("Error %v deleting %s - VersionId %s ", rd.Err, rd.Key, *rd.Result.VersionId)
 						} else {
 							// lumber.Trace("Key %s is deleted", rd.Key)
-							gLog.Trace.Printf("Deleting Key %s - Version id %s", rd.Key, *rd.Result.VersionId)
+							gLog.Trace.Printf("Key %s - Version id %s  has been deleted", rd.Key, *rd.Result.VersionId)
 						}
 
 						rd = &Rd{} // reset the structure to free memory
 
 						if T == N {
 							//utils.Return(start)
-							gLog.Info.Printf("Deleting .... %d objects ", N)
+							gLog.Info.Printf("So far %d objects have been deleted", N)
 							done = true
 						}
 
