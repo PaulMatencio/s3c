@@ -76,6 +76,7 @@ func deleteObjects(cmd *cobra.Command, args []string) {
 	var (
 		start = utils.LumberPrefix(cmd)
 		N, T  = 0, 0
+		Total = 0
 	)
 
 	type Rd struct {
@@ -178,7 +179,8 @@ func deleteObjects(cmd *cobra.Command, args []string) {
 
 						if T == N {
 							//utils.Return(start)
-							gLog.Info.Printf("So far %d objects have been deleted ", N)
+							gLog.Info.Printf("So far %d more objects have been deleted ", N)
+							Total += N
 							done = true
 						}
 
@@ -208,7 +210,7 @@ func deleteObjects(cmd *cobra.Command, args []string) {
 			break
 		}
 	}
-
+	gLog.Info.Printf("Total number of objects deleted: %d ",Total)
 	utils.Return(start)
 }
 
@@ -216,7 +218,7 @@ func deleteObjectVersions(cmd *cobra.Command, args []string) {
 
 	var (
 		start = utils.LumberPrefix(cmd)
-		N, T  = 0, 0
+		N, T, Total  = 0, 0,0
 	)
 
 	type Rd struct {
@@ -322,7 +324,8 @@ func deleteObjectVersions(cmd *cobra.Command, args []string) {
 
 						if T == N {
 							//utils.Return(start)
-							gLog.Info.Printf("So far %d objects have been deleted", N)
+							gLog.Info.Printf("So far %d more objects have been deleted", N)
+							Total += N
 							done = true
 						}
 
@@ -354,6 +357,6 @@ func deleteObjectVersions(cmd *cobra.Command, args []string) {
 			break
 		}
 	}
-
+	gLog.Info.Printf("Total number of objects deleted: %d ",Total)
 	utils.Return(start)
 }
