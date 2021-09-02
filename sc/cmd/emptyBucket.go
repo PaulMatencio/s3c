@@ -130,7 +130,6 @@ func deleteObjects(cmd *cobra.Command, args []string) {
 							}
 							if !check {
 								rd.Result, rd.Err = api.DeleteObjects(del)
-
 							} else {
 								rd.Err = nil
 							}
@@ -152,9 +151,9 @@ func deleteObjects(cmd *cobra.Command, args []string) {
 						} else {
 							// lumber.Trace("Key %s is deleted", rd.Key)
 							if !check {
-								gLog.Info.Printf(" Key %s  has been deleted - Last modified date %v ", rd.Key, rd.LastRef)
+								gLog.Info.Printf(" Key %s has been deleted - Last modified date %v ", rd.Key, rd.LastRef)
 							} else {
-								gLog.Info.Printf("DryRun: Deleting %s  - Last modified date %v ",rd.Key,rd.LastRef)
+								gLog.Info.Printf("DryRun: Deleting %s - Last modified date %v ",rd.Key,rd.LastRef)
 							}
 						}
 						rd = &Rd{} // reset the structure to free memory
