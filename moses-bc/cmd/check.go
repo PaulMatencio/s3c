@@ -69,21 +69,26 @@ func init() {
 }
 
 func Check(cmd *cobra.Command, args []string) {
+
 	var err error
 	if err = mosesbc.SetSourceSproxyd("check", srcUrl, driver, env); err != nil {
 		gLog.Error.Printf("%v", err)
 		return
 	}
+
 	if err = mosesbc.SetTargetSproxyd("check", targetUrl, targetDriver, targetEnv); err != nil {
 		gLog.Error.Printf("%v", err)
 		return
 	}
+
 	gLog.Info.Printf("Source Env: %s - Source Driver: %s - Source Url: %s", sproxyd.Env, sproxyd.Driver, sproxyd.Url)
 	gLog.Info.Printf("Target Env: %s - Target Driver: %s - Target Url: %s", sproxyd.TargetEnv, sproxyd.TargetDriver, sproxyd.TargetUrl)
+	
 	if len(srcBucket) == 0 {
 		gLog.Error.Printf("Source bucket is missing")
 		return
 	}
+
 	if len(pn) > 0 {
 		//  check just a document
 		chekBlob()

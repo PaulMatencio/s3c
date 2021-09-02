@@ -428,7 +428,7 @@ func CheckDocs(request datatype.ListObjRequest, maxLoop int) {
 									gLog.Error.Printf("%s  - source doc metadata != target doc metadata", pn)
 								}
 							} else {
-								gLog.Error.Printf("%s  - Target %s is missing", pn)
+								gLog.Error.Printf("Target %s is missing", pn)
 							}
 						} else {
 							gLog.Error.Printf("%s  - Source %s is missing", pn)
