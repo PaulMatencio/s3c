@@ -44,7 +44,7 @@ func initLv1Flags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&fromDate, "from-date", "", "2019-01-01T00:00:00Z", "delete objects from last modified from <yyyy-mm-ddThh:mm:ss>")
 	cmd.Flags().StringVarP(&toDate, "to-date", "", "", "delete objects to last modified from <yyyy-mm-ddThh:mm:ss>")
 	cmd.Flags().BoolVarP(&empty, "empty", "", false, "empty the bucket")
-	cmd.Flags().BoolVarP(&empty, "check", "", true, "run in check mode")
+	cmd.Flags().BoolVarP(&check, "check", "", true, "run in check mode")
 
 }
 func init() {
