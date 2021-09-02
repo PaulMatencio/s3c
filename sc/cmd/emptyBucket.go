@@ -142,6 +142,9 @@ func deleteObjects(cmd *cobra.Command, args []string) {
 				}
 
 				done := false
+				if T == N {
+					done = true
+				}
 				for ok := true; ok; ok = !done {
 					select {
 					case rd := <-ch:
@@ -160,7 +163,7 @@ func deleteObjects(cmd *cobra.Command, args []string) {
 
 						if T == N {
 							//utils.Return(start)
-							gLog.Info.Printf("Si far %d objects have been deleted ", N)
+							gLog.Info.Printf("So far %d objects have been deleted ", N)
 							done = true
 						}
 
