@@ -625,6 +625,7 @@ func checkPages(pn string, docmeta *meta.DocumentMetadata, lastModified time.Tim
 					l4.Unlock()
 					gLog.Warning.Printf("Target Page %s - status code %d ", request1.Path, resp.StatusCode)
 				}
+				gLog.Trace.Printf("Target Page %s - status code %d ", request1.Path, resp.StatusCode)
 
 			} else {
 				gLog.Error.Printf("Target page %s -  error %v", request1.Path, err)
