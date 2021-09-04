@@ -69,6 +69,8 @@ func WriteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Documen
 	return perrors, -1
 }
 
+
+
 func DeleteDocMetadata(request *sproxyd.HttpRequest, document *documentpb.Document) (int, int) {
 
 	var (

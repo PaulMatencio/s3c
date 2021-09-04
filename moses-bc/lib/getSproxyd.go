@@ -16,9 +16,11 @@ package lib
 import (
 	"errors"
 	"fmt"
+	"github.com/paulmatencio/protobuf-doc/src/document/documentpb"
 	base64 "github.com/paulmatencio/ring/user/base64j"
 	"github.com/paulmatencio/s3c/gLog"
 	moses "github.com/paulmatencio/s3c/moses/lib"
+	// meta "github.com/paulmatencio/s3c/moses-bc/datatype"
 	"github.com/paulmatencio/s3c/sproxyd/lib"
 	"io/ioutil"
 	"net/http"
@@ -103,6 +105,91 @@ func GetDocumentMeta(key string) (*moses.DocumentMetadata, error, int) {
 	return &metadata, err, -1
 }
 
+
+
+/*
+		TODO : to complete
+ */
+func CatchDocumentMeta(reqs sproxyd.HttpRequest, reqt sproxyd.HttpRequest, pn string) (document *documentpb.Document, err error, status int) {
+
+	var (
+		respt  *http.Response
+		resps  *http.Response
+		err1   error
+		usermd string
+	)
+	reqt.Path = sproxyd.TargetEnv + "/" + pn
+	if respt, err1 = sproxyd.GetMetadata(&reqt); err1 != nil {
+		err = errors.New(fmt.Sprintf("Target Path  %s - Error %v", reqt.Path, err1))
+		return
+	}
+
+	defer respt.Body.Close()
+	metadata := moses.DocumentMetadata{}
+	if respt.StatusCode != 200 {
+		/*
+			get user meta data from the source and copy it to the target
+		*/
+		if respt.StatusCode == 404 {
+			reqs.Path = sproxyd.Env + "/" + pn
+			if resps, err1 = sproxyd.GetMetadata(&reqt); err1 != nil {
+				err = errors.New(fmt.Sprintf("Source Path  %s - Error %v", reqt.Path, err1))
+				return
+			} else {
+				/*
+						copy document metadata from the source sproxyd to target sproxyd
+					    and return a
+				*/
+				if _, ok := resps.Header["X-Scal-Usermd"]; ok {
+					usermd = respt.Header["X-Scal-Usermd"][0]
+					if err = metadata.UsermdToStruct(string(usermd[0])); err == nil {
+						nerr := 0
+						status = -1
+						/*
+							write document meta to the target sproxyd
+						    and return it to the caller
+						*/
+						document.DocId = pn
+						document.Metadata = usermd
+						document.NumberOfPages = int32(metadata.TotalPage)
+						if nerr, status = WriteDocMetadata(&reqt, document, false); nerr > 0 {
+							err = errors.New(fmt.Sprintf("Error writing document %s metadata to target sproxyd ", pn))
+						}
+						return
+					} else {
+						err1 = errors.New(fmt.Sprintf("Source : error %v ", err))
+						return
+					}
+
+				} else {
+					gLog.Warning.Printf("Target pn %d does not have user metadata - Try getting it from the source", pn)
+					/*  retrieve source meta data and copy it over  */
+				}
+			}
+		} else {
+			status = respt.StatusCode
+			return document,err,status
+		}
+
+	} else {
+		if _, ok := respt.Header["X-Scal-Usermd"]; ok {
+			usermd = respt.Header["X-Scal-Usermd"][0]
+			if err = metadata.UsermdToStruct(string(usermd[0])); err == nil {
+				document.DocId = pn
+				document.Metadata = usermd
+				document.NumberOfPages = int32(metadata.TotalPage)
+			}
+			status = respt.StatusCode
+			return document, err, status
+		} else {
+			gLog.Warning.Printf("Target pn %d does not have user metadata - Try getting it from the source", pn)
+			/*  retrieve source meta data and copy it over  */
+		}
+	}
+
+	return
+}
+
 func GetPathName(pathId string) (err error, pathName string, status int) {
 
 	var (
@@ -117,8 +204,8 @@ func GetPathName(pathId string) (err error, pathName string, status int) {
 				"X-Scal-Replica-Policy": "immutable",
 			},
 		}
-		resp *http.Response
-		usermd string
+		resp     *http.Response
+		usermd   string
 		pagemeta moses.Pagemeta
 		docmeta  moses.DocumentMetadata
 	)
@@ -141,7 +228,7 @@ func GetPathName(pathId string) (err error, pathName string, status int) {
 							return
 						}
 					}
-				}  else {
+				} else {
 					if err = docmeta.UsermdToStruct(string(usermd)); err == nil {
 						if pathName = docmeta.GetPathName(); err == nil {
 							return
@@ -156,7 +243,7 @@ func GetPathName(pathId string) (err error, pathName string, status int) {
 				return
 			}
 		default:
-			err = errors.New(fmt.Sprintf("Error getting path name for path id %s - Status code: %s", pathId,status))
+			err = errors.New(fmt.Sprintf("Error getting path name for path id %s - Status code: %s", pathId, status))
 		}
 		return
 	}
@@ -178,7 +265,7 @@ func GetUserMetaWithPathId(pathId string) (err error, usermd string, status int)
 			},
 		}
 		resp *http.Response
-		md []byte
+		md   []byte
 	)
 	status = -1
 	if resp, err = sproxyd.GetMetadata(&sproxydRequest); err == nil {
@@ -188,12 +275,12 @@ func GetUserMetaWithPathId(pathId string) (err error, usermd string, status int)
 		case 200:
 			if _, ok := resp.Header["X-Scal-Usermd"]; ok {
 				if md, err = base64.Decode64(resp.Header["X-Scal-Usermd"][0]); err != nil {
-						gLog.Warning.Printf("Invalid user metadata %s", usermd)
-					} else {
-						usermd = string(md)
-						gLog.Trace.Printf("User metadata %s", string(md))
-						return
-					}
+					gLog.Warning.Printf("Invalid user metadata %s", usermd)
+				} else {
+					usermd = string(md)
+					gLog.Trace.Printf("User metadata %s", string(md))
+					return
+				}
 			} else {
 				err = errors.New(fmt.Sprintf("Path Id %s does not have user metadata ", pathId))
 				return
@@ -205,7 +292,6 @@ func GetUserMetaWithPathId(pathId string) (err error, usermd string, status int)
 	}
 	return
 }
-
 
 func GetUserMeta(request sproxyd.HttpRequest, pn string) (err error, usermd string) {
 
@@ -226,6 +312,9 @@ func GetUserMeta(request sproxyd.HttpRequest, pn string) (err error, usermd stri
 	}
 	return
 }
+
+
+
 
 
 func GetHeader(request sproxyd.HttpRequest) (err error, usermd string, contentLength int64) {

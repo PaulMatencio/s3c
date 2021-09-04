@@ -41,7 +41,7 @@ var (
 	err                           error
 	driver, targetDriver          string
 	env, targetEnv                string
-	checkDocsMeta                 bool
+	target                 bool
 )
 
 func initCkFlags(cmd *cobra.Command) {
@@ -60,7 +60,7 @@ func initCkFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&targetDriver, "target-sproxyd-driver", "", "", "target sproxyd driver [bpchord|bparc]")
 	cmd.Flags().StringVarP(&env, "source-sproxyd-env", "", "", "source sproxyd environment [prod|osa]")
 	cmd.Flags().StringVarP(&targetEnv, "target-sproxyd-env", "", "", "target sproxyd environment [prod|osa]")
-	cmd.Flags().BoolVarP(&checkDocsMeta, "check-docs-meta", "", false, "check document metadata ")
+	cmd.Flags().BoolVarP(&target, "check-target-sproxyd", "", false, "check target sproxyd for missing objects")
 }
 
 func init() {
@@ -92,7 +92,7 @@ func Check(cmd *cobra.Command, args []string) {
 	if len(pn) > 0 {
 		//  check just a document
 		chekBlob()
-	} else if checkDocsMeta {
+	} else if target {
 		//  check only documents metadata
 		if len(prefix) == 0 {
 			if !mosesbc.HasSuffix(srcBucket) {
@@ -110,7 +110,7 @@ func Check(cmd *cobra.Command, args []string) {
 				}
 			}
 		}
-		checkDoc(srcBucket)
+		checkTargetSproxyd(srcBucket)
 
 	} else if len(prefix) > 0 {
 		/* check  documents metadata and their  pages */
@@ -140,6 +140,7 @@ func chekBlob() {
 /*
 	called by Check() for a given prefix
     the mose metadata buckets are used to list all the publication for a given prefix
+
 */
 
 // func checkBlobs(bucket string, marker string, prefix string, maxKey int64, maxPage int, maxLoop int) {
@@ -170,7 +171,7 @@ func checkBlobs(bucket string) {
 	}
 }
 
-func checkDoc(bucket string) {
+func checkTargetSproxyd(bucket string) {
 	//  create a session to the source S3
 	//  list the source bucket
 	if srcS3 := mosesbc.CreateS3Session("check", "source"); srcS3 != nil {
@@ -182,7 +183,7 @@ func checkDoc(bucket string) {
 			Marker:  marker,
 			// Delimiter: delimiter,
 		}
-		mosesbc.CheckDocs(request, maxLoop)
+		mosesbc.CheckTargetSproxyd(request, maxLoop,maxPage)
 	} else {
 		gLog.Error.Printf("Failed to create a S3 source session")
 	}
