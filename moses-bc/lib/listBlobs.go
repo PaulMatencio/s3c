@@ -132,7 +132,7 @@ func listBlob(pn string, np int) int {
 	/*
 		check if pdf and page 0
 	*/
-	if err, pdf, p0 = checkPdfP0(pn); err != nil {
+	if err, pdf, p0 = checkPdfP0(request1,pn); err != nil {
 		return 1
 	}
 	if p0 {
@@ -193,13 +193,20 @@ func listLargeBlob(pn string, np int, maxPage int) int {
 		nerrors, terrors int = 0, 0
 		p0, pdf          bool
 		err              error
+		request1 = sproxyd.HttpRequest{
+			Hspool: sproxyd.HP,
+			Client: &http.Client{
+				Timeout:   sproxyd.ReadTimeout,
+				Transport: sproxyd.Transport,
+			},
+		}
 	)
 
 	/*
 		Get the document meta data
 	*/
 
-	if err, pdf, p0 = checkPdfP0(pn); err != nil {
+	if err, pdf, p0 = checkPdfP0(request1,pn); err != nil {
 		return 1
 	}
 	if p0 {

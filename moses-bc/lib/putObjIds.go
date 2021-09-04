@@ -153,7 +153,7 @@ func _opById1(method string, pn string, np int, replace bool, check bool) int {
 	/*
 		Check if document has a Clipping page
 	*/
-	if err, _, p0 = checkPdfP0(pn); err != nil {
+	if err, _, p0 = checkPdfP0(request,pn); err != nil {
 		return 1
 	}
 	if p0 {
