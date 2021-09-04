@@ -456,13 +456,11 @@ func CheckTargetSproxyd(request datatype.ListObjRequest, maxLoop int, maxPage in
 					pn := *v.Key
 					lastModified := *v.LastModified
 					wg1.Add(1)
-					req1.Path = sproxyd.TargetEnv + "/"+ pn
-					req2.Path = sproxyd.Env + "/"+ pn
 
-					go func(req1 *sproxyd.HttpRequest, req2 *sproxyd.HttpRequest, lastModified time.Time) {
+					go func(pn string, req1 *sproxyd.HttpRequest, req2 *sproxyd.HttpRequest, lastModified time.Time) {
 						defer wg1.Done()
-						if np, err := getPagesNumber(req1, req2, lastModified); np > 0 {
-							ret1 := CheckTargetPages(req1.Path, np, MaxPage, lastModified)
+						if np, err := getPagesNumber(pn, req1, req2, lastModified); np > 0 {
+							ret1 := CheckTargetPages(pn, np, MaxPage, lastModified)
 							if ret1.Nerrs > 0 {
 								le.Lock()
 								ret.Nerrs += ret1.Nerrs
@@ -481,7 +479,7 @@ func CheckTargetSproxyd(request datatype.ListObjRequest, maxLoop int, maxPage in
 							le.Unlock()
 						}
 
-					}(&req1, &req2, lastModified)
+					}(pn, &req1, &req2, lastModified)
 				}
 				wg1.Wait()
 				if *result.IsTruncated {
@@ -506,13 +504,15 @@ func CheckTargetSproxyd(request datatype.ListObjRequest, maxLoop int, maxPage in
 	return
 }
 
-func getPagesNumber(req1 *sproxyd.HttpRequest, req2 *sproxyd.HttpRequest, lastModified time.Time) (np int, err error) {
+func getPagesNumber(pn string, req1 *sproxyd.HttpRequest, req2 *sproxyd.HttpRequest, lastModified time.Time) (np int, err error) {
 
 	var (
 		docmeta = meta.DocumentMetadata{}
 		resp    *http.Response
 		docmd   []byte
 	)
+	pn1 := sproxyd.TargetEnv+"/"+pn
+	req1.Path = pn1
 	gLog.Trace.Printf("Get pages number for %s - Host %s ",req1.Path,req1.Hspool.Hosts())
 	if resp, err = sproxyd.GetMetadata(req1); err == nil {
 		defer resp.Body.Close()
@@ -530,6 +530,8 @@ func getPagesNumber(req1 *sproxyd.HttpRequest, req2 *sproxyd.HttpRequest, lastMo
 		} else {
 			gLog.Warning.Printf("Target Docid %s - status code %d - LastModified %v", req1.Path, resp.StatusCode, lastModified)
 			/*  Continue with the source */
+			pn1 := sproxyd.TargetEnv+"/"+pn
+			req2.Path = pn1
 			if resp, err = sproxyd.GetMetadata(req2); err == nil {
 				defer resp.Body.Close()
 				if resp.StatusCode == 200 {
@@ -622,7 +624,7 @@ func checkPages(pn string, np int, lastModified time.Time) (ret Ret) {
 	}
 
 	for k := start; k <= np; k++ {
-		request1.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
+		request1.Path = sproxyd.TargetEnv + "/" + pn + "/p" + strconv.Itoa(k)
 		wg2.Add(1)
 
 		go func(request1 sproxyd.HttpRequest, pn string, k int) {
@@ -712,15 +714,18 @@ func checkMaxPages(pn string, np int, maxPage int, lastModified time.Time) (ret 
 		if end > np {
 			end = np
 		}
+		
 		ret.Nerrs += ret1.Nerrs
 		ret.N404s += ret1.N404s
 
 	}
+
 	if r > 0 {
 		ret1 := checkPagePart(&request1, pn, np, q*maxPage+1, np)
 		ret.Nerrs += ret1.Nerrs
 		ret.N404s += ret1.N404s
 	}
+
 	ret.Npages = np
 	ret.Ndocs += 1
 	return ret
@@ -740,7 +745,7 @@ func checkPagePart(request1 *sproxyd.HttpRequest, pn string, np int, start int, 
 	gLog.Info.Printf("Getpart of pn %s - start-page %d - end-page %d ", pn, start, end)
 	for k := start; k <= end; k++ {
 		wg2.Add(1)
-		request1.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
+		request1.Path = sproxyd.TargetEnv + "/" + pn + "/p" + strconv.Itoa(k)
 		go func(request1 sproxyd.HttpRequest, pn string, np int, k int) {
 			gLog.Trace.Printf("Getpart of pn: %s - url:%s", pn, request1.Path)
 			defer wg2.Done()
