@@ -539,8 +539,9 @@ func checkPages(pn string, np int) (ret Ret) {
 				/*
 					Check if 404 at source
 				*/
-				request2.Path = sproxyd.TargetEnv + "/" + pn + "/pdf"
+				request2.Path = sproxyd.Env + "/" + pn + "/pdf"
 				if resp2, err := sproxyd.GetMetadata(&request2); err == nil {
+					defer resp2.Body.Close()
 					if resp2.StatusCode == 404 {
 						ret.N404s -= 1
 						gLog.Warning.Printf("Source Page %s - status code %d ", request2.Path, resp2.StatusCode)
@@ -567,6 +568,14 @@ func checkPages(pn string, np int) (ret Ret) {
 					ret.N404s += 1
 					l4.Unlock()
 					gLog.Warning.Printf("Target Page %s - status code %d ", request1.Path, resp.StatusCode)
+					request2.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
+					if resp2, err := sproxyd.GetMetadata(&request2); err == nil {
+						defer resp2.Body.Close()
+						if resp2.StatusCode == 404 {
+							ret.N404s -= 1
+							gLog.Warning.Printf("Source Page %s - status code %d ", request2.Path, resp2.StatusCode)
+						}
+					}
 				}
 				gLog.Trace.Printf("Target Page %s - status code %d ", request1.Path, resp.StatusCode)
 
@@ -604,7 +613,7 @@ func checkMaxPages(pn string, np int, maxPage int) (ret Ret) {
 			},
 		}
 		request2 = sproxyd.HttpRequest{
-			Hspool: sproxyd.TargetHP,
+			Hspool: sproxyd.HP,
 			Client: &http.Client{
 				Timeout:   sproxyd.ReadTimeout,
 				Transport: sproxyd.Transport,
@@ -639,6 +648,7 @@ func checkMaxPages(pn string, np int, maxPage int) (ret Ret) {
 				*/
 				request2.Path = sproxyd.TargetEnv + "/" + pn + "/pdf"
 				if resp2, err := sproxyd.GetMetadata(&request2); err == nil {
+					defer resp2.Body.Close()
 					if resp2.StatusCode == 404 {
 						ret.N404s -= 1
 						gLog.Warning.Printf("Source Page %s - status code %d ", request2.Path, resp2.StatusCode)
@@ -684,13 +694,20 @@ func checkMaxPages(pn string, np int, maxPage int) (ret Ret) {
 
 }
 
-func checkPagePart(request1 *sproxyd.HttpRequest, pn string, np int, start int, end int) (ret Ret) {
+func checkPagePart(request1 *sproxyd.HttpRequest,  pn string, np int, start int, end int) (ret Ret) {
 
 	var (
 		nerrors int = 0
 		wg2     sync.WaitGroup
 		le, l4  sync.Mutex
 		n404s   int
+		request2 = sproxyd.HttpRequest{
+			Hspool: sproxyd.HP,
+			Client: &http.Client{
+				Timeout:   sproxyd.ReadTimeout,
+				Transport: sproxyd.Transport,
+			},
+		}
 	)
 
 	gLog.Info.Printf("Getpart of pn %s - start-page %d - end-page %d ", pn, start, end)
@@ -708,8 +725,16 @@ func checkPagePart(request1 *sproxyd.HttpRequest, pn string, np int, start int, 
 					n404s = 1
 					l4.Unlock()
 					gLog.Warning.Printf("Target Page %s - status code %d ", request1.Path, resp.StatusCode)
- 				} else {
- 					gLog.Trace.Printf("Target Page %s - status code %d ", request1.Path, resp.StatusCode)
+					request2.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
+					if resp2, err := sproxyd.GetMetadata(&request2); err == nil {
+						defer resp2.Body.Close()
+						if resp2.StatusCode == 404 {
+							ret.N404s -= 1
+							gLog.Warning.Printf("Source Page %s - status code %d ", request2.Path, resp2.StatusCode)
+						}
+					}
+				} else {
+					gLog.Trace.Printf("Target Page %s - status code %d ", request1.Path, resp.StatusCode)
 				}
 			} else {
 				gLog.Error.Printf("Target page %s -  error %v", request1.Path, err)
