@@ -425,6 +425,7 @@ func comparePdf(pn string) (error, bool) {
 
 */
 func CheckTargetSproxyd(request datatype.ListObjRequest, maxLoop int, maxPage int) (ret Ret) {
+
 	var (
 		N int = 0
 		nextmarker string
@@ -512,6 +513,7 @@ func getPagesNumber(req1 *sproxyd.HttpRequest, req2 *sproxyd.HttpRequest, lastMo
 		resp    *http.Response
 		docmd   []byte
 	)
+	gLog.Trace.Printf("Get pages number for %s - Host %s ",req1.Path,req1.Hspool.Hosts())
 	if resp, err = sproxyd.GetMetadata(req1); err == nil {
 		defer resp.Body.Close()
 		if resp.StatusCode == 200 {
@@ -551,6 +553,7 @@ func getPagesNumber(req1 *sproxyd.HttpRequest, req2 *sproxyd.HttpRequest, lastMo
 	} else {
 		err = errors.New(fmt.Sprintf("Target: %s - Error %v", err, req1.Path))
 	}
+	gLog.Trace.Printf("Document  %s  - Number of pages %d ",req1.Path,np)
 	return
 }
 
