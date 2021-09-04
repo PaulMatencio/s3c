@@ -503,14 +503,10 @@ func CheckTargetSproxyd(request datatype.ListObjRequest, maxLoop int, maxPage in
 
 func getDocMeta(pn string, req1 *sproxyd.HttpRequest, req2 *sproxyd.HttpRequest, lastModified time.Time) (docmeta *meta.DocumentMetadata, err error) {
 
-	var (
-		// docmeta = meta.DocumentMetadata{}
-		resp *http.Response
-		// docmd   []byte
-	)
+	var  resp *http.Response
 	pn1 := sproxyd.TargetEnv + "/" + pn
 	req1.Path = pn1
-	gLog.Trace.Printf("Get pages number for %s - Host %s ", req1.Path, req1.Hspool.Hosts())
+	gLog.Trace.Printf("Get document meta for  %s - Host %s ", req1.Path, req1.Hspool.Hosts())
 	if resp, err = sproxyd.GetMetadata(req1); err == nil {
 		defer resp.Body.Close()
 		if resp.StatusCode == 200 {
@@ -557,15 +553,15 @@ func CheckTargetPages(pn string, docmeta *meta.DocumentMetadata, maxPage int, la
 		start = time.Now()
 		np = docmeta.TotalPage
 	)
+	gLog.Trace.Printf("Document %s - Number of pages %d  - max page %d",pn, np,maxPage)
 	if np <= maxPage {
 		ret = checkPages(pn, docmeta, lastModified)
 		gLog.Info.Printf("Elapsed time %v", time.Since(start))
-		return
 	} else {
 		ret = checkMaxPages(pn, docmeta, maxPage, lastModified)
 		gLog.Info.Printf("Elapsed time %v", time.Since(start))
-		return
 	}
+	return
 }
 
 /*
