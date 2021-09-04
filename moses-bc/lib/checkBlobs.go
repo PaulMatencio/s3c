@@ -707,8 +707,10 @@ func checkPagePart(request1 *sproxyd.HttpRequest, pn string, np int, start int, 
 					l4.Lock()
 					n404s = 1
 					l4.Unlock()
+					gLog.Warning.Printf("Target Page %s - status code %d ", request1.Path, resp.StatusCode)
+ 				} else {
+ 					gLog.Trace.Printf("Target Page %s - status code %d ", request1.Path, resp.StatusCode)
 				}
-				gLog.Warning.Printf("Target Page %s - status code %d ", request1.Path, resp.StatusCode)
 			} else {
 				gLog.Error.Printf("Target page %s -  error %v", request1.Path, err)
 				le.Lock()
