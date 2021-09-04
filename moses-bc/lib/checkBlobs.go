@@ -558,7 +558,6 @@ func checkPages(pn string, np int) (ret Ret) {
 	for k := start; k <= np; k++ {
 		request1.Path = sproxyd.TargetEnv + "/" + pn + "/p" + strconv.Itoa(k)
 		wg2.Add(1)
-
 		go func(request1 sproxyd.HttpRequest, pn string, k int) {
 			defer wg2.Done()
 			if resp, err := sproxyd.GetMetadata(&request1); err == nil {
@@ -702,7 +701,6 @@ func checkPagePart(request1 *sproxyd.HttpRequest, pn string, np int, start int, 
 		go func(request1 sproxyd.HttpRequest, pn string, np int, k int) {
 			gLog.Trace.Printf("Getpart of pn: %s - url:%s", pn, request1.Path)
 			defer wg2.Done()
-			request1.Path = pn
 			if resp, err := sproxyd.GetMetadata(&request1); err == nil {
 				defer resp.Body.Close()
 				if resp.StatusCode == 404 {
