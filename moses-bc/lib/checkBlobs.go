@@ -440,6 +440,7 @@ func CheckTargetSproxyd(request datatype.ListObjRequest, maxLoop int, maxPage in
 			}}
 		le, l4 sync.Mutex
 	)
+
 	for {
 		var (
 			result *s3.ListObjectsOutput
@@ -457,7 +458,7 @@ func CheckTargetSproxyd(request datatype.ListObjRequest, maxLoop int, maxPage in
 					go func(pn string, req1 *sproxyd.HttpRequest, req2 *sproxyd.HttpRequest, lastModified time.Time) {
 						defer wg1.Done()
 						if docmeta, err := getDocMeta(pn, req1, req2, lastModified); err == nil  && docmeta.TotalPage >0 {
-							ret1 := CheckTargetPages(pn, docmeta, MaxPage, lastModified)
+							ret1 := CheckTargetPages(pn, docmeta, maxPage, lastModified)
 							if ret1.Nerrs > 0 {
 								le.Lock()
 								ret.Nerrs += ret1.Nerrs
