@@ -504,7 +504,7 @@ func getPagesNumber(req1 *sproxyd.HttpRequest, req2 *sproxyd.HttpRequest, lastMo
 		if resp.StatusCode == 200 {
 			userm := resp.Header["X-Scal-Usermd"][0]
 			if docmd, err = base64.Decode64(userm); err == nil {
-				if err = json.Unmarshal(docmd, docmeta); err == nil {
+				if err = json.Unmarshal(docmd, &docmeta); err == nil {
 					np = docmeta.TotalPage
 				} else {
 					err = errors.New(fmt.Sprintf("Target: %s - Error %v", err, req1.Path))
@@ -521,7 +521,7 @@ func getPagesNumber(req1 *sproxyd.HttpRequest, req2 *sproxyd.HttpRequest, lastMo
 				if resp.StatusCode == 200 {
 					userm := resp.Header["X-Scal-Usermd"][0]
 					if docmd, err := base64.Decode64(userm); err == nil {
-						if err = json.Unmarshal(docmd, docmeta); err == nil {
+						if err = json.Unmarshal(docmd, &docmeta); err == nil {
 							np = docmeta.TotalPage
 						} else {
 							err = errors.New(fmt.Sprintf("Source: %s - Error %v", err, req2.Path))
