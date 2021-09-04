@@ -349,6 +349,7 @@ func compareObj(pn string, pagen int, body *[]byte, usermd string) (error, bool)
 	Check if the document contains a pdf and/or  a page 0
 */
 func checkPdfP0(request sproxyd.HttpRequest, pn string) (error, bool, bool) {
+
 	/*
 		request1 := sproxyd.HttpRequest{
 			Hspool: sproxyd.HP,
@@ -417,7 +418,6 @@ func comparePdf(pn string) (error, bool) {
 /*
 	called by cmd.CheckBlobs  with   --check-target-proxy on
 	Check  Target sproxyd for 404
-
 */
 func CheckTargetSproxyd(request datatype.ListObjRequest, maxLoop int, maxPage int) {
 
@@ -470,7 +470,6 @@ func CheckTargetSproxyd(request datatype.ListObjRequest, maxLoop int, maxPage in
 
 }
 
-
 func CheckTargetPages(pn string, np int, maxPage int) (ret Ret) {
 
 	var (
@@ -494,6 +493,13 @@ func checkPages(pn string, np int) (ret Ret) {
 	var (
 		request1 = sproxyd.HttpRequest{
 			Hspool: sproxyd.TargetHP,
+			Client: &http.Client{
+				Timeout:   sproxyd.ReadTimeout,
+				Transport: sproxyd.Transport,
+			},
+		}
+		request2 = sproxyd.HttpRequest{
+			Hspool: sproxyd.HP,
 			Client: &http.Client{
 				Timeout:   sproxyd.ReadTimeout,
 				Transport: sproxyd.Transport,
@@ -530,6 +536,16 @@ func checkPages(pn string, np int) (ret Ret) {
 			if resp.StatusCode == 404 {
 				ret.N404s += 1
 				gLog.Warning.Printf("Target Page %s - status code %d ", request1.Path, resp.StatusCode)
+				/*
+					Check if 404 at source
+				*/
+				request2.Path = sproxyd.TargetEnv + "/" + pn + "/pdf"
+				if resp2, err := sproxyd.GetMetadata(&request2); err == nil {
+					if resp2.StatusCode == 404 {
+						ret.N404s -= 1
+						gLog.Warning.Printf("Source Page %s - status code %d ", request2.Path, resp2.StatusCode)
+					}
+				}
 			}
 			gLog.Trace.Printf("Target Page %s - status code %d ", request1.Path, resp.StatusCode)
 		} else {
@@ -558,7 +574,7 @@ func checkPages(pn string, np int) (ret Ret) {
 			} else {
 				gLog.Error.Printf("Target page %s -  error %v", request1.Path, err)
 				le.Lock()
-				ret.Nerrs +=1
+				ret.Nerrs += 1
 				le.Unlock()
 			}
 		}(request1, pn, k)
@@ -579,9 +595,16 @@ func checkMaxPages(pn string, np int, maxPage int) (ret Ret) {
 
 	var (
 		q, r, start, end int
-		err error
-		pdf,p0  bool
+		err              error
+		pdf, p0          bool
 		request1         = sproxyd.HttpRequest{
+			Hspool: sproxyd.TargetHP,
+			Client: &http.Client{
+				Timeout:   sproxyd.ReadTimeout,
+				Transport: sproxyd.Transport,
+			},
+		}
+		request2 = sproxyd.HttpRequest{
 			Hspool: sproxyd.TargetHP,
 			Client: &http.Client{
 				Timeout:   sproxyd.ReadTimeout,
@@ -612,6 +635,16 @@ func checkMaxPages(pn string, np int, maxPage int) (ret Ret) {
 			if resp.StatusCode == 404 {
 				ret.N404s += 1
 				gLog.Warning.Printf("Target Page %s - status code %d ", request1.Path, resp.StatusCode)
+				/*
+					Check if 404 at source
+				*/
+				request2.Path = sproxyd.TargetEnv + "/" + pn + "/pdf"
+				if resp2, err := sproxyd.GetMetadata(&request2); err == nil {
+					if resp2.StatusCode == 404 {
+						ret.N404s -= 1
+						gLog.Warning.Printf("Source Page %s - status code %d ", request2.Path, resp2.StatusCode)
+					}
+				}
 			}
 			gLog.Trace.Printf("Target Page %s - status code %d ", request1.Path, resp.StatusCode)
 		} else {
