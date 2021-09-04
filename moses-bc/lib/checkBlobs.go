@@ -138,7 +138,7 @@ func checkBlob(pn string, np int) int {
 	/*
 		Check document has a pdf and/or Clipping page
 	*/
-	if err, pdf, p0 = checkPdfP0(pn); err != nil {
+	if err, pdf, p0 = checkPdfP0(request1,pn); err != nil {
 		return 1
 	}
 	if p0 {
@@ -219,13 +219,20 @@ func checkLargeBlob(pn string, np int, maxPage int) int {
 		nerrors, terrors int = 0, 0
 		p0, pdf          bool
 		err              error
+		request1 = sproxyd.HttpRequest{
+			Hspool: sproxyd.HP,
+			Client: &http.Client{
+				Timeout:   sproxyd.ReadTimeout,
+				Transport: sproxyd.Transport,
+			},
+		}
 	)
 
 	/*
 		Get the document meta data
 	*/
 
-	if err, pdf, p0 = checkPdfP0(pn); err != nil {
+	if err, pdf, p0 = checkPdfP0(request1,pn); err != nil {
 		return 1
 	}
 	if p0 {
@@ -343,8 +350,8 @@ func compareObj(pn string, pagen int, body *[]byte, usermd string) (error, bool)
 /*
 	Check if the document contains a pdf and/or  a page 0
 */
-func checkPdfP0(pn string) (error, bool, bool) {
-
+func checkPdfP0(request sproxyd.HttpRequest, pn string) (error, bool, bool) {
+	/*
 	request1 := sproxyd.HttpRequest{
 		Hspool: sproxyd.HP,
 		Client: &http.Client{
@@ -352,7 +359,10 @@ func checkPdfP0(pn string) (error, bool, bool) {
 			Transport: sproxyd.Transport,
 		},
 	}
-	if err, usermd := GetUserMeta(request1, pn); err != nil {
+
+	 */
+
+	if err, usermd := GetUserMeta(request, pn); err != nil {
 		gLog.Error.Printf("Error %v  getting usermeta of %s", err, pn)
 		return err, false, false
 	} else {
@@ -360,6 +370,8 @@ func checkPdfP0(pn string) (error, bool, bool) {
 		return err, pdf, p0
 	}
 }
+
+
 
 /*
 	compare source and target pdf
@@ -444,6 +456,7 @@ func CheckTargetSproxyd(request datatype.ListObjRequest, maxLoop int, maxPage in
 					lastModified := *v.LastModified
 					wg1.Add(1)
 					req1.Path = sproxyd.TargetEnv + "/"+ pn
+					req2.Path = sproxyd.Env + "/"+ pn
 
 					go func(req1 *sproxyd.HttpRequest, req2 *sproxyd.HttpRequest, lastModified time.Time) {
 						defer wg1.Done()
@@ -515,7 +528,6 @@ func getPagesNumber(req1 *sproxyd.HttpRequest, req2 *sproxyd.HttpRequest, lastMo
 		} else {
 			gLog.Warning.Printf("Target Docid %s - status code %d - LastModified %v", req1.Path, resp.StatusCode, lastModified)
 			/*  Continue with the source */
-			req2.Path = req1.Path
 			if resp, err = sproxyd.GetMetadata(req2); err == nil {
 				defer resp.Body.Close()
 				if resp.StatusCode == 200 {
@@ -580,7 +592,8 @@ func checkPages(pn string, np int, lastModified time.Time) (ret Ret) {
 	/*
 		Check document has a pdf and/or Clipping page
 	*/
-	if err, pdf, p0 = checkPdfP0(pn); err != nil {
+	gLog.Trace.Printf("CheckPages pn %d  - number of pages  %d ",pn,np)
+	if err, pdf, p0 = checkPdfP0(request1,pn); err != nil {
 		ret.Nerrs = 1
 		ret.Npages = 1
 		return
@@ -656,7 +669,7 @@ func checkMaxPages(pn string, np int, maxPage int, lastModified time.Time) (ret 
 	/*
 		Get the document meta data
 	*/
-	if err, pdf, p0 = checkPdfP0(pn); err != nil {
+	if err, pdf, p0 = checkPdfP0(request1,pn); err != nil {
 		ret.Nerrs += 1
 		return
 	}
