@@ -443,7 +443,8 @@ func CheckTargetSproxyd(request datatype.ListObjRequest, maxLoop int, maxPage in
 					pn := *v.Key
 					lastModified := *v.LastModified
 					wg1.Add(1)
-					req1.Path = pn
+					req1.Path = sproxyd.TargetEnv + "/"+ pn
+
 					go func(req1 *sproxyd.HttpRequest, req2 *sproxyd.HttpRequest, lastModified time.Time) {
 						defer wg1.Done()
 						if np, err := getPagesNumber(req1, req2, lastModified); np > 0 {
