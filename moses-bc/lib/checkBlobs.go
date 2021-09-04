@@ -458,6 +458,7 @@ func CheckTargetSproxyd(request datatype.ListObjRequest, maxLoop int, maxPage in
 					go func(pn string, req1 *sproxyd.HttpRequest, req2 *sproxyd.HttpRequest, lastModified time.Time) {
 						defer wg1.Done()
 						if docmeta, err := getDocMeta(pn, req1, req2, lastModified); err == nil  && docmeta.TotalPage >0 {
+							gLog.Info.Printf("Document pn %s -  Number of Pages %d ",pn,docmeta.TotalPage)
 							ret1 := CheckTargetPages(pn, docmeta, maxPage, lastModified)
 							if ret1.Nerrs > 0 {
 								le.Lock()
@@ -502,9 +503,13 @@ func CheckTargetSproxyd(request datatype.ListObjRequest, maxLoop int, maxPage in
 	return
 }
 
-func getDocMeta(pn string, req1 *sproxyd.HttpRequest, req2 *sproxyd.HttpRequest, lastModified time.Time) (docmeta *meta.DocumentMetadata, err error) {
+func getDocMeta(pn string, req1 *sproxyd.HttpRequest, req2 *sproxyd.HttpRequest, lastModified time.Time) ( *meta.DocumentMetadata, error) {
 
-	var  resp *http.Response
+	var (
+		resp *http.Response
+		err error
+		docmeta *meta.DocumentMetadata
+	)
 	pn1 := sproxyd.TargetEnv + "/" + pn
 	req1.Path = pn1
 	gLog.Trace.Printf("Get document meta for  %s - Host %s ", req1.Path, req1.Hspool.Hosts())
@@ -545,7 +550,7 @@ func getDocMeta(pn string, req1 *sproxyd.HttpRequest, req2 *sproxyd.HttpRequest,
 	} else {
 		err = errors.New(fmt.Sprintf("Target: %s - Error %v", err, req1.Path))
 	}
-	return
+	return docmeta,err
 }
 
 func CheckTargetPages(pn string, docmeta *meta.DocumentMetadata, maxPage int, lastModified time.Time) (ret Ret) {
@@ -585,6 +590,7 @@ func checkPages(pn string, docmeta *meta.DocumentMetadata, lastModified time.Tim
 	)
 
 	np := docmeta.TotalPage
+	gLog.Info.Printf("Document %s contains  %d pages ",pn,np)
 	if len(docmeta.FpClipping.CountryCode) > 0 {
 		start = 0
 		gLog.Info.Printf("DocId %s contains a page 0", pn)
@@ -604,7 +610,7 @@ func checkPages(pn string, docmeta *meta.DocumentMetadata, lastModified time.Tim
 			ret.Npages += 1
 		}
 	}
-
+	gLog.Trace.Printf("Document %s has %n pages",pn, np)
 	for k := start; k <= np; k++ {
 		request1.Path = sproxyd.TargetEnv + "/" + pn + "/p" + strconv.Itoa(k)
 		wg2.Add(1)
@@ -617,8 +623,9 @@ func checkPages(pn string, docmeta *meta.DocumentMetadata, lastModified time.Tim
 					l4.Lock()
 					n404s += 1
 					l4.Unlock()
+					gLog.Warning.Printf("Target Page %s - status code %d ", request1.Path, resp.StatusCode)
 				}
-				gLog.Warning.Printf("Target Page %s - status code %d ", request1.Path, resp.StatusCode)
+
 			} else {
 				gLog.Error.Printf("Target page %s -  error %v", request1.Path, err)
 				le.Lock()
@@ -679,6 +686,7 @@ func checkMaxPages(pn string, docmeta *meta.DocumentMetadata, maxPage int, lastM
 	q = np / maxPage
 	r = np % maxPage
 
+
 	gLog.Warning.Printf("Big document %s  - number of pages %d ", pn, np)
 
 	for s := 1; s <= q; s++ {
@@ -717,6 +725,7 @@ func checkPagePart(request1 *sproxyd.HttpRequest, pn string, np int, start int, 
 	)
 
 	gLog.Info.Printf("Getpart of pn %s - start-page %d - end-page %d ", pn, start, end)
+
 	for k := start; k <= end; k++ {
 		wg2.Add(1)
 		request1.Path = sproxyd.TargetEnv + "/" + pn + "/p" + strconv.Itoa(k)
