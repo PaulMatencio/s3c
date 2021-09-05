@@ -179,7 +179,7 @@ func initConfig() {
 	logOutput:= utils.GetLogOutput(*viper.GetViper())
 	loglevel = utils.SetLogLevel(*viper.GetViper(),loglevel)
 	//bucketNumber = utils.GetNumberOfBucket(*viper.GetViper())
-	levelDBUrl = utils.GetLevelDBUrl(*viper.GetViper())
+	// levelDBUrl = utils.GetLevelDBUrl(*viper.GetViper())
 	if logOutput != "terminal" {
 		logOutput += string(os.PathSeparator) + bucket
 	}
