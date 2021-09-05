@@ -161,7 +161,7 @@ func CatchUpSproxyd(client *http.Client,bucket string) {
 					if err = json.Unmarshal(usermd,&s3meta); err == nil {
 						wg1.Add(1)
 						go func(c datatype.Contents,s3meta *meta.UserMd) {
-							gLog.Info.Printf("CatchUpPages( %s, %s, %d)", c.Key, s3meta.TotalPages, maxPage)
+							// gLog.Info.Printf("CatchUpPages( %s, %s, %d)", c.Key, s3meta.TotalPages, maxPage)
 							np,_ := strconv.Atoi(s3meta.TotalPages)
 							mosesbc.CatchUpBlobs(c.Key, np, maxPage,repair)
 							wg1.Done()
