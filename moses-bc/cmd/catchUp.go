@@ -175,7 +175,7 @@ func CatchUpSproxyd(client *http.Client,bucket string) {
 				wg1.Wait()
 				if l > 0 {
 					nextMarker = s3Meta.Contents[l-1].Key
-					gLog.Info.Printf("Next marker %s Istruncated %v", nextMarker, s3Meta.IsTruncated)
+					gLog.Info.Printf("Loop %d - Next marker %s - Istruncated %v", N, nextMarker, s3Meta.IsTruncated)
 				}
 				N++
 			} else {
