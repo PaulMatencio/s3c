@@ -43,6 +43,7 @@ var (
 		Long: `Command to copy missing sproxyd  objects`,
 		Run: CatchUp,
 	}
+	levelDBUrl string
 )
 
 func initCatFlags(cmd *cobra.Command) {
@@ -83,6 +84,7 @@ func CatchUp(cmd *cobra.Command, args []string) {
 
 	gLog.Info.Printf("Source Env: %s - Source Driver: %s - Source Url: %s", sproxyd.Env, sproxyd.Driver, sproxyd.Url)
 	gLog.Info.Printf("Target Env: %s - Target Driver: %s - Target Url: %s", sproxyd.TargetEnv, sproxyd.TargetDriver, sproxyd.TargetUrl)
+	gLog.Info.Printf("Level DB URL: %s",levelDBUrl)
 
 	if len(srcBucket) == 0 {
 		gLog.Error.Printf("Source bucket is missing")

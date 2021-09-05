@@ -46,7 +46,7 @@ const (
 
 var (
 	Config string
-	bucket,levelDBUrl,prefix	 string
+	bucket,prefix	 string
 	verbose, Debug,autoCompletion 	 bool
 	loglevel,profiling, bucketNumber, retryNumber  int
 	waitTime time.Duration
