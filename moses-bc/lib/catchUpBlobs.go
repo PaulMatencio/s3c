@@ -340,7 +340,7 @@ func catchUpPagePart(request1 *sproxyd.HttpRequest, pn string, np int, start int
 		}
 	)
 
-	gLog.Info.Printf("Getpart of pn %s - start-page %d - end-page %d ", pn, start, end)
+	gLog.Trace.Printf("Getpart of pn %s - start-page %d - end-page %d ", pn, start, end)
 
 	for k := start; k <= end; k++ {
 		wg2.Add(1)
