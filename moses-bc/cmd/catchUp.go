@@ -38,11 +38,9 @@ import (
 
 var (
 	catchUpCmd = &cobra.Command{
-		Use:   "check",
-		Short: "Command to compare moses data and directory between two Moses instances.",
-		Long: `Command to compare moses data and directory between two Moses instances.
-        As for instance  comparing restore vs source instances.
-        It will compare directory,data and metadata of the given key or those keys that begin with the specified prefix`,
+		Use:   "catch-up",
+		Short: "Command to copy missing sproxyd  objects",
+		Long: `Command to copy missing sproxyd  objects`,
 		Run: CatchUp,
 	}
 )
@@ -53,7 +51,6 @@ func initCatFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", uPrefix)
 	cmd.Flags().Int64VarP(&maxKey, "max-key", "m", 20, "maximum number of documents (keys) to be backed up concurrently -Check --max-page for maximum number of concurrent pages")
 	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key - Useful for rerun")
-	// cmd.Flags().StringVarP(&delimiter, "delimiter", "d", "", "prefix  delimiter")
 	cmd.Flags().IntVarP(&maxPage, "max-page", "", 50, "maximum number of concurrent pages per document. check  --max-key for maximum number of concurrent documents")
 	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, "maximum number of loop, 0 means no upper limit")
 	cmd.Flags().StringVarP(&srcUrl, "source-sproxyd-url", "s", "", "source sproxyd endpoints  http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
@@ -62,13 +59,13 @@ func initCatFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&targetDriver, "target-sproxyd-driver", "", "", "target sproxyd driver [bpchord|bparc]")
 	cmd.Flags().StringVarP(&env, "source-sproxyd-env", "", "", "source sproxyd environment [prod|osa]")
 	cmd.Flags().StringVarP(&targetEnv, "target-sproxyd-env", "", "", "target sproxyd environment [prod|osa]")
-	cmd.Flags().StringVarP(&levelDBUrl, "levelDB-url", "", "http://10.147.68.133:9000", "levelDB Url")
-	// cmd.Flags().BoolVarP(&target, "check-target-sproxyd", "", false, "check target sproxyd for missing objects")
+	cmd.Flags().StringVarP(&levelDBUrl, "levelDB-url", "", "http://10.147.68.133:9000", "levelDB Url - moses s3 index (directory)")
+
 }
 
 func init() {
 	rootCmd.AddCommand(catchUpCmd)
-	initCkFlags(catchUpCmd)
+	initCatFlags(catchUpCmd)
 }
 
 func CatchUp(cmd *cobra.Command, args []string) {
