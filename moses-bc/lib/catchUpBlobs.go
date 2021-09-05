@@ -100,7 +100,7 @@ func catchUpPages(pn string, np int, repair bool) (ret Ret) {
 			defer resp.Body.Close()
 			if resp.StatusCode == 404 {
 				ret.N404s += 1
-				gLog.Warning.Printf("Target Page %s - status code %d ", request1.Path, resp.StatusCode)
+				gLog.Warning.Printf("Target Pdf %s - status code %d ", request1.Path, resp.StatusCode)
 				/*
 					Check if 404 at source
 				*/
@@ -109,13 +109,13 @@ func catchUpPages(pn string, np int, repair bool) (ret Ret) {
 					defer resp2.Body.Close()
 					if resp2.StatusCode == 404 {
 						ret.N404s -= 1
-						gLog.Warning.Printf("Source Page %s - status code %d ", request2.Path, resp2.StatusCode)
+						gLog.Warning.Printf("Source Pdf %s - status code %d ", request2.Path, resp2.StatusCode)
 					} else {
 						if repair {
 							request3.Path = request1.Path
 
 						} else {
-							gLog.Info.Printf("Target object %s  is repairable", request1.Path)
+							gLog.Info.Printf("Target Pdf %s  is repairable", request1.Path)
 						}
 					}
 				}
@@ -255,7 +255,7 @@ func catchUpMaxPages(pn string, np int, maxPage int, repair bool) (ret Ret) {
 			defer resp.Body.Close()
 			if resp.StatusCode == 404 {
 				ret.N404s += 1
-				gLog.Warning.Printf("Target Page %s - status code %d ", request1.Path, resp.StatusCode)
+				gLog.Warning.Printf("Target Pdf %s - status code %d ", request1.Path, resp.StatusCode)
 				/*
 					Check if 404 at source
 				*/
@@ -264,13 +264,13 @@ func catchUpMaxPages(pn string, np int, maxPage int, repair bool) (ret Ret) {
 					defer resp2.Body.Close()
 					if resp2.StatusCode == 404 {
 						ret.N404s -= 1
-						gLog.Warning.Printf("Source Page %s - status code %d ", request2.Path, resp2.StatusCode)
+						gLog.Warning.Printf("Source Pdf %s - status code %d ", request2.Path, resp2.StatusCode)
 					} else {
 						if repair {
 							request3.Path = request1.Path
 
 						} else {
-							gLog.Info.Printf("Target object %s  is repairable", request1.Path)
+							gLog.Info.Printf("Target Pdf %s  is repairable", request1.Path)
 						}
 					}
 				}
