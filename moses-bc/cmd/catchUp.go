@@ -82,6 +82,8 @@ func CatchUp(cmd *cobra.Command, args []string) {
 		return
 	}
 
+
+
 	gLog.Info.Printf("Source Env: %s - Source Driver: %s - Source Url: %s", sproxyd.Env, sproxyd.Driver, sproxyd.Url)
 	gLog.Info.Printf("Target Env: %s - Target Driver: %s - Target Url: %s", sproxyd.TargetEnv, sproxyd.TargetDriver, sproxyd.TargetUrl)
 	gLog.Info.Printf("Level DB URL: %s",levelDBUrl)
@@ -148,14 +150,17 @@ func CatchUpSproxyd(client *http.Client,bucket string) {
 
 			if err = json.Unmarshal([]byte(result), &s3Meta); err == nil {
 				l := len(s3Meta.Contents)
-				docmeta := meta.DocumentMetadata{}
+
 				for _, c := range s3Meta.Contents {
 					//m := &s3Meta.Contents[i].Value.XAmzMetaUsermd
 					m := &c.Value.XAmzMetaUsermd
 					usermd, _ := base64.StdEncoding.DecodeString(*m)
 					gLog.Info.Printf("Key: %s - Usermd: %s", c.Key, string(usermd))
+					docmeta := meta.DocumentMetadata{}
 					if err = json.Unmarshal(usermd,&docmeta); err == nil {
-						gLog.Info.Printf("CheckTargetPages( %s, %d, %s)",c.Key,docmeta.TotalPage,maxPage)
+						gLog.Info.Printf("CheckTargetPages( %s, %v, %d, %d)",c.Key,docmeta.DocId,docmeta.TotalPage,maxPage)
+					}  else {
+						gLog.Error.Printf("%v",err)
 					}
 
 				}
