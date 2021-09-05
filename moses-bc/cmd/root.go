@@ -39,6 +39,9 @@ const (
 	WaitTime	= time.Duration(200)          /*  default waitime between retry in sec */
 	RetryNumber = 5             /*   default retry number*/
 	MaxPartSize					= MinPartSize *  20
+	CONTIMEOUT = 2000  // connection timeout in ms
+	KEEPALIVE = 15000  // keep alive  in ms
+	HTTP = "http://"
 )
 
 var (
