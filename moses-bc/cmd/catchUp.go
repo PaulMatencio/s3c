@@ -160,7 +160,9 @@ func CatchUpSproxyd(client *http.Client,bucket string) {
 					if err = json.Unmarshal(usermd,&s3meta); err == nil {
 						wg1.Add(1)
 						go func(s3meta *meta.UserMd) {
-							gLog.Info.Printf("CheckTargetPages( %s, %d, %d)", s3meta.DocID, s3meta.TotalPages, maxPage)
+							gLog.Info.Printf("CheckTargetPages( %s, %s, %d)", c.Key, s3meta.TotalPages, maxPage)
+							np,_ := strconv.Atoi(s3meta.TotalPages)
+							mosesbc.CheckTargetPages(c.Key, np, maxPage)
 							wg1.Done()
 						} (&s3meta)
 
