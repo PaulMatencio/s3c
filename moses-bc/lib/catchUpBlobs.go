@@ -18,10 +18,10 @@ func CatchUpBlobs(pn string, np int, maxPage int, repair bool) (ret Ret) {
 	gLog.Trace.Printf("Document %s - Number of pages %d  - max page %d", pn, np, maxPage)
 	if np <= maxPage {
 		ret = catchUpPages(pn, np, repair)
-		gLog.Info.Printf("Catchup docid %s - number of pages %d - number of 404's %d  - Elapsed time %v", pn,np, ret.N404s, time.Since(start))
+		gLog.Trace.Printf("Catchup docid %s - number of pages %d - number of 404's %d  - Elapsed time %v", pn,np, ret.N404s, time.Since(start))
 	} else {
 		ret = catchUpMaxPages(pn, np, maxPage, repair)
-		gLog.Info.Printf("Catchup docid %s - number of pages %d - number of 404's %d - Elapsed time %v", pn,np,ret.N404s,time.Since(start))
+		gLog.Trace.Printf("Catchup docid %s - number of pages %d - number of 404's %d - Elapsed time %v", pn,np,ret.N404s,time.Since(start))
 	}
 	return
 }
