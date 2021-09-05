@@ -94,7 +94,7 @@ func catchUpPages(pn string, np int, repair bool) (ret Ret) {
 	}
 
 	if pdf {
-		gLog.Info.Printf("DocId %s contains a pdf", pn)
+		gLog.Trace.Printf("DocId %s contains a pdf", pn)
 		request1.Path = sproxyd.TargetEnv + "/" + pn + "/pdf"
 		if resp, err := sproxyd.GetMetadata(&request1); err == nil {
 			defer resp.Body.Close()
