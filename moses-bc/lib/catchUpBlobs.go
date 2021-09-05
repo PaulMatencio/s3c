@@ -72,7 +72,7 @@ func catchUpPages(pn string, np int, repair bool) (ret Ret) {
 		if status == 200 {
 			pdf, p0 = CheckPdfAndP0(pn, docmd)
 		} else {
-			gLog.Warning.Printf("Target document %s - status code %d ", request1.Path, status)
+			gLog.Warning.Printf("Target docid %s - status code %d ",  sproxyd.TargetEnv + "/" + pn, status)
 			err, status, docmd := GetDocMetaStatus(request2, sproxyd.Env, pn)
 			if err == nil && status == 200 {
 				pdf, p0 = CheckPdfAndP0(pn, docmd)
@@ -80,8 +80,10 @@ func catchUpPages(pn string, np int, repair bool) (ret Ret) {
 					request3.Path = sproxyd.TargetEnv + "/" + pn
 
 				} else {
-					gLog.Info.Printf("Target object %s  is repairable", request1.Path)
+					gLog.Info.Printf("Target docid  %s  is repairable", sproxyd.TargetEnv + "/" + pn)
 				}
+			} else {
+
 			}
 		}
 	}
@@ -115,14 +117,18 @@ func catchUpPages(pn string, np int, repair bool) (ret Ret) {
 							request3.Path = request1.Path
 
 						} else {
-							gLog.Info.Printf("Target Pdf %s  is repairable", request1.Path)
+							gLog.Info.Printf("Target Pdf %s is repairable", request1.Path)
 						}
 					}
+				} else {
+					gLog.Error.Printf("Target Pdf %s -  error %v", request1.Path, err)
+					ret.Nerrs += 1
 				}
+			} else {
+				gLog.Trace.Printf("Target Pdf %s - status code %d ", request1.Path, resp.StatusCode)
 			}
-			gLog.Trace.Printf("Target Page %s - status code %d ", request1.Path, resp.StatusCode)
 		} else {
-			gLog.Error.Printf("Target page %s -  error %v", request1.Path, err)
+			gLog.Error.Printf("Target Pdf %s -  error %v", request1.Path, err)
 			ret.Nerrs += 1
 		}
 	}
@@ -144,7 +150,9 @@ func catchUpPages(pn string, np int, repair bool) (ret Ret) {
 					if resp2, err := sproxyd.Getobject(&request2); err == nil {
 						defer resp2.Body.Close()
 						if resp2.StatusCode == 404 {
+							l4.Lock()
 							ret.N404s -= 1
+							l4.Unlock()
 							gLog.Warning.Printf("Source Page %s - status code %d ", request2.Path, resp2.StatusCode)
 
 						} else if resp2.StatusCode == 200 {
@@ -156,8 +164,9 @@ func catchUpPages(pn string, np int, repair bool) (ret Ret) {
 							}
 						}
 					}
+				}  else {
+					gLog.Trace.Printf("Target Page %s - status code %d ", request1.Path, resp.StatusCode)
 				}
-				gLog.Trace.Printf("Target Page %s - status code %d ", request1.Path, resp.StatusCode)
 
 			} else {
 				gLog.Error.Printf("Target page %s -  error %v", request1.Path, err)
@@ -249,7 +258,7 @@ func catchUpMaxPages(pn string, np int, maxPage int, repair bool) (ret Ret) {
 	}
 
 	if pdf {
-		gLog.Info.Printf("DocId %s contains a pdf", pn)
+		gLog.Trace.Printf("DocId %s contains a pdf", pn)
 		request1.Path = sproxyd.TargetEnv + "/" + pn + "/pdf"
 		if resp, err := sproxyd.GetMetadata(&request1); err == nil {
 			defer resp.Body.Close()
@@ -273,11 +282,14 @@ func catchUpMaxPages(pn string, np int, maxPage int, repair bool) (ret Ret) {
 							gLog.Info.Printf("Target Pdf %s  is repairable", request1.Path)
 						}
 					}
+				} else {
+					gLog.Error.Printf("Source Pdf %s -  error %v", request1.Path, err)
 				}
+			} else {
+				gLog.Trace.Printf("Target Pdf %s - status code %d ", request1.Path, resp.StatusCode)
 			}
-			gLog.Trace.Printf("Target Page %s - status code %d ", request1.Path, resp.StatusCode)
 		} else {
-			gLog.Error.Printf("Target page %s -  error %v", request1.Path, err)
+			gLog.Error.Printf("Target Pdf %s -  error %v", request1.Path, err)
 			ret.Nerrs += 1
 		}
 	}
