@@ -88,7 +88,7 @@ func catchUpPages(pn string, np int, repair bool) (ret Ret) {
 
 	if p0 {
 		start = 0
-		gLog.Info.Printf("DocId %s contains a page 0", pn)
+		gLog.Trace.Printf("DocId %s contains a page 0", pn)
 	} else {
 		start = 1
 	}
@@ -286,7 +286,7 @@ func catchUpMaxPages(pn string, np int, maxPage int, repair bool) (ret Ret) {
 	q = np / maxPage
 	r = np % maxPage
 
-	gLog.Warning.Printf("Big document %s  - number of pages %d ", pn, np)
+	gLog.Trace.Printf("Big document %s  - number of pages %d ", pn, np)
 
 	for s := 1; s <= q; s++ {
 		ret1 := catchUpPagePart(&request1, pn, np, start, end,repair)
