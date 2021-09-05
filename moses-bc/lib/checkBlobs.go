@@ -419,6 +419,7 @@ func comparePdf(pn string) (error, bool) {
 	called by cmd.CheckBlobs  with   --check-target-proxy on
 	Check  Target sproxyd for 404
 */
+
 func CheckTargetSproxyd(request datatype.ListObjRequest, maxLoop int, maxPage int) {
 
 	var (
@@ -486,9 +487,6 @@ func CheckTargetPages(pn string, np int, maxPage int) (ret Ret) {
 	return
 }
 
-/*
-	Check Pages ( number of pages < maxpages)
-*/
 func checkPages(pn string, np int) (ret Ret) {
 	var (
 		request1 = sproxyd.HttpRequest{
@@ -497,12 +495,18 @@ func checkPages(pn string, np int) (ret Ret) {
 				Timeout:   sproxyd.ReadTimeout,
 				Transport: sproxyd.Transport,
 			},
+			ReqHeader: map[string]string{
+				"X-Scal-Replica-Policy": "immutable",
+			},
 		}
 		request2 = sproxyd.HttpRequest{
 			Hspool: sproxyd.HP,
 			Client: &http.Client{
 				Timeout:   sproxyd.ReadTimeout,
 				Transport: sproxyd.Transport,
+			},
+			ReqHeader: map[string]string{
+				"X-Scal-Replica-Policy": "immutable",
 			},
 		}
 		wg2     sync.WaitGroup
@@ -611,12 +615,18 @@ func checkMaxPages(pn string, np int, maxPage int) (ret Ret) {
 				Timeout:   sproxyd.ReadTimeout,
 				Transport: sproxyd.Transport,
 			},
+			ReqHeader: map[string]string{
+				"X-Scal-Replica-Policy": "immutable",
+			},
 		}
 		request2 = sproxyd.HttpRequest{
 			Hspool: sproxyd.HP,
 			Client: &http.Client{
 				Timeout:   sproxyd.ReadTimeout,
 				Transport: sproxyd.Transport,
+			},
+			ReqHeader: map[string]string{
+				"X-Scal-Replica-Policy": "immutable",
 			},
 		}
 	)
@@ -694,18 +704,21 @@ func checkMaxPages(pn string, np int, maxPage int) (ret Ret) {
 
 }
 
-func checkPagePart(request1 *sproxyd.HttpRequest,  pn string, np int, start int, end int) (ret Ret) {
+func checkPagePart(request1 *sproxyd.HttpRequest, pn string, np int, start int, end int) (ret Ret) {
 
 	var (
-		nerrors int = 0
-		wg2     sync.WaitGroup
-		le, l4  sync.Mutex
-		n404s   int
+		nerrors  int = 0
+		wg2      sync.WaitGroup
+		le, l4   sync.Mutex
+		n404s    int
 		request2 = sproxyd.HttpRequest{
 			Hspool: sproxyd.HP,
 			Client: &http.Client{
 				Timeout:   sproxyd.ReadTimeout,
 				Transport: sproxyd.Transport,
+			},
+			ReqHeader: map[string]string{
+				"X-Scal-Replica-Policy": "immutable",
 			},
 		}
 	)

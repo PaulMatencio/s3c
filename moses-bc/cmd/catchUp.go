@@ -45,6 +45,7 @@ var (
 		Run: CatchUp,
 	}
 	levelDBUrl string
+	repair bool
 )
 
 func initCatFlags(cmd *cobra.Command) {
@@ -62,7 +63,7 @@ func initCatFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&env, "source-sproxyd-env", "", "", "source sproxyd environment [prod|osa]")
 	cmd.Flags().StringVarP(&targetEnv, "target-sproxyd-env", "", "", "target sproxyd environment [prod|osa]")
 	cmd.Flags().StringVarP(&levelDBUrl, "levelDB-url", "", "http://10.147.68.133:9000", "levelDB Url - moses s3 index (directory)")
-
+	cmd.Flags().BoolVarP(&repair, "repair", "", false, "levelDB Url - moses s3 index (directory)")
 }
 
 func init() {
@@ -160,9 +161,9 @@ func CatchUpSproxyd(client *http.Client,bucket string) {
 					if err = json.Unmarshal(usermd,&s3meta); err == nil {
 						wg1.Add(1)
 						go func(c datatype.Contents,s3meta *meta.UserMd) {
-							gLog.Info.Printf("CheckTargetPages( %s, %s, %d)", c.Key, s3meta.TotalPages, maxPage)
+							gLog.Info.Printf("CatchUpPages( %s, %s, %d)", c.Key, s3meta.TotalPages, maxPage)
 							np,_ := strconv.Atoi(s3meta.TotalPages)
-							mosesbc.CheckTargetPages(c.Key, np, maxPage)
+							mosesbc.CatchUpBlobs(c.Key, np, maxPage,repair)
 							wg1.Done()
 						} (c,&s3meta)
 

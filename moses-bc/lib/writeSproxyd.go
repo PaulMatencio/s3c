@@ -165,14 +165,6 @@ func WriteDocPdf( /*request *sproxyd.HttpRequest */ pd *documentpb.Pdf, replace 
 		err     error
 	)
 
-	/*
-		request.Path = sproxyd.TargetEnv + "/" + pn
-		request.ReqHeader = map[string]string{
-					"Usermd" : pd.GetMetadata(),
-					"Content-Type" : "application/octet-stream",
-				}
-	*/
-
 	gLog.Trace.Printf("writing %d bytes to path  %s/%s", pd.Size, sproxyd.TargetDriver, request.Path)
 
 	if resp, err = sproxyd.PutObj(&request, replace, pd.GetPdf()); err != nil {
