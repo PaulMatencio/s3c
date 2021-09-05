@@ -28,6 +28,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -135,7 +136,6 @@ func CatchUp(cmd *cobra.Command, args []string) {
 func CatchUpSproxyd(client *http.Client,bucket string) {
 	var (
 		s3Meta = datatype.S3Metadata{}
-		// marker string
 		nextMarker string
 		N          = 0
 	)
@@ -150,20 +150,26 @@ func CatchUpSproxyd(client *http.Client,bucket string) {
 
 			if err = json.Unmarshal([]byte(result), &s3Meta); err == nil {
 				l := len(s3Meta.Contents)
-
+				wg1 := sync.WaitGroup{}
 				for _, c := range s3Meta.Contents {
 					//m := &s3Meta.Contents[i].Value.XAmzMetaUsermd
 					m := &c.Value.XAmzMetaUsermd
 					usermd, _ := base64.StdEncoding.DecodeString(*m)
-					gLog.Info.Printf("Key: %s - Usermd: %s", c.Key, string(usermd))
-					docmeta := meta.DocumentMetadata{}
-					if err = json.Unmarshal(usermd,&docmeta); err == nil {
-						gLog.Info.Printf("CheckTargetPages( %s, %v, %d, %d)",c.Key,docmeta.DocId,docmeta.TotalPage,maxPage)
+					// gLog.Info.Printf("Key: %s - Usermd: %s", c.Key, string(usermd))
+					s3meta := meta.UserMd{}  //  moses s3 index
+					if err = json.Unmarshal(usermd,&s3meta); err == nil {
+						wg1.Add(1)
+						go func(s3meta *meta.UserMd) {
+							gLog.Info.Printf("CheckTargetPages( %s, %d, %d)", s3meta.DocID, s3meta.TotalPages, maxPage)
+							wg1.Done()
+						} (&s3meta)
+
 					}  else {
 						gLog.Error.Printf("%v",err)
 					}
 
 				}
+				wg1.Wait()
 				if l > 0 {
 					nextMarker = s3Meta.Contents[l-1].Key
 					gLog.Info.Printf("Next marker %s Istruncated %v", nextMarker, s3Meta.IsTruncated)
