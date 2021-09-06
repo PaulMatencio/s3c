@@ -91,7 +91,10 @@ func catchUpPages(pn string, np int, repair bool) (ret Ret) {
 							if _, ok := resp2.Header["X-Scal-Attr-Is-Sync"]; ok {
 								isSync = resp2.Header["X-Scal-Attr-Is-Sync"][0]
 							}
-							gLog.Info.Printf("Target docid %s is missing, is synced? %s but is recoverable", sproxyd.TargetEnv+"/"+pn, isSync)
+							// gLog.Info.Printf("Target docid %s is missing, is synced? %s but is recoverable", sproxyd.TargetEnv+"/"+pn, isSync)
+							ct := resp2.Header["Content-Type"][0]
+							sz := resp2.ContentLength
+							gLog.Info.Printf("Target docid %s is missing, is synced? %s but is recoverable - content-type %s - Content-length %d ", request1.Path, isSync, ct, sz)
 						}
 					}
 				} else {
@@ -137,7 +140,10 @@ func catchUpPages(pn string, np int, repair bool) (ret Ret) {
 							if _, ok := resp2.Header["X-Scal-Attr-Is-Sync"]; ok {
 								isSync = resp2.Header["X-Scal-Attr-Is-Sync"][0]
 							}
-							gLog.Info.Printf("Target Pdf %s is missing, is synced? %s but is recoverable", request1.Path, isSync)
+							// gLog.Info.Printf("Target Pdf %s is missing, is synced? %s but is recoverable", request1.Path, isSync)
+							ct := resp2.Header["Content-Type"][0]
+							sz := resp2.ContentLength
+							gLog.Info.Printf("Target Pdf %s is missing, is synced? %s but is recoverable - content-type %s - Content-length %d ", request1.Path, isSync, ct, sz)
 						}
 					}
 				} else {
@@ -196,7 +202,10 @@ func catchUpPages(pn string, np int, repair bool) (ret Ret) {
 								if _, ok := resp2.Header["X-Scal-Attr-Is-Sync"]; ok {
 									isSync = resp2.Header["X-Scal-Attr-Is-Sync"][0]
 								}
-								gLog.Info.Printf("Target Page %s is missing, is synced? %s but is recoverable", request1.Path, isSync)
+								// gLog.Info.Printf("Target Page %s is missing, is synced? %s but is recoverable", request1.Path, isSync)
+								ct := resp2.Header["Content-Type"][0]
+								sz := resp2.ContentLength
+								gLog.Info.Printf("Target Page %s is missing, is synced? %s but is recoverable - content-type %s - Content-length %d ", request1.Path, isSync, ct, sz)
 							}
 						}
 					}
@@ -282,7 +291,10 @@ func catchUpMaxPages(pn string, np int, maxPage int, repair bool) (ret Ret) {
 							if _, ok := resp2.Header["X-Scal-Attr-Is-Sync"]; ok {
 								isSync = resp2.Header["X-Scal-Attr-Is-Sync"][0]
 							}
-							gLog.Info.Printf("Target docid %s is missing, is synced? %s but is recoverable", sproxyd.TargetEnv+"/"+pn, isSync)
+							// gLog.Info.Printf("Target docid %s is missing, is synced? %s but is recoverable", sproxyd.TargetEnv+"/"+pn, isSync)
+							ct := resp2.Header["Content-Type"][0]
+							sz := resp2.ContentLength
+							gLog.Info.Printf("Target docid %s is missing, is synced? %s but is recoverable - content-type %s - Content-length %d ", request1.Path, isSync, ct, sz)
 						}
 					}
 				} else {
@@ -336,7 +348,10 @@ func catchUpMaxPages(pn string, np int, maxPage int, repair bool) (ret Ret) {
 							if _, ok := resp2.Header["X-Scal-Attr-Is-Sync"]; ok {
 								isSync = resp2.Header["X-Scal-Attr-Is-Sync"][0]
 							}
-							gLog.Info.Printf("Target Pdf %s is missing, is synced? %s but is recoverable", request1.Path, isSync)
+							// gLog.Info.Printf("Target Pdf %s is missing, is synced? %s but is recoverable", request1.Path, isSync)
+							ct := resp2.Header["Content-Type"][0]
+							sz := resp2.ContentLength
+							gLog.Info.Printf("Target Pdf %s is missing, is synced? %s but is recoverable - content-type %s - Content-length %d ", request1.Path, isSync, ct, sz)
 						}
 					}
 				} else {
@@ -449,7 +464,9 @@ func catchUpPagePart(request1 *sproxyd.HttpRequest, pn string, np int, start int
 								if _, ok := resp2.Header["X-Scal-Attr-Is-Sync"]; ok {
 									isSync = resp2.Header["X-Scal-Attr-Is-Sync"][0]
 								}
-								gLog.Info.Printf("Target Page %s is missing, is synced? %s but is recoverable", request1.Path, isSync)
+								ct := resp2.Header["Content-Type"][0]
+								sz := resp2.ContentLength
+								gLog.Info.Printf("Target Page %s is missing, is synced? %s but is recoverable - content-type %s - Content-length %d ", request1.Path, isSync, ct, sz)
 							}
 						}
 					}
@@ -520,14 +537,14 @@ func catch(resp *http.Response, request *sproxyd.HttpRequest, replace bool) (err
 				status = 423
 
 				/*
-				    resp1, err1 := sproxyd.PutObj(request, replace, body)
-					if err1 != nil {
-						defer resp1.Body.Close()
-						gLog.Info.Printf("")
-						status = resp1.StatusCode
-					} else {
-						err = err1
-					}
+					    resp1, err1 := sproxyd.PutObj(request, replace, body)
+						if err1 != nil {
+							defer resp1.Body.Close()
+							gLog.Info.Printf("")
+							status = resp1.StatusCode
+						} else {
+							err = err1
+						}
 				*/
 			}
 		} else {
