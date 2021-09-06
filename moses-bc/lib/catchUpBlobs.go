@@ -91,7 +91,7 @@ func catchUpPages(pn string, np int, repair bool) (ret Ret) {
 							if _, ok := resp2.Header["X-Scal-Attr-Is-Sync"]; ok {
 								isSync = resp2.Header["X-Scal-Attr-Is-Sync"][0]
 							}
-							gLog.Info.Printf("Target docid %s is missing, is synced %s but recoverable", sproxyd.TargetEnv+"/"+pn, isSync)
+							gLog.Info.Printf("Target docid %s is missing, is synced? %s but is recoverable", sproxyd.TargetEnv+"/"+pn, isSync)
 						}
 					}
 				} else {
@@ -282,7 +282,7 @@ func catchUpMaxPages(pn string, np int, maxPage int, repair bool) (ret Ret) {
 							if _, ok := resp2.Header["X-Scal-Attr-Is-Sync"]; ok {
 								isSync = resp2.Header["X-Scal-Attr-Is-Sync"][0]
 							}
-							gLog.Info.Printf("Target docid %s is missing, is synced? %s but recoverable", sproxyd.TargetEnv+"/"+pn, isSync)
+							gLog.Info.Printf("Target docid %s is missing, is synced? %s but is recoverable", sproxyd.TargetEnv+"/"+pn, isSync)
 						}
 					}
 				} else {
@@ -336,7 +336,7 @@ func catchUpMaxPages(pn string, np int, maxPage int, repair bool) (ret Ret) {
 							if _, ok := resp2.Header["X-Scal-Attr-Is-Sync"]; ok {
 								isSync = resp2.Header["X-Scal-Attr-Is-Sync"][0]
 							}
-							gLog.Info.Printf("Target Pdf %s is missing, is synced? %s but recoverable", request1.Path, isSync)
+							gLog.Info.Printf("Target Pdf %s is missing, is synced? %s but is recoverable", request1.Path, isSync)
 						}
 					}
 				} else {
