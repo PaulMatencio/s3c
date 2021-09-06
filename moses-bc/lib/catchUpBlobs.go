@@ -78,7 +78,7 @@ func catchUpPages(pn string, np int, repair bool) (ret Ret) {
 			resp2, err := sproxyd.Getobject(&request2)
 			if err == nil {
 				defer resp2.Body.Close()
-				if status == 200 {
+				if resp2.StatusCode == 200 {
 					if _, ok := resp2.Header["X-Scal-Usermd"]; ok {
 						docmd = resp2.Header["X-Scal-Usermd"][0]
 						pdf, p0 = CheckPdfAndP0(pn, docmd)
@@ -254,7 +254,7 @@ func catchUpMaxPages(pn string, np int, maxPage int, repair bool) (ret Ret) {
 			resp2, err := sproxyd.Getobject(&request2)
 			if err == nil {
 				defer resp2.Body.Close()
-				if status == 200 {
+				if resp2.StatusCode == 200 {
 					/*  */
 					if _, ok := resp2.Header["X-Scal-Usermd"]; ok {
 						docmd = resp2.Header["X-Scal-Usermd"][0]
