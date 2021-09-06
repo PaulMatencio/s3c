@@ -60,12 +60,12 @@ func catchUpPages(pn string, np int, repair bool) (ret Ret) {
 				Transport: sproxyd.Transport,
 			},
 		}
-		wg2     sync.WaitGroup
-		nerrors, n404s = 0,0
-		start   int
-		err     error
-		pdf, p0 bool = false, false
-		le, l4  sync.Mutex
+		wg2            sync.WaitGroup
+		nerrors, n404s = 0, 0
+		start          int
+		err            error
+		pdf, p0        bool = false, false
+		le, l4         sync.Mutex
 	)
 
 	err, status, docmd := GetDocMetaStatus(request1, sproxyd.TargetEnv, pn)
@@ -84,9 +84,14 @@ func catchUpPages(pn string, np int, repair bool) (ret Ret) {
 						pdf, p0 = CheckPdfAndP0(pn, docmd)
 						if repair {
 							request3.Path = sproxyd.TargetEnv + "/" + pn
-							repairIt(resp2,&request3,false)
+							repairIt(resp2, &request3, false)
 						} else {
-							gLog.Info.Printf("Target docid %s is repairable", sproxyd.TargetEnv+"/"+pn)
+							// gLog.Info.Printf("Target docid %s is repairable", sproxyd.TargetEnv+"/"+pn)
+							isSync := "0"
+							if _, ok := resp2.Header["X-Scal-Attr-Is-Sync"]; ok {
+								isSync = resp2.Header["X-Scal-Attr-Is-Sync"][0]
+							}
+							gLog.Info.Printf("Target docid %s is missing, is synced %s but recoverable", sproxyd.TargetEnv+"/"+pn, isSync)
 						}
 					}
 				} else {
@@ -125,9 +130,14 @@ func catchUpPages(pn string, np int, repair bool) (ret Ret) {
 					} else {
 						if repair {
 							request3.Path = request1.Path
-							repairIt(resp2,&request3,false)
+							repairIt(resp2, &request3, false)
 						} else {
-							gLog.Info.Printf("Target Pdf %s is repairable", request1.Path)
+							// gLog.Info.Printf("Target Pdf %s is repairable", request1.Path)
+							isSync := "0"
+							if _, ok := resp2.Header["X-Scal-Attr-Is-Sync"]; ok {
+								isSync = resp2.Header["X-Scal-Attr-Is-Sync"][0]
+							}
+							gLog.Info.Printf("Target Pdf %s is missing, is synced? %s but is recoverable", request1.Path, isSync)
 						}
 					}
 				} else {
@@ -152,9 +162,9 @@ func catchUpPages(pn string, np int, repair bool) (ret Ret) {
 			if resp, err := sproxyd.GetMetadata(&request1); err == nil {
 				defer resp.Body.Close()
 				/*
-						check if the  target Page is missing
-						if not continue
-				 */
+					check if the  target Page is missing
+					if not continue
+				*/
 
 				if resp.StatusCode == 404 {
 					l4.Lock()
@@ -162,10 +172,10 @@ func catchUpPages(pn string, np int, repair bool) (ret Ret) {
 					l4.Unlock()
 					gLog.Warning.Printf("Target Page %s - status code %d ", request1.Path, resp.StatusCode)
 					/*
-						Prepare to retrieve the source page
-					    if it is missing (404) then continue
-					    if it exists (200)   then repair it if requested
-					 */
+							Prepare to retrieve the source page
+						    if it is missing (404) then continue
+						    if it exists (200)   then repair it if requested
+					*/
 					request2.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
 					if resp2, err := sproxyd.Getobject(&request2); err == nil {
 						defer resp2.Body.Close()
@@ -179,9 +189,14 @@ func catchUpPages(pn string, np int, repair bool) (ret Ret) {
 						} else if resp2.StatusCode == 200 {
 							if repair {
 								request3.Path = request1.Path
-								repairIt(resp2,&request3,false)
+								repairIt(resp2, &request3, false)
 							} else {
-								gLog.Info.Printf("Target Page %s is repairable", request1.Path)
+								// gLog.Info.Printf("Target Page %s is repairable", request1.Path)
+								isSync := "0"
+								if _, ok := resp2.Header["X-Scal-Attr-Is-Sync"]; ok {
+									isSync = resp2.Header["X-Scal-Attr-Is-Sync"][0]
+								}
+								gLog.Info.Printf("Target Page %s is missing, is synced? %s but is recoverable", request1.Path, isSync)
 							}
 						}
 					}
@@ -261,9 +276,13 @@ func catchUpMaxPages(pn string, np int, maxPage int, repair bool) (ret Ret) {
 						pdf, p0 = CheckPdfAndP0(pn, docmd)
 						if repair {
 							request3.Path = sproxyd.TargetEnv + "/" + pn
-							repairIt(resp2,&request3,false)
+							repairIt(resp2, &request3, false)
 						} else {
-							gLog.Info.Printf("Target docid %s is repairable", sproxyd.TargetEnv+"/"+pn)
+							isSync := "0"
+							if _, ok := resp2.Header["X-Scal-Attr-Is-Sync"]; ok {
+								isSync = resp2.Header["X-Scal-Attr-Is-Sync"][0]
+							}
+							gLog.Info.Printf("Target docid %s is missing, is synced? %s but recoverable", sproxyd.TargetEnv+"/"+pn, isSync)
 						}
 					}
 				} else {
@@ -290,16 +309,16 @@ func catchUpMaxPages(pn string, np int, maxPage int, repair bool) (ret Ret) {
 			/*
 				check if target page is missing (404)
 				if not then just continue
-			 */
+			*/
 			if resp.StatusCode == 404 {
 				ret.N404s += 1
 				gLog.Warning.Printf("Target Pdf %s - status code %d ", request1.Path, resp.StatusCode)
 
-					/*
+				/*
 						Prepare to retrieve the source pdf
 					    if it is missing (404) then continue
 					    if it exists (200)   then repair it if requested
-					 */
+				*/
 
 				request2.Path = sproxyd.TargetEnv + "/" + pn + "/pdf"
 				if resp2, err := sproxyd.GetMetadata(&request2); err == nil {
@@ -310,9 +329,14 @@ func catchUpMaxPages(pn string, np int, maxPage int, repair bool) (ret Ret) {
 					} else {
 						if repair {
 							request3.Path = request1.Path
-							repairIt(resp2,&request3,false)
+							repairIt(resp2, &request3, false)
 						} else {
-							gLog.Info.Printf("Target Pdf %s  is repairable", request1.Path)
+							// gLog.Info.Printf("Target Pdf %s  is repairable", request1.Path)
+							isSync := "0"
+							if _, ok := resp2.Header["X-Scal-Attr-Is-Sync"]; ok {
+								isSync = resp2.Header["X-Scal-Attr-Is-Sync"][0]
+							}
+							gLog.Info.Printf("Target Pdf %s is missing, is synced? %s but recoverable", request1.Path, isSync)
 						}
 					}
 				} else {
@@ -396,19 +420,19 @@ func catchUpPagePart(request1 *sproxyd.HttpRequest, pn string, np int, start int
 			if resp, err := sproxyd.GetMetadata(&request1); err == nil {
 				defer resp.Body.Close()
 				/*
-					check if the target page is missing
-				if not then just continue
-				 */
+						check if the target page is missing
+					if not then just continue
+				*/
 				if resp.StatusCode == 404 {
 					l4.Lock()
 					n404s = 1
 					l4.Unlock()
 					gLog.Warning.Printf("Target Page %s - status code %d ", request1.Path, resp.StatusCode)
 					/*
-						Prepare to retrieve the source page
-					    if it is missing (404) then continue
-					    if it exists (200)   then repair it if requested
-					 */
+							Prepare to retrieve the source page
+						    if it is missing (404) then continue
+						    if it exists (200)   then repair it if requested
+					*/
 					request2.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
 					if resp2, err := sproxyd.GetMetadata(&request2); err == nil {
 						defer resp2.Body.Close()
@@ -418,9 +442,14 @@ func catchUpPagePart(request1 *sproxyd.HttpRequest, pn string, np int, start int
 						} else {
 							if repair {
 								request3.Path = request1.Path
-								repairIt(resp2,&request3,false)
+								repairIt(resp2, &request3, false)
 							} else {
-								gLog.Info.Printf("Target Page %s  is repairable", request1.Path)
+								// gLog.Info.Printf("Target Page %s  is repairable", request1.Path)
+								isSync := "0"
+								if _, ok := resp2.Header["X-Scal-Attr-Is-Sync"]; ok {
+									isSync = resp2.Header["X-Scal-Attr-Is-Sync"][0]
+								}
+								gLog.Info.Printf("Target Page %s is missing, is synced? %s but is recoverable", request1.Path, isSync)
 							}
 						}
 					}
@@ -455,25 +484,25 @@ func putObj(request *sproxyd.HttpRequest, pn string, usermd string, object *[]by
 	return
 }
 
-func repairIt(resp *http.Response, request *sproxyd.HttpRequest,  replace bool) {
+func repairIt(resp *http.Response, request *sproxyd.HttpRequest, replace bool) {
 
-		err, status := catch(resp, request,replace)
-		if err != nil {
-			if status == 200 {
-				gLog.Info.Printf("Target docid %s is copied", request.Path)
-			} else {
-				gLog.Warning.Printf("Target docid %s is not copied - status code %d ", request.Path, status)
-			}
+	err, status := catch(resp, request, replace)
+	if err != nil {
+		if status == 200 {
+			gLog.Info.Printf("Target docid %s is copied", request.Path)
 		} else {
-			gLog.Error.Printf("Target docid %s - Error catching up %v", request.Path, err)
+			gLog.Warning.Printf("Target docid %s is not copied - status code %d ", request.Path, status)
 		}
+	} else {
+		gLog.Error.Printf("Target docid %s - Error catching up %v", request.Path, err)
+	}
 }
 
 func catch(resp *http.Response, request *sproxyd.HttpRequest, replace bool) (err error, status int) {
 
 	var body = []byte{}
 
-	if  resp.StatusCode== 200 {
+	if resp.StatusCode == 200 {
 		if resp.ContentLength > 0 {
 			body, _ = ioutil.ReadAll(resp.Body)
 		}
@@ -483,21 +512,23 @@ func catch(resp *http.Response, request *sproxyd.HttpRequest, replace bool) (err
 				/* Write Object */
 				request.ReqHeader = map[string]string{}
 				request.ReqHeader["Usermd"] = resp.Header["X-Scal-Usermd"][0]
+
 				request.ReqHeader["Content-Type"] = "application/octet-stream"
+				request.ReqHeader["Content-Type"] = resp.Header["Content-Type"][0]
 
-				// resp1, err1 := sproxyd.PutObj(request, replace, body)
-
-				err = errors.New(fmt.Sprintf("Lock mode for %v",request))
+				err = errors.New(fmt.Sprintf("Lock mode for %v", request.ReqHeader))
 				status = 423
+
 				/*
-				if err1 != nil {
-					defer resp1.Body.Close()
-					gLog.Info.Printf("")
-					status = resp1.StatusCode
-				} else {
-					err = err1
-				}
-				 */
+				    resp1, err1 := sproxyd.PutObj(request, replace, body)
+					if err1 != nil {
+						defer resp1.Body.Close()
+						gLog.Info.Printf("")
+						status = resp1.StatusCode
+					} else {
+						err = err1
+					}
+				*/
 			}
 		} else {
 			err = errors.New(fmt.Sprintf("Request url %s - Body is null", request.Path))
