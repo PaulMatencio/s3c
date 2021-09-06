@@ -350,16 +350,6 @@ func compareObj(pn string, pagen int, body *[]byte, usermd string) (error, bool)
 */
 func checkPdfP0(request sproxyd.HttpRequest, pn string) (error, bool, bool) {
 
-	/*
-		request1 := sproxyd.HttpRequest{
-			Hspool: sproxyd.HP,
-			Client: &http.Client{
-				Timeout:   sproxyd.ReadTimeout,
-				Transport: sproxyd.Transport,
-			},
-		}
-
-	*/
 
 	if err, usermd := GetUserMeta(request, pn); err != nil {
 		gLog.Error.Printf("Error %v  getting usermeta of %s", err, pn)
