@@ -94,7 +94,7 @@ func catchUpPages(pn string, np int, repair bool) (ret Ret) {
 							// gLog.Info.Printf("Target docid %s is missing, is synced? %s but is recoverable", sproxyd.TargetEnv+"/"+pn, isSync)
 							ct := resp2.Header["Content-Type"][0]
 							sz := resp2.ContentLength
-							gLog.Info.Printf("Target docid %s is missing, is synced? %s but is recoverable - content-type %s - Content-length %d ", request1.Path, isSync, ct, sz)
+							gLog.Info.Printf("Target docid %s is missing, is synced? %s but is recoverable - content-type %s - Content-length %d ", sproxyd.TargetEnv+"/"+pn , isSync, ct, sz)
 						}
 					}
 				} else {
@@ -294,7 +294,7 @@ func catchUpMaxPages(pn string, np int, maxPage int, repair bool) (ret Ret) {
 							// gLog.Info.Printf("Target docid %s is missing, is synced? %s but is recoverable", sproxyd.TargetEnv+"/"+pn, isSync)
 							ct := resp2.Header["Content-Type"][0]
 							sz := resp2.ContentLength
-							gLog.Info.Printf("Target docid %s is missing, is synced? %s but is recoverable - content-type %s - Content-length %d ", request1.Path, isSync, ct, sz)
+							gLog.Info.Printf("Target docid %s is missing, is synced? %s but is recoverable - content-type %s - Content-length %d ",  sproxyd.TargetEnv+"/"+pn, isSync, ct, sz)
 						}
 					}
 				} else {
