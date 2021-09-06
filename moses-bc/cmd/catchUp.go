@@ -188,9 +188,8 @@ func CatchUpSproxyd(client *http.Client,bucket string) {
 			return
 		} else {
 			marker = nextMarker
-			// gLog.Info.Printf("marker %s", marker)
 		}
-		if N >= maxLoop {
+		if maxLoop != 0 && N >= maxLoop {
 			return
 		}
 	}
