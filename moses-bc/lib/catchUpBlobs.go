@@ -94,7 +94,7 @@ func catchUpPages(pn string, np int, repair bool) (ret Ret) {
 							// gLog.Info.Printf("Target docid %s is missing, is synced? %s but is recoverable", sproxyd.TargetEnv+"/"+pn, isSync)
 							ct := resp2.Header["Content-Type"][0]
 							sz := resp2.ContentLength
-							gLog.Info.Printf("Target docid %s is missing, is synced? %s but is recoverable - content-type %s - Content-length %d ", sproxyd.TargetEnv+"/"+pn , isSync, ct, sz)
+							gLog.Info.Printf("Target docid %s is missing, is synced? %s but is recoverable - content-type %s - Content-length %d ", sproxyd.TargetEnv+"/"+pn, isSync, ct, sz)
 						}
 					}
 				} else {
@@ -294,7 +294,7 @@ func catchUpMaxPages(pn string, np int, maxPage int, repair bool) (ret Ret) {
 							// gLog.Info.Printf("Target docid %s is missing, is synced? %s but is recoverable", sproxyd.TargetEnv+"/"+pn, isSync)
 							ct := resp2.Header["Content-Type"][0]
 							sz := resp2.ContentLength
-							gLog.Info.Printf("Target docid %s is missing, is synced? %s but is recoverable - content-type %s - Content-length %d ",  sproxyd.TargetEnv+"/"+pn, isSync, ct, sz)
+							gLog.Info.Printf("Target docid %s is missing, is synced? %s but is recoverable - content-type %s - Content-length %d ", sproxyd.TargetEnv+"/"+pn, isSync, ct, sz)
 						}
 					}
 				} else {
@@ -394,7 +394,6 @@ func catchUpMaxPages(pn string, np int, maxPage int, repair bool) (ret Ret) {
 	ret.Npages = np
 	ret.Ndocs += 1
 	return ret
-	// return WriteDocument(pn, document, outdir)
 
 }
 
@@ -501,17 +500,18 @@ func putObj(request *sproxyd.HttpRequest, pn string, usermd string, object *[]by
 	return
 }
 
+
 func repairIt(resp *http.Response, request *sproxyd.HttpRequest, replace bool) {
 
 	err, status := catch(resp, request, replace)
-	if err != nil {
+	if err == nil {
 		if status == 200 {
 			gLog.Info.Printf("Target docid %s is copied", request.Path)
 		} else {
 			gLog.Warning.Printf("Target docid %s is not copied - status code %d ", request.Path, status)
 		}
 	} else {
-		gLog.Error.Printf("Target docid %s - Error catching up %v", request.Path, err)
+		gLog.Error.Printf("Target docid %s is not copied - Error %v", request.Path, err)
 	}
 }
 
@@ -529,23 +529,15 @@ func catch(resp *http.Response, request *sproxyd.HttpRequest, replace bool) (err
 				/* Write Object */
 				request.ReqHeader = map[string]string{}
 				request.ReqHeader["Usermd"] = resp.Header["X-Scal-Usermd"][0]
-
-				request.ReqHeader["Content-Type"] = "application/octet-stream"
 				request.ReqHeader["Content-Type"] = resp.Header["Content-Type"][0]
 
-				err = errors.New(fmt.Sprintf("Lock mode for %v", request.ReqHeader))
-				status = 423
-
-				/*
-					    resp1, err1 := sproxyd.PutObj(request, replace, body)
-						if err1 != nil {
-							defer resp1.Body.Close()
-							gLog.Info.Printf("")
-							status = resp1.StatusCode
-						} else {
-							err = err1
-						}
-				*/
+				resp1, err1 := sproxyd.PutObj(request, replace, body)
+				if err1 == nil {
+					defer resp1.Body.Close()
+					status = resp1.StatusCode
+				} else {
+					err = err1
+				}
 			}
 		} else {
 			err = errors.New(fmt.Sprintf("Request url %s - Body is null", request.Path))

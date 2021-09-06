@@ -140,6 +140,8 @@ func CatchUpSproxyd(client *http.Client,bucket string) {
 		nextMarker string
 		N          = 0
 		start = time.Now()
+		l4 ,lp,le sync.Mutex
+		n404s,ndocs,npages,nerrs int
 	)
 	for {
 		start1 := time.Now()
@@ -155,17 +157,27 @@ func CatchUpSproxyd(client *http.Client,bucket string) {
 				l := len(s3Meta.Contents)
 				wg1 := sync.WaitGroup{}
 				for _, c := range s3Meta.Contents {
-					//m := &s3Meta.Contents[i].Value.XAmzMetaUsermd
+					ndocs += 1
 					m := &c.Value.XAmzMetaUsermd
 					usermd, _ := base64.StdEncoding.DecodeString(*m)
-					// gLog.Info.Printf("Key: %s - Usermd: %s", c.Key, string(usermd))
 					s3meta := meta.UserMd{}  //  moses s3 index
 					if err = json.Unmarshal(usermd,&s3meta); err == nil {
 						wg1.Add(1)
 						go func(c datatype.Contents,s3meta *meta.UserMd) {
-							// gLog.Info.Printf("CatchUpPages( %s, %s, %d)", c.Key, s3meta.TotalPages, maxPage)
 							np,_ := strconv.Atoi(s3meta.TotalPages)
-							mosesbc.CatchUpBlobs(c.Key, np, maxPage,repair)
+							lp.Lock()
+							npages += np
+							lp.Unlock()
+							ret := mosesbc.CatchUpBlobs(c.Key, np, maxPage,repair)
+							if ret.N404s > 0 {
+								l4.Lock()
+								n404s += ret.N404s
+								l4.Unlock()
+							}
+							if ret.Nerrs>0 {
+								le.Lock()
+								nerrs += ret.Nerrs
+							}
 							wg1.Done()
 						} (c,&s3meta)
 
@@ -177,7 +189,8 @@ func CatchUpSproxyd(client *http.Client,bucket string) {
 				wg1.Wait()
 				if l > 0 {
 					nextMarker = s3Meta.Contents[l-1].Key
-					gLog.Info.Printf("Loop %d - Next marker %s - Istruncated %v - Elapsed time %v - Cumulative elapsed Time %v", N, nextMarker, s3Meta.IsTruncated,time.Since(start1),time.Since(start))
+					gLog.Info.Printf("Loop %d - Next marker %s - Istruncated %v - Elapsed time %v - Cumulative elapsed Time %v", N, nextMarker, s3Meta.IsTruncated, time.Since(start1), time.Since(start))
+					gLog.Info.Printf("Number of docs %d  - number of pages %d - number of 404's %d - number of errors %d ", ndocs, npages, n404s, nerrs)
 				}
 				N++
 			} else {
