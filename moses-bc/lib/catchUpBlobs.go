@@ -448,9 +448,9 @@ func catchUpPagePart(request1 *sproxyd.HttpRequest, pn string, np int, start int
 	for k := start; k <= end; k++ {
 		wg2.Add(1)
 		go func(request1 sproxyd.HttpRequest, request2 sproxyd.HttpRequest, request3 sproxyd.HttpRequest, pn string, np int, k int) {
-			gLog.Trace.Printf("Getpart of pn: %s - url:%s", pn, request1.Path)
 			defer wg2.Done()
 			request1.Path = sproxyd.TargetEnv + "/" + pn + "/p" + strconv.Itoa(k)
+			// gLog.Trace.Printf("Getpart of pn: %s - url:%s", pn, request1.Path)
 			if resp, err := sproxyd.GetMetadata(&request1); err == nil {
 				defer resp.Body.Close()
 				/*
