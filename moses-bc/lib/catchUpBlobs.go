@@ -72,7 +72,7 @@ func catchUpPages(pn string, np int, repair bool) (ret Ret) {
 			pdf, p0 = CheckPdfAndP0(pn, docmd)
 		} else {
 			if status == 404 {
-				ret.N404s += 1
+
 			}
 			gLog.Warning.Printf("Target docid %s - status code %d ", sproxyd.TargetEnv+"/"+pn, status)
 			request2.Path = sproxyd.Env + "/" + pn
@@ -99,6 +99,9 @@ func catchUpPages(pn string, np int, repair bool) (ret Ret) {
 						}
 					}
 				} else {
+					if status == 404 {
+						ret.N404s -= 1
+					}
 					gLog.Warning.Printf("Source docid %s - status code %d ", sproxyd.Env+"/"+pn, status)
 				}
 			} else {
@@ -163,7 +166,7 @@ func catchUpPages(pn string, np int, repair bool) (ret Ret) {
 		}
 	}
 
-	gLog.Trace.Printf("Document %s has %n pages", pn, np)
+	gLog.Trace.Printf("Document %s has %d pages", pn, np)
 
 	for k := start; k <= np; k++ {
 		wg2.Add(1)
@@ -308,6 +311,9 @@ func catchUpMaxPages(pn string, np int, maxPage int, repair bool) (ret Ret) {
 						}
 					}
 				} else {
+					if status == 404 {
+						ret.N404s -= 1
+					}
 					gLog.Warning.Printf("Source docid %s - status code %d ", sproxyd.Env+"/"+pn, status)
 				}
 			} else {
