@@ -141,7 +141,7 @@ func CatchUpSproxyd(client *http.Client,bucket string) {
 		N          = 0
 		start = time.Now()
 		l4 ,lp,le sync.Mutex
-		n404s,ndocs,npages,nerrs int
+		n404s,ndocs,npages,nerrs,nreps int
 	)
 	for {
 		start1 := time.Now()
@@ -172,8 +172,16 @@ func CatchUpSproxyd(client *http.Client,bucket string) {
 							if ret.N404s > 0 {
 								l4.Lock()
 								n404s += ret.N404s
+								nreps += ret.Nreps
 								l4.Unlock()
 							}
+							/*
+							if ret.Nreps > 0 {
+								l4.Lock()
+								nreps += ret.Nreps
+								l4.Unlock()
+							}
+							 */
 							if ret.Nerrs>0 {
 								le.Lock()
 								nerrs += ret.Nerrs
@@ -190,7 +198,7 @@ func CatchUpSproxyd(client *http.Client,bucket string) {
 				if l > 0 {
 					nextMarker = s3Meta.Contents[l-1].Key
 					gLog.Info.Printf("Loop %d - Next marker %s - Istruncated %v - Elapsed time %v - Cumulative elapsed Time %v", N, nextMarker, s3Meta.IsTruncated, time.Since(start1), time.Since(start))
-					gLog.Info.Printf("Number of docs %d  - number of pages %d - number of 404's %d - number of errors %d ", ndocs, npages, n404s, nerrs)
+					gLog.Info.Printf("Number of docs %d  - number of pages %d - number of 404's %d - number of repairs %d - number of errors %d ", ndocs, npages, n404s,nreps, nerrs)
 				}
 				N++
 			} else {
