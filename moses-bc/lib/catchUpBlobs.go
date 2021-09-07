@@ -558,7 +558,7 @@ func catch(resp *http.Response, request *sproxyd.HttpRequest, replace bool) (err
 			}
 		} else {
 			 status= 412
-			 err = errors.New(fmt.Sprintf("Object is not yet synched", request.Path))
+			 err = errors.New(fmt.Sprintf("Object is not yet synched %s - status %d ", request.Path,status))
 		}
 	} else {
 		err = errors.New(fmt.Sprintf("Request url %s -Status Code %d", request.Path, resp.StatusCode))
