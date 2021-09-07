@@ -212,7 +212,7 @@ func CatchUpSproxyd(client *http.Client,bucket string) {
 func listS3bPref(client *http.Client,bucket string, prefix string, marker string) (error, string) {
 
 	var (
-		err      error
+		//err      error
 		result   string
 		contents []byte
 		delim    string
@@ -229,8 +229,9 @@ func listS3bPref(client *http.Client,bucket string, prefix string, marker string
 	keyMarker := "&marker=" + marker
 	// url := Host +":"+Port+request+prefix+limit+keyMarker+delim
 	url := levelDBUrl + request + prefix + limit + keyMarker + delim
-	// gLog.Info.Println("URL:", url)
+	gLog.Trace.Println("URL:", url)
 	if response, err := client.Get(url); err == nil {
+		gLog.Trace.Printf("Status code %d",response.StatusCode)
 		if response.StatusCode == 200 {
 			defer response.Body.Close()
 			if contents, err = ioutil.ReadAll(response.Body); err == nil {
