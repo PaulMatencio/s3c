@@ -539,7 +539,7 @@ func catch(resp *http.Response, request *sproxyd.HttpRequest, replace bool) (err
 				request.ReqHeader["Usermd"] = resp.Header["X-Scal-Usermd"][0]
 				request.ReqHeader["Content-Type"] = resp.Header["Content-Type"][0]
 				gLog.Info.Printf("Body length %d  content-type %s",len(body),request.ReqHeader["Content-Type"])
-				/*
+
 				resp1, err1 := sproxyd.PutObj(request, replace, body)
 				if err1 == nil {
 					defer resp1.Body.Close()
@@ -547,9 +547,9 @@ func catch(resp *http.Response, request *sproxyd.HttpRequest, replace bool) (err
 				} else {
 					err = err1
 				}
-				*/
-				err = nil
-				status = 413
+
+				//err = nil
+				// status = 413
 			}
 		} else {
 			err = errors.New(fmt.Sprintf("Request url %s  with a nil body", request.Path))
