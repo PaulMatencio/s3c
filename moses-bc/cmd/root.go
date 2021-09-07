@@ -36,7 +36,7 @@ const (
 	MaxFileSize                = MinPartSize * 409.6 // 2 GB
 	DefaultDownloadConcurrency = 5
 	Dummy                      = "/dev/null"
-	WaitTime	= time.Duration(200)          /*  default waitime between retry in sec */
+	WaitTime	= time.Duration(300)          /*  default waitime between retry in sec */
 	RetryNumber = 5             /*   default retry number*/
 	MaxPartSize					= MinPartSize *  20
 	CONTIMEOUT = 2000  // connection timeout in ms

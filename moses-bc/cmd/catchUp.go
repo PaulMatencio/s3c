@@ -229,16 +229,21 @@ func listS3bPref(client *http.Client,bucket string, prefix string, marker string
 	keyMarker := "&marker=" + marker
 	// url := Host +":"+Port+request+prefix+limit+keyMarker+delim
 	url := levelDBUrl + request + prefix + limit + keyMarker + delim
-	gLog.Trace.Println("URL:", url)
-	if response, err := client.Get(url); err == nil {
-		gLog.Trace.Printf("Status code %d",response.StatusCode)
-		if response.StatusCode == 200 {
-			defer response.Body.Close()
-			if contents, err = ioutil.ReadAll(response.Body); err == nil {
-				return err, ContentToJson(contents)
+	//gLog.Trace.Println("URL:", url)
+	for i := 1; i <= RetryNumber; i++ {
+		if response, err := client.Get(url); err == nil {
+			//gLog.Trace.Printf("Status code %d",response.StatusCode)
+			if response.StatusCode == 200 {
+				defer response.Body.Close()
+				if contents, err = ioutil.ReadAll(response.Body); err == nil {
+					return err, ContentToJson(contents)
+				}
+			} else {
+				gLog.Warning.Printf("Get url %s - Http status: %d", url, response.Status)
 			}
 		} else {
-			gLog.Warning.Printf("Get url %s - Http status: %d", url, response.Status)
+			gLog.Error.Printf("Error: %v - number of retries: %d", err, i)
+			time.Sleep(WaitTime * time.Millisecond)
 		}
 	}
 	return err, result
