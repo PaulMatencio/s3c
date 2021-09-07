@@ -345,7 +345,7 @@ func catchUpMaxPages(pn string, np int, maxPage int, repair bool) (ret Ret) {
 				*/
 
 				request2.Path = sproxyd.TargetEnv + "/" + pn + "/pdf"
-				if resp2, err := sproxyd.GetMetadata(&request2); err == nil {
+				if resp2, err := sproxyd.Getobject(&request2); err == nil {
 					defer resp2.Body.Close()
 					if resp2.StatusCode == 404 {
 						ret.N404s -= 1
@@ -463,7 +463,7 @@ func catchUpPagePart(request1 *sproxyd.HttpRequest, pn string, np int, start int
 						    if it exists (200)   then repair it if requested
 					*/
 					request2.Path = sproxyd.Env + "/" + pn + "/p" + strconv.Itoa(k)
-					if resp2, err := sproxyd.GetMetadata(&request2); err == nil {
+					if resp2, err := sproxyd.Getobject(&request2); err == nil {
 						defer resp2.Body.Close()
 						if resp2.StatusCode == 404 {
 							l4.Lock()
@@ -538,7 +538,7 @@ func catch(resp *http.Response, request *sproxyd.HttpRequest, replace bool) (err
 				request.ReqHeader = map[string]string{}
 				request.ReqHeader["Usermd"] = resp.Header["X-Scal-Usermd"][0]
 				request.ReqHeader["Content-Type"] = resp.Header["Content-Type"][0]
-				gLog.Info.Printf("Body length %d",len(body),request.ReqHeader["Content-Type"])
+				gLog.Info.Printf("Body length %d  content-type %s",len(body),request.ReqHeader["Content-Type"])
 				/*
 				resp1, err1 := sproxyd.PutObj(request, replace, body)
 				if err1 == nil {
