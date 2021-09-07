@@ -521,7 +521,7 @@ func catch(resp *http.Response, request *sproxyd.HttpRequest, replace bool) (err
 				request.ReqHeader = map[string]string{}
 				request.ReqHeader["Usermd"] = resp.Header["X-Scal-Usermd"][0]
 				request.ReqHeader["Content-Type"] = resp.Header["Content-Type"][0]
-				resp1, err1 := sproxyd.PutObj(request, true, body)
+				resp1, err1 := sproxyd.PutObj(request, replace, body)
 				if err1 == nil {
 					defer resp1.Body.Close()
 					status = resp1.StatusCode
