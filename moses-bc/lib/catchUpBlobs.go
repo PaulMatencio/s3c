@@ -72,7 +72,7 @@ func catchUpPages(pn string, np int, repair bool) (ret Ret) {
 			pdf, p0 = CheckPdfAndP0(pn, docmd)
 		} else {
 			if status == 404 {
-
+				ret.N404s +=1
 			}
 			gLog.Warning.Printf("Target docid %s - status code %d ", sproxyd.TargetEnv+"/"+pn, status)
 			request2.Path = sproxyd.Env + "/" + pn
