@@ -34,6 +34,7 @@ type Ret struct {
 	Npages int
 	Nerrs  int
 	N404s  int
+	Nreps  int
 }
 
 /*
