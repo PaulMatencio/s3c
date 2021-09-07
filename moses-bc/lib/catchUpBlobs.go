@@ -529,8 +529,8 @@ func catch(resp *http.Response, request *sproxyd.HttpRequest, replace bool) (err
 		/*
 			check if  object is already synched
 		 */
-		if _, ok := resp.Header["X-Scal-Attr-Is-Sync"]; !ok {
-			
+		if _, ok := resp.Header["X-Scal-Attr-Is-Sync"]; ok {
+
 			if resp.ContentLength > 0 {
 				body, _ = ioutil.ReadAll(resp.Body)
 			}
