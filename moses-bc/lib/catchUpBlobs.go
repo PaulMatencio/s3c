@@ -449,7 +449,7 @@ func catchUpPagePart(request1 *sproxyd.HttpRequest, pn string, np int, start int
 			if resp, err := sproxyd.GetMetadata(&request1); err == nil {
 				defer resp.Body.Close()
 				/*
-						check if the target page is missing
+					check if the target page is missing
 					if not then just continue
 				*/
 				if resp.StatusCode == 404 {
@@ -532,10 +532,14 @@ func catch(resp *http.Response, request *sproxyd.HttpRequest, replace bool) (err
 		if body != nil {
 			if _, ok := resp.Header["X-Scal-Usermd"]; ok {
 
-				/* Write Object */
+				/*
+					Write Object
+				*/
 				request.ReqHeader = map[string]string{}
 				request.ReqHeader["Usermd"] = resp.Header["X-Scal-Usermd"][0]
 				request.ReqHeader["Content-Type"] = resp.Header["Content-Type"][0]
+				gLog.Info.Printf("Body length %d",len(body),request.ReqHeader["Content-Type"])
+				/*
 				resp1, err1 := sproxyd.PutObj(request, replace, body)
 				if err1 == nil {
 					defer resp1.Body.Close()
@@ -543,6 +547,9 @@ func catch(resp *http.Response, request *sproxyd.HttpRequest, replace bool) (err
 				} else {
 					err = err1
 				}
+				*/
+				err = nil
+				status = 413
 			}
 		} else {
 			err = errors.New(fmt.Sprintf("Request url %s  with a nil body", request.Path))
