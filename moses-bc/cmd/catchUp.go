@@ -78,7 +78,10 @@ func init() {
 
 func CatchUp(cmd *cobra.Command, args []string) {
 
-	var err error
+	var (
+		err error
+		skipInput = 0
+	)
 	if err = mosesbc.SetSourceSproxyd("check", srcUrl, driver, env); err != nil {
 		gLog.Error.Printf("%v", err)
 		return
@@ -111,6 +114,12 @@ func CatchUp(cmd *cobra.Command, args []string) {
 						gLog.Error.Printf("Failed to create a session with the source S3 endpoint")
 						return
 					}
+				}
+			}
+			if skipInput > 0 {
+				gLog.Info.Printf("Skipping the first %d entries of the input file %s", skipInput, inFile)
+				for sk := 1; sk <= skipInput; sk++ {
+					listpn.Scan()
 				}
 			}
 			catchUpPns(srcS3)
@@ -323,22 +332,25 @@ func catchUpPns(service *s3.S3) (ret mosesbc.Ret) {
 		if err == nil {
 			if l := len(result.Contents); l > 0 {
 				//	start := time.Now()
-				var buck1 string
+				var (
+					buck1 string
+					key string
+				)
 				gLog.Info.Printf("Total number of documents %d", l)
 				for _, v := range result.Contents {
 					if *v.Key != nextmarker {
 						if err, method, key = mosesbc.ParseLog(*v.Key); err != nil {
 							gLog.Error.Printf("%v", err)
-							ec.WriteBdb([]byte(bNSpace), []byte(errSuffix+"/"+*v.Key), []byte(err.Error()), myBdb)
+							// ec.WriteBdb([]byte(bNSpace), []byte(errSuffix+"/"+*v.Key), []byte(err.Error()), myBdb)
 							continue // skip it
 						}
-						buck1 = mosesbc.SetBucketName(key, req.Bucket)
+						buck1 = mosesbc.SetBucketName(key, srcBucket)
 						ret.Ndocs += 1
 						//  prepare the request to retrieve S3 meta data
 						request := datatype.StatObjRequest{
 							Service: service,
 							Bucket:  buck1,
-							Key:     *v.Key,
+							Key:     key,
 						}
 						wg1.Add(1)
 						go func(request datatype.StatObjRequest, repair bool) {
@@ -363,7 +375,6 @@ func catchUpPns(service *s3.S3) (ret mosesbc.Ret) {
 				wg1.Wait()
 				if *result.IsTruncated {
 					nextmarker = *result.Contents[l-1].Key
-					token = *result.NextContinuationToken
 					gLog.Warning.Printf("Truncated %v - Next marker: %s  - Nextcontinuation token: %s", *result.IsTruncated, nextmarker, token)
 					gLog.Info.Printf("Number of docs %d  - number of pages %d - number of 404's %d - number of repairs %d - number of errors %d ", ret.Ndocs, ret.Npages, ret.N404s, ret.Nreps, ret.Nerrs)
 				}
