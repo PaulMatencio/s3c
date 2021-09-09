@@ -17,11 +17,15 @@ package cmd
 import (
 	"encoding/base64"
 	"encoding/json"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/paulmatencio/s3c/api"
+	// "fmt"
 	"github.com/paulmatencio/s3c/datatype"
 	gLog "github.com/paulmatencio/s3c/gLog"
 	meta "github.com/paulmatencio/s3c/moses-bc/datatype"
 	mosesbc "github.com/paulmatencio/s3c/moses-bc/lib"
 	sproxyd "github.com/paulmatencio/s3c/sproxyd/lib"
+	"github.com/paulmatencio/s3c/utils"
 	"github.com/spf13/cobra"
 	"io/ioutil"
 	"net"
@@ -41,16 +45,17 @@ var (
 	catchUpCmd = &cobra.Command{
 		Use:   "catch-up",
 		Short: "Command to copy missing sproxyd  objects",
-		Long: `Command to copy missing sproxyd  objects`,
-		Run: CatchUp,
+		Long:  `Command to copy missing sproxyd  objects`,
+		Run:   CatchUp,
 	}
 	levelDBUrl string
-	repair bool
+	repair     bool
 )
 
 func initCatFlags(cmd *cobra.Command) {
 
 	cmd.Flags().StringVarP(&srcBucket, "source-bucket", "", "", "name of source S3 bucket without its suffix 00..05")
+	cmd.Flags().StringVarP(&inFile, "input-file", "i", "", uInputFile)
 	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", uPrefix)
 	cmd.Flags().Int64VarP(&maxKey, "max-key", "m", 20, "maximum number of documents (keys) to be backed up concurrently -Check --max-page for maximum number of concurrent pages")
 	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key - Useful for rerun")
@@ -63,7 +68,7 @@ func initCatFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&env, "source-sproxyd-env", "", "", "source sproxyd environment [prod|osa]")
 	cmd.Flags().StringVarP(&targetEnv, "target-sproxyd-env", "", "", "target sproxyd environment [prod|osa]")
 	cmd.Flags().StringVarP(&levelDBUrl, "levelDB-url", "", "http://10.147.68.133:9000", "levelDB Url - moses s3 index (directory)")
-	cmd.Flags().BoolVarP(&repair, "repair", "", false, "levelDB Url - moses s3 index (directory)")
+	cmd.Flags().BoolVarP(&repair, "repair", "", false, "trigger the copy of the missing object if it exists")
 }
 
 func init() {
@@ -84,11 +89,22 @@ func CatchUp(cmd *cobra.Command, args []string) {
 		return
 	}
 
-
-
 	gLog.Info.Printf("Source Env: %s - Source Driver: %s - Source Url: %s", sproxyd.Env, sproxyd.Driver, sproxyd.Url)
 	gLog.Info.Printf("Target Env: %s - Target Driver: %s - Target Url: %s", sproxyd.TargetEnv, sproxyd.TargetDriver, sproxyd.TargetUrl)
-	gLog.Info.Printf("Level DB URL: %s",levelDBUrl)
+	gLog.Info.Printf("Level DB URL: %s", levelDBUrl)
+
+	// Pns from --input-file
+	if len(inFile) > 0 {
+		if listpn, err = utils.Scanner(inFile); err != nil {
+			gLog.Error.Printf("Error %v  scanning --input-file  %s ", err, inFile)
+			return
+		} else {
+			catchUpPns()
+			return
+		}
+	}
+
+	//  Pn from Moses --source-bucket 
 
 	if len(srcBucket) == 0 {
 		gLog.Error.Printf("Source bucket is missing")
@@ -130,26 +146,28 @@ func CatchUp(cmd *cobra.Command, args []string) {
 		}
 	)
 	client.Transport = transport
-	CatchUpSproxyd(client,srcBucket)
+	CatchUpSproxyd(client, srcBucket)
 
 }
 
-func CatchUpSproxyd(client *http.Client,bucket string) {
+func CatchUpSproxyd(client *http.Client, bucket string) {
+
 	var (
-		s3Meta = datatype.S3Metadata{}
-		nextMarker string
-		N          = 0
-		start = time.Now()
-		l4 ,lp,le sync.Mutex
-		n404s,ndocs,npages,nerrs,nreps int
+		s3Meta                             = datatype.S3Metadata{}
+		nextMarker                         string
+		N                                  = 0
+		start                              = time.Now()
+		l4, lp, le                         sync.Mutex
+		n404s, ndocs, npages, nerrs, nreps int
 	)
 	for {
 		start1 := time.Now()
-		if err, result := listS3bPref(client,bucket, prefix, marker); err != nil || len(result) == 0 {
+		err, result := listS3bPref(client, bucket, prefix, marker)
+		if err != nil || len(result) == 0 {
 			if err != nil {
 				gLog.Error.Println(err)
 			} else {
-				gLog.Info.Println("Result is empty")
+				gLog.Info.Println("Result set is empty")
 			}
 		} else {
 
@@ -160,15 +178,15 @@ func CatchUpSproxyd(client *http.Client,bucket string) {
 					ndocs += 1
 					m := &c.Value.XAmzMetaUsermd
 					usermd, _ := base64.StdEncoding.DecodeString(*m)
-					s3meta := meta.UserMd{}  //  moses s3 index
-					if err = json.Unmarshal(usermd,&s3meta); err == nil {
+					s3meta := meta.UserMd{} //  moses s3 index
+					if err = json.Unmarshal(usermd, &s3meta); err == nil {
 						wg1.Add(1)
-						go func(c datatype.Contents,s3meta *meta.UserMd) {
-							np,_ := strconv.Atoi(s3meta.TotalPages)
+						go func(c datatype.Contents, s3meta *meta.UserMd) {
+							np, _ := strconv.Atoi(s3meta.TotalPages)
 							lp.Lock()
 							npages += np
 							lp.Unlock()
-							ret := mosesbc.CatchUpBlobs(c.Key, np, maxPage,repair)
+							ret := mosesbc.CatchUpBlobs(c.Key, np, maxPage, repair)
 							if ret.N404s > 0 {
 								l4.Lock()
 								n404s += ret.N404s
@@ -176,21 +194,21 @@ func CatchUpSproxyd(client *http.Client,bucket string) {
 								l4.Unlock()
 							}
 							/*
-							if ret.Nreps > 0 {
-								l4.Lock()
-								nreps += ret.Nreps
-								l4.Unlock()
-							}
-							 */
-							if ret.Nerrs>0 {
+								if ret.Nreps > 0 {
+									lr.Lock()
+									nreps += ret.Nreps
+									lr.Unlock()
+								}
+							*/
+							if ret.Nerrs > 0 {
 								le.Lock()
 								nerrs += ret.Nerrs
 							}
 							wg1.Done()
-						} (c,&s3meta)
+						}(c, &s3meta)
 
-					}  else {
-						gLog.Error.Printf("%v",err)
+					} else {
+						gLog.Error.Printf("%v", err)
 					}
 
 				}
@@ -198,7 +216,7 @@ func CatchUpSproxyd(client *http.Client,bucket string) {
 				if l > 0 {
 					nextMarker = s3Meta.Contents[l-1].Key
 					gLog.Info.Printf("Loop %d - Next marker %s - Istruncated %v - Elapsed time %v - Cumulative elapsed Time %v", N, nextMarker, s3Meta.IsTruncated, time.Since(start1), time.Since(start))
-					gLog.Info.Printf("Number of docs %d  - number of pages %d - number of 404's %d - number of repairs %d - number of errors %d ", ndocs, npages, n404s,nreps, nerrs)
+					gLog.Info.Printf("Number of docs %d  - number of pages %d - number of 404's %d - number of repairs %d - number of errors %d ", ndocs, npages, n404s, nreps, nerrs)
 				}
 				N++
 			} else {
@@ -217,7 +235,7 @@ func CatchUpSproxyd(client *http.Client,bucket string) {
 
 }
 
-func listS3bPref(client *http.Client,bucket string, prefix string, marker string) (error, string) {
+func listS3bPref(client *http.Client, bucket string, prefix string, marker string) (error, string) {
 
 	var (
 		//err      error
@@ -225,7 +243,6 @@ func listS3bPref(client *http.Client,bucket string, prefix string, marker string
 		contents []byte
 		delim    string
 	)
-
 
 	request := "/default/bucket/" + bucket + "?listingType=DelimiterMaster&prefix="
 	limit := "&maxKeys=" + strconv.Itoa(int(maxKey))
@@ -266,4 +283,115 @@ func ContentToJson(contents []byte) string {
 	result = strings.Replace(result, "}\"", "}", -1)
 	gLog.Trace.Println(result)
 	return result
+}
+
+func catchUpPns() (ret mosesbc.Ret) {
+
+	var (
+		nextmarker, token string
+		N                 int
+
+		re, si            sync.Mutex
+		req               datatype.ListObjV2Request
+	)
+
+	// start0 := time.Now()
+	for {
+		var (
+			result *s3.ListObjectsV2Output
+			err    error
+			wg1    sync.WaitGroup
+		)
+		N++ // number of loop
+
+		gLog.Info.Printf("Listing documents from file %s", inFile)
+		result, err = mosesbc.ListPn(listpn, int(maxKey))
+
+		// result contains the list of documents to clone
+		if err == nil {
+			if l := len(result.Contents); l > 0 {
+			//	start := time.Now()
+				var buck1 string
+				gLog.Info.Printf("Total number of documents %d", l)
+				for _, v := range result.Contents {
+					if *v.Key != nextmarker {
+						ret.Ndocs += 1
+						svc1 := req.Service
+						if incr {
+							buck1 = mosesbc.SetBucketName(*v.Key, req.Bucket)
+						} else {
+							buck1 = req.Bucket
+						}
+						//  prepare the request to retrieve S3 meta data
+						request := datatype.StatObjRequest{
+							Service: svc1,
+							Bucket:  buck1,
+							Key:     *v.Key,
+						}
+						wg1.Add(1)
+						go func(request datatype.StatObjRequest, repair bool) {
+							defer wg1.Done()
+							ret1 := catchUpPn(request, repair)
+							if ret1.Nerrs > 0 {
+								re.Lock()
+								ret.Nerrs += ret1.Nerrs
+								re.Unlock()
+							}
+							si.Lock()
+							ret.Npages += ret1.Npages
+							ret.Ndocs += ret1.Ndocs
+							si.Unlock()
+						}(request, repair)
+					}
+				}
+				wg1.Wait()
+				if *result.IsTruncated {
+					nextmarker = *result.Contents[l-1].Key
+					token = *result.NextContinuationToken
+					gLog.Warning.Printf("Truncated %v - Next marker: %s  - Nextcontinuation token: %s", *result.IsTruncated, nextmarker, token)
+				}
+				//gLog.Info.Printf("Number of cloned documents: %d of %d - Number of pages: %d  - Documents size: %d - Number of errors: %d -  Elapsed time: %v", ndocs, ndocr, npages, docsizes, nerrors, time.Since(start))
+			}
+		} else {
+			gLog.Error.Printf("%v", err)
+			break
+		}
+
+		if *result.IsTruncated && (maxLoop == 0 || N < maxLoop) {
+			// req1.Marker = nextmarker
+			req.Continuationtoken = token
+		} else {
+		//	gLog.Info.Printf("Total number of cloned documents: %d of %d - total number of pages: %d  - Total document size: %d - Total number of errors: %d - Total elapsed time: %v", tdocs, tdocr, tpages, tsizes, terrors, time.Since(start0))
+			break
+		}
+	}
+	return ret
+}
+
+func catchUpPn(request datatype.StatObjRequest, repair bool) (ret mosesbc.Ret) {
+	var (
+		rh = datatype.Rh{
+			Key: request.Key,
+		}
+		err        error
+		usermd, pn string
+		np         int
+	)
+
+	if rh.Result, rh.Err = api.StatObject(request); rh.Err == nil {
+		// get S3 user metadata
+		if usermd, err = utils.GetUserMeta(rh.Result.Metadata); err == nil {
+			userm := meta.UserMd{}
+			json.Unmarshal([]byte(usermd), &userm)
+			pn = rh.Key
+			if np, err = strconv.Atoi(userm.TotalPages); err == nil {
+				ret = mosesbc.CatchUpBlobs(pn, np, maxPage, repair)
+			}
+		} else {
+			gLog.Error.Printf("%v", err)
+		}
+	} else {
+		gLog.Error.Printf("%v", rh.Err)
+	}
+	return
 }
