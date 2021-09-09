@@ -99,12 +99,25 @@ func CatchUp(cmd *cobra.Command, args []string) {
 			gLog.Error.Printf("Error %v  scanning --input-file  %s ", err, inFile)
 			return
 		} else {
-			catchUpPns()
-			return
+			if len(srcBucket) == 0 {
+				gLog.Error.Printf("Source bucket is missing")
+				return
+			} else {
+				if mosesbc.HasSuffix(srcBucket) {
+					gLog.Error.Printf("Remove the bucket suffix of --source-bucket  %s", srcBucket)
+					return
+				} else {
+					if srcS3 = mosesbc.CreateS3Session("backup", "source"); srcS3 == nil {
+						gLog.Error.Printf("Failed to create a session with the source S3 endpoint")
+						return
+					}
+				}
+			}
+			catchUpPns(srcS3)
 		}
 	}
 
-	//  Pn from Moses --source-bucket 
+	//  Pn from Moses --source-bucket
 
 	if len(srcBucket) == 0 {
 		gLog.Error.Printf("Source bucket is missing")
@@ -113,8 +126,8 @@ func CatchUp(cmd *cobra.Command, args []string) {
 
 	//  check only documents metadata
 	if len(prefix) == 0 {
-		if !mosesbc.HasSuffix(srcBucket) {
-			gLog.Error.Printf("if --prefix is missing then please provide a suffix [00..05]to the bucket %s", srcBucket)
+		if len(srcBucket) == 0 {
+			gLog.Error.Printf("Source bucket is missing")
 			return
 		}
 	} else {
@@ -285,14 +298,13 @@ func ContentToJson(contents []byte) string {
 	return result
 }
 
-func catchUpPns() (ret mosesbc.Ret) {
+func catchUpPns(service *s3.S3) (ret mosesbc.Ret) {
 
 	var (
 		nextmarker, token string
 		N                 int
-
-		re, si            sync.Mutex
-		req               datatype.ListObjV2Request
+		re, si sync.Mutex
+		req    datatype.ListObjV2Request
 	)
 
 	// start0 := time.Now()
@@ -310,21 +322,21 @@ func catchUpPns() (ret mosesbc.Ret) {
 		// result contains the list of documents to clone
 		if err == nil {
 			if l := len(result.Contents); l > 0 {
-			//	start := time.Now()
+				//	start := time.Now()
 				var buck1 string
 				gLog.Info.Printf("Total number of documents %d", l)
 				for _, v := range result.Contents {
 					if *v.Key != nextmarker {
-						ret.Ndocs += 1
-						svc1 := req.Service
-						if incr {
-							buck1 = mosesbc.SetBucketName(*v.Key, req.Bucket)
-						} else {
-							buck1 = req.Bucket
+						if err, method, key = mosesbc.ParseLog(*v.Key); err != nil {
+							gLog.Error.Printf("%v", err)
+							ec.WriteBdb([]byte(bNSpace), []byte(errSuffix+"/"+*v.Key), []byte(err.Error()), myBdb)
+							continue // skip it
 						}
+						buck1 = mosesbc.SetBucketName(key, req.Bucket)
+						ret.Ndocs += 1
 						//  prepare the request to retrieve S3 meta data
 						request := datatype.StatObjRequest{
-							Service: svc1,
+							Service: service,
 							Bucket:  buck1,
 							Key:     *v.Key,
 						}
@@ -336,6 +348,10 @@ func catchUpPns() (ret mosesbc.Ret) {
 								re.Lock()
 								ret.Nerrs += ret1.Nerrs
 								re.Unlock()
+							}
+							if ret1.N404s >0 {
+								ret.N404s += ret1.N404s
+								ret.Nreps += ret1.Nreps
 							}
 							si.Lock()
 							ret.Npages += ret1.Npages
@@ -349,6 +365,7 @@ func catchUpPns() (ret mosesbc.Ret) {
 					nextmarker = *result.Contents[l-1].Key
 					token = *result.NextContinuationToken
 					gLog.Warning.Printf("Truncated %v - Next marker: %s  - Nextcontinuation token: %s", *result.IsTruncated, nextmarker, token)
+					gLog.Info.Printf("Number of docs %d  - number of pages %d - number of 404's %d - number of repairs %d - number of errors %d ", ret.Ndocs, ret.Npages, ret.N404s, ret.Nreps, ret.Nerrs)
 				}
 				//gLog.Info.Printf("Number of cloned documents: %d of %d - Number of pages: %d  - Documents size: %d - Number of errors: %d -  Elapsed time: %v", ndocs, ndocr, npages, docsizes, nerrors, time.Since(start))
 			}
@@ -361,7 +378,7 @@ func catchUpPns() (ret mosesbc.Ret) {
 			// req1.Marker = nextmarker
 			req.Continuationtoken = token
 		} else {
-		//	gLog.Info.Printf("Total number of cloned documents: %d of %d - total number of pages: %d  - Total document size: %d - Total number of errors: %d - Total elapsed time: %v", tdocs, tdocr, tpages, tsizes, terrors, time.Since(start0))
+			//	gLog.Info.Printf("Total number of cloned documents: %d of %d - total number of pages: %d  - Total document size: %d - Total number of errors: %d - Total elapsed time: %v", tdocs, tdocr, tpages, tsizes, terrors, time.Since(start0))
 			break
 		}
 	}
