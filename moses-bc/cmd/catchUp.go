@@ -328,7 +328,7 @@ func catchUpPns(service *s3.S3) (ret mosesbc.Ret) {
 		gLog.Info.Printf("Listing documents from file %s", inFile)
 		result, err = mosesbc.ListPn(listpn, int(maxKey))
 
-		// result contains the list of documents to clone
+		// result contains the list of docid ( PUT CC/PN/KC) to be checked
 		if err == nil {
 			if l := len(result.Contents); l > 0 {
 				//	start := time.Now()
@@ -397,6 +397,7 @@ func catchUpPns(service *s3.S3) (ret mosesbc.Ret) {
 }
 
 func catchUpPn(request datatype.StatObjRequest, repair bool) (ret mosesbc.Ret) {
+
 	var (
 		rh = datatype.Rh{
 			Key: request.Key,
