@@ -520,7 +520,8 @@ func repairIt(resp *http.Response, request *sproxyd.HttpRequest, replace bool) e
 		if status == 200 {
 			gLog.Info.Printf("Target  object %s is recovered - status code %d", request.Path, status)
 		} else {
-			gLog.Warning.Printf("Target object %s is not recovered - status code %d", request.Path, status)
+			err = errors.New(fmt.Sprintf("Target object %s is not recovered - status code %d", request.Path, status))
+			gLog.Error.Printf("%v",err)
 		}
 	} else {
 		gLog.Error.Printf("Target object %s is not recovered - Error %v", request.Path, err)
