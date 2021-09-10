@@ -18,6 +18,7 @@ const (
 	KEEP_ALIVE      = 20   //sec
 	RETRY           = 5
 	WAITTIME         = 100
+
 )
 
 var (

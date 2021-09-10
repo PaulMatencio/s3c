@@ -20,11 +20,12 @@ func DoRequest(hspool hostpool.HostPool, client *http.Client, req *http.Request,
 		err      error
 		r        int
 		hpool    hostpool.HostPoolResponse
-		waittime time.Duration
+		// waittime time.Duration
 	)
 	u := req.URL
 	uPath := u.Path
-	waittime = Waittime * time.Millisecond
+	// waittime = WAITTIME * time.Millisecond
+
 	// goLog.Trace.Println(req.Method, req.Header, u.Host, u.Path, len(object))
 	for r = 1; r <= DoRetry; r++ {
 		// hpool = HP.Get()
@@ -62,7 +63,8 @@ func DoRequest(hspool hostpool.HostPool, client *http.Client, req *http.Request,
 				goLog.Error.Printf("Retry=%d, Url=%s Status Code=%s", r, req.URL, resp.Status)
 			case 423:
 				hpool.Mark(err)
-				goLog.Warning.Printf("Retry=%d after %s , Url=%s Status Code=%s", r, waittime, req.URL, resp.Status)
+				waittime := 1*time.Second
+				goLog.Warning.Printf("Retry=%d after %s .., Url=%s Status Code=%s", r, waittime, req.URL, resp.Status)
 				time.Sleep(waittime)
 			case 422:
 				hpool.Mark(err)
