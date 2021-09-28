@@ -55,7 +55,7 @@ var (
 		Run:   CatchUpEdrex,
 	}
 	levelDBUrl string
-	repair,edrex     bool
+	repair     bool
 )
 
 func initCatFlags(cmd *cobra.Command) {
@@ -63,7 +63,7 @@ func initCatFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&srcBucket, "source-bucket", "", "", "name of source S3 bucket without its suffix 00..05")
 	cmd.Flags().StringVarP(&inFile, "input-file", "i", "", uInputFile)
 	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", uPrefix)
-	cmd.Flags().Int64VarP(&maxKey, "max-key", "m", 20, "maximum number of documents (keys) to be catched up concurrently -Check --max-page for maximum number of concurrent pages")
+	cmd.Flags().Int64VarP(&maxKey, "max-key", "m", 20, "maximum number of documents (keys) to be checked up concurrently -Check --max-page for maximum number of concurrent pages")
 	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key - Useful for rerun")
 	cmd.Flags().IntVarP(&maxPage, "max-page", "", 50, "maximum number of concurrent pages per document. check  --max-key for maximum number of concurrent documents")
 	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, "maximum number of loop, 0 means no upper limit")
@@ -79,7 +79,7 @@ func initCatFlags(cmd *cobra.Command) {
 func initCatEdrexFlags(cmd *cobra.Command) {
 
 	cmd.Flags().StringVarP(&inFile, "input-file", "i", "", uInputFile)
-	cmd.Flags().Int64VarP(&maxKey, "max-key", "m", 20, "maximum number of documents (keys) to be catched up concurrently")
+	cmd.Flags().Int64VarP(&maxKey, "max-key", "m", 20, "maximum number of documents (keys) to be checked up concurrently")
 	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key - Useful for rerun")
 	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, "maximum number of loop, 0 means no upper limit")
 	cmd.Flags().StringVarP(&srcUrl, "source-sproxyd-url", "s", "", "source sproxyd endpoints  http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
@@ -93,7 +93,7 @@ func init() {
 	rootCmd.AddCommand(catchUpCmd)
 	rootCmd.AddCommand(catchUpEdrexCmd)
 	initCatFlags(catchUpCmd)
-	initCatEdrexFlags(catchUpCmd)
+	initCatEdrexFlags(catchUpEdrexCmd)
 }
 
 func CatchUp(cmd *cobra.Command, args []string) {
