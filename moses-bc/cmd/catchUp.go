@@ -628,7 +628,8 @@ func catchUpEdrex(key string, repair bool) (ret mosesbc.Ret) {
 						ct := resp1.Header["Content-Type"][0]
 						lm := resp1.Header["Last-Modified"][0]
 						sz := resp1.ContentLength
-						gLog.Info.Printf("Target Page %s is missing, is synced? %s - content-type %s - Content-length %d - Last Modified %s", request1.Path, isSync, ct, sz,lm)
+						del := resp1.Header["X-Scal-Attr-Is-Deleted"][0]
+						gLog.Info.Printf("Target Page %s is missing, is synced? %s - content-type %s - Content-length %d - Last Modified %s - Is deleted? %s", request1.Path, isSync, ct, sz,lm,del)
 					}
 				case 404:
 					ret.N404s--
