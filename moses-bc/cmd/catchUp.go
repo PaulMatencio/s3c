@@ -48,8 +48,14 @@ var (
 		Long:  `Command to copy missing sproxyd  objects`,
 		Run:   CatchUp,
 	}
+	catchUpEdrexCmd = &cobra.Command{
+		Use:   "catch-up-edrex",
+		Short: "Command to copy missing sproxyd edrex  objects",
+		Long:  `Command to copy missing sproxyd  edrex objects`,
+		Run:   CatchUpEdrex,
+	}
 	levelDBUrl string
-	repair     bool
+	repair,edrex     bool
 )
 
 func initCatFlags(cmd *cobra.Command) {
@@ -57,7 +63,7 @@ func initCatFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&srcBucket, "source-bucket", "", "", "name of source S3 bucket without its suffix 00..05")
 	cmd.Flags().StringVarP(&inFile, "input-file", "i", "", uInputFile)
 	cmd.Flags().StringVarP(&prefix, "prefix", "p", "", uPrefix)
-	cmd.Flags().Int64VarP(&maxKey, "max-key", "m", 20, "maximum number of documents (keys) to be backed up concurrently -Check --max-page for maximum number of concurrent pages")
+	cmd.Flags().Int64VarP(&maxKey, "max-key", "m", 20, "maximum number of documents (keys) to be catched up concurrently -Check --max-page for maximum number of concurrent pages")
 	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key - Useful for rerun")
 	cmd.Flags().IntVarP(&maxPage, "max-page", "", 50, "maximum number of concurrent pages per document. check  --max-key for maximum number of concurrent documents")
 	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, "maximum number of loop, 0 means no upper limit")
@@ -70,10 +76,24 @@ func initCatFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&levelDBUrl, "levelDB-url", "", "http://10.147.68.133:9000", "levelDB Url - moses s3 index (directory)")
 	cmd.Flags().BoolVarP(&repair, "repair", "", false, "trigger the copy of the missing object if it exists")
 }
+func initCatEdrexFlags(cmd *cobra.Command) {
+
+	cmd.Flags().StringVarP(&inFile, "input-file", "i", "", uInputFile)
+	cmd.Flags().Int64VarP(&maxKey, "max-key", "m", 20, "maximum number of documents (keys) to be catched up concurrently")
+	cmd.Flags().StringVarP(&marker, "marker", "M", "", "start processing from this key - Useful for rerun")
+	cmd.Flags().IntVarP(&maxLoop, "max-loop", "", 1, "maximum number of loop, 0 means no upper limit")
+	cmd.Flags().StringVarP(&srcUrl, "source-sproxyd-url", "s", "", "source sproxyd endpoints  http://xx.xx.xx.xx:81/proxy,http://xx.xx.xx.xx:81/proxy")
+	cmd.Flags().StringVarP(&targetUrl, "target-sproxyd-url", "t", "", "target sproxyd endpoint URL http://xx.xx.xx.xx:81/proxy,http:// ...")
+	cmd.Flags().StringVarP(&driver, "source-sproxyd-driver", "", "", "source sproxyd driver [bpchord|bparc]")
+	cmd.Flags().StringVarP(&targetDriver, "target-sproxyd-driver", "", "", "target sproxyd driver [bpchord|bparc]")
+	cmd.Flags().BoolVarP(&repair, "repair", "", false, "trigger the copy of the missing object if it exists")
+}
 
 func init() {
 	rootCmd.AddCommand(catchUpCmd)
+	rootCmd.AddCommand(catchUpEdrexCmd)
 	initCatFlags(catchUpCmd)
+	initCatEdrexFlags(catchUpCmd)
 }
 
 func CatchUp(cmd *cobra.Command, args []string) {
@@ -172,6 +192,44 @@ func CatchUp(cmd *cobra.Command, args []string) {
 
 }
 
+
+func CatchUpEdrex(cmd *cobra.Command, args []string) {
+	var (
+		err error
+		skipInput = 0
+	)
+	if err = mosesbc.SetSourceSproxyd("check", srcUrl, driver, env); err != nil {
+		gLog.Error.Printf("%v", err)
+		return
+	}
+
+	if err = mosesbc.SetTargetSproxyd("check", targetUrl, targetDriver, targetEnv); err != nil {
+		gLog.Error.Printf("%v", err)
+		return
+	}
+
+	gLog.Info.Printf("Source Env: %s - Source Driver: %s - Source Url: %s", sproxyd.Env, sproxyd.Driver, sproxyd.Url)
+	gLog.Info.Printf("Target Env: %s - Target Driver: %s - Target Url: %s", sproxyd.TargetEnv, sproxyd.TargetDriver, sproxyd.TargetUrl)
+	if len(inFile) > 0 {
+		if listpn, err = utils.Scanner(inFile); err != nil {
+			gLog.Error.Printf("Error %v  scanning --input-file  %s ", err, inFile)
+			return
+		} else {
+			if skipInput > 0 {
+				gLog.Info.Printf("Skipping the first %d entries of the input file %s", skipInput, inFile)
+				for sk := 1; sk <= skipInput; sk++ {
+					listpn.Scan()
+				}
+			}
+			catchUpEdrexs()
+		}
+	} else {
+		gLog.Error.Printf("--input-file is missing")
+		return
+	}
+}
+
+
 func CatchUpSproxyd(client *http.Client, bucket string) {
 
 	var (
@@ -182,6 +240,7 @@ func CatchUpSproxyd(client *http.Client, bucket string) {
 		l4, lp, le                         sync.Mutex
 		n404s, ndocs, npages, nerrs, nreps int
 	)
+
 	for {
 		start1 := time.Now()
 		err, result := listS3bPref(client, bucket, prefix, marker)
@@ -375,7 +434,7 @@ func catchUpPns(service *s3.S3) (ret mosesbc.Ret) {
 				wg1.Wait()
 				if *result.IsTruncated {
 					nextmarker = *result.Contents[l-1].Key
-					gLog.Warning.Printf("Truncated %v - Next marker: %s  - Nextcontinuation token: %s", *result.IsTruncated, nextmarker, token)
+					gLog.Warning.Printf("Truncated %v - Next marker: %s  - Next continuation token: %s", *result.IsTruncated, nextmarker, token)
 					gLog.Info.Printf("Number of docs %d  - number of pages %d - number of 404's %d - number of repairs %d - number of errors %d ", ret.Ndocs, ret.Npages, ret.N404s, ret.Nreps, ret.Nerrs)
 				}
 				//gLog.Info.Printf("Number of cloned documents: %d of %d - Number of pages: %d  - Documents size: %d - Number of errors: %d -  Elapsed time: %v", ndocs, ndocr, npages, docsizes, nerrors, time.Since(start))
@@ -417,10 +476,142 @@ func catchUpPn(request datatype.StatObjRequest, repair bool) (ret mosesbc.Ret) {
 				ret = mosesbc.CatchUpBlobs(pn, np, maxPage, repair)
 			}
 		} else {
-			gLog.Error.Printf("%v", err)
+			gLog.Error.Printf("Error %v -  metadata %s ", err,rh.Result.Metadata)
 		}
 	} else {
-		gLog.Error.Printf("%v", rh.Err)
+		gLog.Error.Printf("Error %v - Bucket %s - Key %s", rh.Err,request.Bucket,request.Key)
 	}
 	return
+}
+
+func catchUpEdrexs() (ret mosesbc.Ret)  {
+	var (
+		nextmarker, token string
+		N                 int
+		re, si sync.Mutex
+		req    datatype.ListObjV2Request
+	)
+
+	// start0 := time.Now()
+	for {
+		var (
+			result *s3.ListObjectsV2Output
+			err    error
+			wg1    sync.WaitGroup
+		)
+		N++ // number of loop
+
+		gLog.Info.Printf("Listing documents from file %s", inFile)
+		result, err = mosesbc.ListPn(listpn, int(maxKey))
+
+		// result contains the list of docid ( PUT CC/PN/KC) to be checked
+		if err == nil {
+			if l := len(result.Contents); l > 0 {
+				//	start := time.Now()
+
+				gLog.Info.Printf("Total number of documents %d", l)
+				for _, v := range result.Contents {
+					if *v.Key != nextmarker {
+						if err, method, key = mosesbc.ParseLog(*v.Key); err != nil {
+							gLog.Error.Printf("%v", err)
+							continue // skip it
+						}
+						ret.Ndocs += 1
+						//  prepare the request to retrieve S3 meta data
+
+						wg1.Add(1)
+						go func(repair bool) {
+							defer wg1.Done()
+							ret1 := catchUpEdrex(key, repair)
+							if ret1.Nerrs > 0 {
+								re.Lock()
+								ret.Nerrs += ret1.Nerrs
+								re.Unlock()
+							}
+							if ret1.N404s >0 {
+								ret.N404s += ret1.N404s
+								ret.Nreps += ret1.Nreps
+							}
+							si.Lock()
+							ret.Ndocs += ret1.Ndocs
+							si.Unlock()
+						}(repair)
+					}
+				}
+				wg1.Wait()
+				if *result.IsTruncated {
+					nextmarker = *result.Contents[l-1].Key
+					gLog.Warning.Printf("Truncated %v - Next marker: %s  - Next continuation token: %s", *result.IsTruncated, nextmarker, token)
+					gLog.Info.Printf("Number of docs %d  - number of pages %d - number of 404's %d - number of repairs %d - number of errors %d ", ret.Ndocs, ret.Npages, ret.N404s, ret.Nreps, ret.Nerrs)
+				}
+			}
+		} else {
+			gLog.Error.Printf("%v", err)
+			break
+		}
+
+		if *result.IsTruncated && (maxLoop == 0 || N < maxLoop) {
+			// req1.Marker = nextmarker
+			req.Continuationtoken = token
+		} else {
+			break
+		}
+	}
+	return ret
+
+}
+
+func catchUpEdrex(key string, repair bool) (ret mosesbc.Ret) {
+	var (
+		request1 = sproxyd.HttpRequest{
+			Hspool: sproxyd.TargetHP,
+			Client: &http.Client{
+				Timeout:   sproxyd.ReadTimeout,
+				Transport: sproxyd.Transport,
+			},
+			ReqHeader: map[string]string{
+				"X-Scal-Replica-Policy": "immutable",
+			},
+			Path: key,
+		}
+		request2 = sproxyd.HttpRequest{
+			Hspool: sproxyd.HP,
+			Client: &http.Client{
+				Timeout:   sproxyd.ReadTimeout,
+				Transport: sproxyd.Transport,
+			},
+			ReqHeader: map[string]string{
+				"X-Scal-Replica-Policy": "immutable",
+			},
+			Path: key,
+		}
+		resp,resp1 *http.Response
+	)
+	if resp, err = sproxyd.GetMetadata(&request1); err == nil {
+		defer resp.Body.Close()
+		switch resp.StatusCode {
+		case 404:
+			ret.N404s = 1
+			if resp1, err = sproxyd.GetMetadata(&request2); err == nil {
+				defer resp1.Body.Close()
+				switch resp1.StatusCode {
+				case 404:
+					ret.N404s--
+				default:
+					gLog.Trace.Printf("Source - Head %s - status Code %d",key,resp.StatusCode)
+				}
+			} else {
+				ret.Nerrs +=1
+			}
+			if ret.N404s > 0 {
+				gLog.Warning.Printf("Target key %s is missing",key)
+			}
+		default:
+			gLog.Trace.Printf("Target - Head %s - status Code %d",key,resp.StatusCode)
+		}
+
+	} else {
+		ret.Nerrs = 1
+	}
+	return ret
 }
