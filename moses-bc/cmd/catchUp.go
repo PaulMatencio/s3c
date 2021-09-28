@@ -99,7 +99,7 @@ func init() {
 func CatchUp(cmd *cobra.Command, args []string) {
 
 	var (
-		err error
+		err       error
 		skipInput = 0
 	)
 	if err = mosesbc.SetSourceSproxyd("check", srcUrl, driver, env); err != nil {
@@ -192,10 +192,9 @@ func CatchUp(cmd *cobra.Command, args []string) {
 
 }
 
-
 func CatchUpEdrex(cmd *cobra.Command, args []string) {
 	var (
-		err error
+		err       error
 		skipInput = 0
 	)
 	if err = mosesbc.SetSourceSproxyd("check", srcUrl, driver, env); err != nil {
@@ -228,7 +227,6 @@ func CatchUpEdrex(cmd *cobra.Command, args []string) {
 		return
 	}
 }
-
 
 func CatchUpSproxyd(client *http.Client, bucket string) {
 
@@ -371,8 +369,8 @@ func catchUpPns(service *s3.S3) (ret mosesbc.Ret) {
 	var (
 		nextmarker, token string
 		N                 int
-		re, si sync.Mutex
-		req    datatype.ListObjV2Request
+		re, si            sync.Mutex
+		req               datatype.ListObjV2Request
 	)
 
 	// start0 := time.Now()
@@ -393,7 +391,7 @@ func catchUpPns(service *s3.S3) (ret mosesbc.Ret) {
 				//	start := time.Now()
 				var (
 					buck1 string
-					key string
+					key   string
 				)
 				gLog.Info.Printf("Total number of documents %d", l)
 				for _, v := range result.Contents {
@@ -420,7 +418,7 @@ func catchUpPns(service *s3.S3) (ret mosesbc.Ret) {
 								ret.Nerrs += ret1.Nerrs
 								re.Unlock()
 							}
-							if ret1.N404s >0 {
+							if ret1.N404s > 0 {
 								ret.N404s += ret1.N404s
 								ret.Nreps += ret1.Nreps
 							}
@@ -476,20 +474,20 @@ func catchUpPn(request datatype.StatObjRequest, repair bool) (ret mosesbc.Ret) {
 				ret = mosesbc.CatchUpBlobs(pn, np, maxPage, repair)
 			}
 		} else {
-			gLog.Error.Printf("Error %v -  metadata %s ", err,rh.Result.Metadata)
+			gLog.Error.Printf("Error %v -  metadata %s ", err, rh.Result.Metadata)
 		}
 	} else {
-		gLog.Error.Printf("Error %v - Bucket %s - Key %s", rh.Err,request.Bucket,request.Key)
+		gLog.Error.Printf("Error %v - Bucket %s - Key %s", rh.Err, request.Bucket, request.Key)
 	}
 	return
 }
 
-func catchUpEdrexs() (ret mosesbc.Ret)  {
+func catchUpEdrexs() (ret mosesbc.Ret) {
 	var (
 		nextmarker, token string
 		N                 int
-		re, si sync.Mutex
-		req    datatype.ListObjV2Request
+		re, si            sync.Mutex
+		req               datatype.ListObjV2Request
 	)
 
 	// start0 := time.Now()
@@ -528,14 +526,14 @@ func catchUpEdrexs() (ret mosesbc.Ret)  {
 								ret.Nerrs += ret1.Nerrs
 								re.Unlock()
 							}
-							if ret1.N404s >0 {
+							if ret1.N404s > 0 {
 								ret.N404s += ret1.N404s
 								ret.Nreps += ret1.Nreps
 							}
 							si.Lock()
 							ret.Npages += ret1.Npages
 							si.Unlock()
-						}(key,repair)
+						}(key, repair)
 					}
 				}
 				wg1.Wait()
@@ -587,34 +585,70 @@ func catchUpEdrex(key string, repair bool) (ret mosesbc.Ret) {
 			},
 			Path: key,
 		}
-		resp,resp1 *http.Response
+
+		request3 = sproxyd.HttpRequest{
+			Hspool: sproxyd.HP,
+			Client: &http.Client{
+				Timeout:   sproxyd.ReadTimeout,
+				Transport: sproxyd.Transport,
+			},
+			ReqHeader: map[string]string{
+				"X-Scal-Replica-Policy": "immutable",
+			},
+			Path: key,
+		}
+
+		resp, resp1 *http.Response
 	)
 	if resp, err = sproxyd.GetMetadata(&request1); err == nil {
 		defer resp.Body.Close()
 		switch resp.StatusCode {
 		case 200:
-			ret.Npages =1
+			ret.Npages = 1
 		case 404:
 			ret.N404s = 1
-			gLog.Warning.Printf("Target - Head %s - status Code %d",key,resp.StatusCode)
-			//check if source is missing
-			if resp1, err = sproxyd.GetMetadata(&request2); err == nil {
+			gLog.Warning.Printf("Target - Head %s - status Code %d", key, resp.StatusCode)
+			//  check if source is missing
+			if resp1, err = sproxyd.Getobject(&request2); err == nil {
 				defer resp1.Body.Close()
 				switch resp1.StatusCode {
+				case 200:
+					//  if repair  then try  repair it
+					if repair {
+						request3.Path = request1.Path
+						if err1 := mosesbc.RepairIt(resp1, &request3, false); err1 == nil {
+							ret.Nreps += 1
+						}
+					} else {
+						// gLog.Info.Printf("Target Page %s  is repairable", request1.Path)
+						isSync := "no"
+						if _, ok := resp1.Header["X-Scal-Attr-Is-Sync"]; ok {
+							isSync = resp1.Header["X-Scal-Attr-Is-Sync"][0]
+						}
+						ct := resp1.Header["Content-Type"][0]
+						lm := resp1.Header["Last-Modified"][0]
+						sz := resp1.ContentLength
+						gLog.Info.Printf("Target Page %s is missing, is synced? %s - content-type %s - Content-length %d - Last Modified %s", request1.Path, isSync, ct, sz,lm)
+					}
 				case 404:
 					ret.N404s--
-					gLog.Warning.Printf("Source - Head %s - status Code %d",key,resp.StatusCode)
+					gLog.Warning.Printf("Source - Head %s - status Code %d", key, resp1.StatusCode)
 				default:
-					gLog.Trace.Printf("Source - Head %s - status Code %d",key,resp.StatusCode)
+					gLog.Trace.Printf("Source - Head %s - status Code %d", key, resp1.StatusCode)
 				}
 			} else {
-				ret.Nerrs +=1
+				ret.Nerrs += 1
 			}
-			if ret.N404s > 0 {
-				gLog.Warning.Printf("Target key %s is missing",key)
-			}
+			/*
+				if ret.N404s > 0 {
+					gLog.Warning.Printf("Target key %s is missing",key)
+					if repair {
+
+					}
+				}
+			*/
 		default:
-			gLog.Trace.Printf("Target - Head %s - status Code %d",key,resp.StatusCode)
+			gLog.Trace.Printf("Target - Head %s - status Code %d", key, resp.StatusCode)
 		}
 
 	} else {

@@ -72,7 +72,7 @@ func catchUpPages(pn string, np int, repair bool) (ret Ret) {
 			pdf, p0 = CheckPdfAndP0(pn, docmd)
 		} else {
 			if status == 404 {
-				ret.N404s +=1
+				ret.N404s += 1
 			}
 			gLog.Warning.Printf("Target docid %s - status code %d ", sproxyd.TargetEnv+"/"+pn, status)
 			request2.Path = sproxyd.Env + "/" + pn
@@ -85,7 +85,7 @@ func catchUpPages(pn string, np int, repair bool) (ret Ret) {
 						pdf, p0 = CheckPdfAndP0(pn, docmd)
 						if repair {
 							request3.Path = sproxyd.TargetEnv + "/" + pn
-							if err1 := repairIt(resp2, &request3, false); err1 == nil {
+							if err1 := RepairIt(resp2, &request3, false); err1 == nil {
 								ret.Nreps += 1
 							}
 						} else {
@@ -138,7 +138,7 @@ func catchUpPages(pn string, np int, repair bool) (ret Ret) {
 					} else {
 						if repair {
 							request3.Path = request1.Path
-							if err1 := repairIt(resp2, &request3, false); err1 == nil {
+							if err1 := RepairIt(resp2, &request3, false); err1 == nil {
 								ret.Nreps += 1
 							}
 						} else {
@@ -203,10 +203,14 @@ func catchUpPages(pn string, np int, repair bool) (ret Ret) {
 						} else if resp2.StatusCode == 200 {
 							if repair {
 								request3.Path = request1.Path
-								if err1 := repairIt(resp2, &request3, false); err1 == nil {
+								if err1 := RepairIt(resp2, &request3, false); err1 == nil {
 									lr.Lock()
 									ret.Nreps += 1
 									lr.Unlock()
+								} else {
+									le.Lock()
+									ret.Nerrs += 1
+									le.Unlock()
 								}
 							} else {
 								isSync := "0"
@@ -297,7 +301,7 @@ func catchUpMaxPages(pn string, np int, maxPage int, repair bool) (ret Ret) {
 						pdf, p0 = CheckPdfAndP0(pn, docmd)
 						if repair {
 							request3.Path = sproxyd.TargetEnv + "/" + pn
-							if err1 := repairIt(resp2, &request3, false); err1 == nil {
+							if err1 := RepairIt(resp2, &request3, false); err1 == nil {
 								ret.Nreps += 1
 							}
 						} else {
@@ -358,7 +362,7 @@ func catchUpMaxPages(pn string, np int, maxPage int, repair bool) (ret Ret) {
 					} else {
 						if repair {
 							request3.Path = request1.Path
-							if err1 := repairIt(resp2, &request3, false); err1 == nil {
+							if err1 := RepairIt(resp2, &request3, false); err1 == nil {
 								ret.Nreps += 1
 							}
 						} else {
@@ -477,9 +481,8 @@ func catchUpPagePart(request1 *sproxyd.HttpRequest, pn string, np int, start int
 							gLog.Warning.Printf("Source Page %s - status code %d ", request2.Path, resp2.StatusCode)
 						} else {
 							if repair {
-
 								request3.Path = request1.Path
-								if err1 := repairIt(resp2, &request3, false); err1 == nil {
+								if err1 := RepairIt(resp2, &request3, false); err1 == nil {
 									lr.Lock()
 									ret.Nreps += 1
 									lr.Unlock()
@@ -514,14 +517,14 @@ func catchUpPagePart(request1 *sproxyd.HttpRequest, pn string, np int, start int
 	return ret
 }
 
-func repairIt(resp *http.Response, request *sproxyd.HttpRequest, replace bool) error {
+func RepairIt(resp *http.Response, request *sproxyd.HttpRequest, replace bool) error {
 	err, status := catch(resp, request, replace)
 	if err == nil {
 		if status == 200 {
 			gLog.Info.Printf("Target  object %s is recovered - status code %d", request.Path, status)
 		} else {
 			err = errors.New(fmt.Sprintf("Target object %s is not recovered - status code %d", request.Path, status))
-			gLog.Error.Printf("%v",err)
+			gLog.Error.Printf("%v", err)
 		}
 	} else {
 		gLog.Error.Printf("Target object %s is not recovered - Error %v", request.Path, err)
@@ -535,7 +538,7 @@ func catch(resp *http.Response, request *sproxyd.HttpRequest, replace bool) (err
 	if resp.StatusCode == 200 {
 		/*
 			check if  object is already synched
-		 */
+		*/
 		if _, ok := resp.Header["X-Scal-Attr-Is-Sync"]; ok {
 
 			if resp.ContentLength > 0 {
@@ -543,29 +546,25 @@ func catch(resp *http.Response, request *sproxyd.HttpRequest, replace bool) (err
 			}
 			if body != nil {
 				if _, ok := resp.Header["X-Scal-Usermd"]; ok {
-					/*
-						Write Object
-					*/
 					request.ReqHeader = map[string]string{}
 					request.ReqHeader["Usermd"] = resp.Header["X-Scal-Usermd"][0]
-					request.ReqHeader["Content-Type"] = resp.Header["Content-Type"][0]
-					// gLog.Info.Printf("Body length %d  content-type %s", len(body), request.ReqHeader["Content-Type"])
-					resp1, err1 := sproxyd.PutObj(request, replace, body)
-					if err1 == nil {
-						defer resp1.Body.Close()
-						status = resp1.StatusCode
-					} else {
-						err = err1
-					}
-					//err = nil
-					// status = 413
 				}
+				request.ReqHeader["Content-Type"] = resp.Header["Content-Type"][0]
+				resp1, err1 := sproxyd.PutObj(request, replace, body)
+				if err1 == nil {
+					defer resp1.Body.Close()
+					status = resp1.StatusCode
+				} else {
+					err = err1
+				}
+				//err = nil
+				// status = 413
 			} else {
 				err = errors.New(fmt.Sprintf("Request url %s  with a nil body", request.Path))
 			}
 		} else {
-			 status= 412
-			 err = errors.New(fmt.Sprintf("Object is not yet synched %s - status %d ", request.Path,status))
+			status = 412
+			err = errors.New(fmt.Sprintf("Object is not yet synched %s - status %d ", request.Path, status))
 		}
 	} else {
 		err = errors.New(fmt.Sprintf("Request url %s -Status Code %d", request.Path, resp.StatusCode))
