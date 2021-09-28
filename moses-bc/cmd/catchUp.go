@@ -596,6 +596,8 @@ func catchUpEdrex(key string, repair bool) (ret mosesbc.Ret) {
 			ret.Npages =1
 		case 404:
 			ret.N404s = 1
+			gLog.Warning.Printf("Target - Head %s - status Code %d",key,resp.StatusCode)
+			//check if source is missing
 			if resp1, err = sproxyd.GetMetadata(&request2); err == nil {
 				defer resp1.Body.Close()
 				switch resp1.StatusCode {
