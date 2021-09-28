@@ -545,7 +545,7 @@ func catchUpEdrexs() (ret mosesbc.Ret)  {
 					//gLog.Info.Printf("Number of docs %d  - number of pages %d - number of 404's %d - number of repairs %d - number of errors %d ", ret.Ndocs, ret.Npages, ret.N404s, ret.Nreps, ret.Nerrs)
 				}
 				gLog.Warning.Printf("Truncated %v - Next marker: %s  - Next continuation token: %s", *result.IsTruncated, nextmarker, token)
-				gLog.Info.Printf("Number of docs %d  - number of pages %d - number of 404's %d - number of repairs %d - number of errors %d ", ret.Ndocs, ret.Npages, ret.N404s, ret.Nreps, ret.Nerrs)
+				gLog.Info.Printf("Number of PUT docs %d  - number of docs %d - number of 404's %d - number of repairs %d - number of errors %d ", ret.Ndocs, ret.Npages, ret.N404s, ret.Nreps, ret.Nerrs)
 			}
 		} else {
 			gLog.Error.Printf("%v", err)
@@ -601,6 +601,7 @@ func catchUpEdrex(key string, repair bool) (ret mosesbc.Ret) {
 				switch resp1.StatusCode {
 				case 404:
 					ret.N404s--
+					gLog.Warning.Printf("Source - Head %s - status Code %d",key,resp.StatusCode)
 				default:
 					gLog.Trace.Printf("Source - Head %s - status Code %d",key,resp.StatusCode)
 				}
