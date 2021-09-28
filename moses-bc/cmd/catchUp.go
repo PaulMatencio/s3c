@@ -520,7 +520,7 @@ func catchUpEdrexs() (ret mosesbc.Ret)  {
 						//  prepare the request to retrieve S3 meta data
 
 						wg1.Add(1)
-						go func(repair bool) {
+						go func(key string, repair bool) {
 							defer wg1.Done()
 							ret1 := catchUpEdrex(key, repair)
 							if ret1.Nerrs > 0 {
@@ -533,9 +533,9 @@ func catchUpEdrexs() (ret mosesbc.Ret)  {
 								ret.Nreps += ret1.Nreps
 							}
 							si.Lock()
-							ret.Ndocs += ret1.Ndocs
+							ret.Npages += ret1.Npages
 							si.Unlock()
-						}(repair)
+						}(key,repair)
 					}
 				}
 				wg1.Wait()
@@ -592,6 +592,8 @@ func catchUpEdrex(key string, repair bool) (ret mosesbc.Ret) {
 	if resp, err = sproxyd.GetMetadata(&request1); err == nil {
 		defer resp.Body.Close()
 		switch resp.StatusCode {
+		case 200:
+			ret.Npages =1
 		case 404:
 			ret.N404s = 1
 			if resp1, err = sproxyd.GetMetadata(&request2); err == nil {
