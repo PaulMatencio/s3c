@@ -541,9 +541,11 @@ func catchUpEdrexs() (ret mosesbc.Ret)  {
 				wg1.Wait()
 				if *result.IsTruncated {
 					nextmarker = *result.Contents[l-1].Key
-					gLog.Warning.Printf("Truncated %v - Next marker: %s  - Next continuation token: %s", *result.IsTruncated, nextmarker, token)
-					gLog.Info.Printf("Number of docs %d  - number of pages %d - number of 404's %d - number of repairs %d - number of errors %d ", ret.Ndocs, ret.Npages, ret.N404s, ret.Nreps, ret.Nerrs)
+					//gLog.Warning.Printf("Truncated %v - Next marker: %s  - Next continuation token: %s", *result.IsTruncated, nextmarker, token)
+					//gLog.Info.Printf("Number of docs %d  - number of pages %d - number of 404's %d - number of repairs %d - number of errors %d ", ret.Ndocs, ret.Npages, ret.N404s, ret.Nreps, ret.Nerrs)
 				}
+				gLog.Warning.Printf("Truncated %v - Next marker: %s  - Next continuation token: %s", *result.IsTruncated, nextmarker, token)
+				gLog.Info.Printf("Number of docs %d  - number of pages %d - number of 404's %d - number of repairs %d - number of errors %d ", ret.Ndocs, ret.Npages, ret.N404s, ret.Nreps, ret.Nerrs)
 			}
 		} else {
 			gLog.Error.Printf("%v", err)
