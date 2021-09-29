@@ -587,7 +587,7 @@ func catchUpEdrex(key string, repair bool) (ret mosesbc.Ret) {
 		}
 
 		request3 = sproxyd.HttpRequest{
-			Hspool: sproxyd.HP,
+			Hspool: sproxyd.TargetHP,
 			Client: &http.Client{
 				Timeout:   sproxyd.ReadTimeout,
 				Transport: sproxyd.Transport,
