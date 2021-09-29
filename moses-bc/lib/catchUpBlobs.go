@@ -554,7 +554,7 @@ func catch(resp *http.Response, request *sproxyd.HttpRequest, replace bool) (err
 				request.ReqHeader["Content-Type"] = resp.Header["Content-Type"][0]
 				resp1, err1 := sproxyd.PutObj(request, replace, body)
 
-				gLog.Info.Println("PutObj  Path %s  Header %s  -lenght %d",request.Path,request.ReqHeader,len(body))
+				gLog.Info.Printf("PutObj  Path %s  Header %s  -lenght %d",request.Path,request.ReqHeader,len(body))
 				err1 = errors.New(fmt.Sprintf("Request url %s  test", request.Path))
 
 				if err1 == nil {
