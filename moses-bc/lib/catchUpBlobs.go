@@ -546,7 +546,7 @@ func catch(resp *http.Response, request *sproxyd.HttpRequest, replace bool) (err
 			}
 			if body != nil {
 				if _, ok := resp.Header["X-Scal-Usermd"]; ok {
-					if len(resp.Header["X-Scal-Usermd"]) > 0 {
+					if len(resp.Header["X-Scal-Usermd"][0]) > 0 {
 						request.ReqHeader = map[string]string{}
 						request.ReqHeader["Usermd"] = resp.Header["X-Scal-Usermd"][0]
 					}
