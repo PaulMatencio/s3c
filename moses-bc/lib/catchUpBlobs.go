@@ -539,26 +539,30 @@ func catch(resp *http.Response, request *sproxyd.HttpRequest, replace bool) (err
 		/*
 			check if  object is already synched
 		*/
-		if _, ok := resp.Header["X-Scal-Attr-Is-Sync"]; ok {
+		if _, ok := resp.Header["X-Scal-Attr-Is-Sync"]; !ok {
 
 			if resp.ContentLength > 0 {
 				body, _ = ioutil.ReadAll(resp.Body)
 			}
 			if body != nil {
 				if _, ok := resp.Header["X-Scal-Usermd"]; ok {
-					request.ReqHeader = map[string]string{}
-					request.ReqHeader["Usermd"] = resp.Header["X-Scal-Usermd"][0]
+					if len(resp.Header["X-Scal-Usermd"]) > 0 {
+						request.ReqHeader = map[string]string{}
+						request.ReqHeader["Usermd"] = resp.Header["X-Scal-Usermd"][0]
+					}
 				}
 				request.ReqHeader["Content-Type"] = resp.Header["Content-Type"][0]
 				resp1, err1 := sproxyd.PutObj(request, replace, body)
+
+				gLog.Info.Println("PutObj  Path %s  Header %s  -lenght %d",request.Path,request.ReqHeader,len(body))
+				err1 = errors.New(fmt.Sprintf("Request url %s  test", request.Path))
+
 				if err1 == nil {
 					defer resp1.Body.Close()
 					status = resp1.StatusCode
 				} else {
 					err = err1
 				}
-				//err = nil
-				// status = 413
 			} else {
 				err = errors.New(fmt.Sprintf("Request url %s  with a nil body", request.Path))
 			}
