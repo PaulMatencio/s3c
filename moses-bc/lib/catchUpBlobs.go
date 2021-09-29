@@ -552,17 +552,20 @@ func catch(resp *http.Response, request *sproxyd.HttpRequest, replace bool) (err
 					}
 				}
 				request.ReqHeader["Content-Type"] = resp.Header["Content-Type"][0]
-				resp1, err1 := sproxyd.PutObj(request, replace, body)
+				// resp1, err1 := sproxyd.PutObj(request, replace, body)
 
 				gLog.Info.Printf("PutObj  Path %s  Header %s  -lenght %d",request.Path,request.ReqHeader,len(body))
-				err1 = errors.New(fmt.Sprintf("Request url %s  test", request.Path))
-
+				err1 := errors.New(fmt.Sprintf("Request url %s  test", request.Path))
+				/*
 				if err1 == nil {
 					defer resp1.Body.Close()
 					status = resp1.StatusCode
 				} else {
 					err = err1
 				}
+
+				 */
+				err = err1
 			} else {
 				err = errors.New(fmt.Sprintf("Request url %s  with a nil body", request.Path))
 			}
